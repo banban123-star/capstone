@@ -1,0 +1,171 @@
+<div id="view-repairs" class="view-section active max-w-6xl mx-auto">
+    <!-- Top Action Bar & Quick Filters -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
+        <div class="relative w-full sm:max-w-md">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="repair-search" autocomplete="off" placeholder="Search by Plate No., Customer Name, or Job ID..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+        </div>
+        
+        <div id="repair-filters" class="flex overflow-x-auto gap-2 pb-1 hide-scrollbar">
+            <button class="repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-slate-800 text-white border border-transparent" data-filter="all" data-default="bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100">All Active</button>
+            
+            <button class="repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100" data-filter="waiting" data-default="bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100">Waiting for Parts</button>
+            
+            <button class="repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100" data-filter="progress" data-default="bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100">In Progress</button>
+            
+            <button class="repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100" data-filter="pending" data-default="bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100">Pending Post-Scan / Calibration</button>
+            
+            <button class="repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100" data-filter="ready" data-default="bg-emerald-50 text-emerald-600 border border-emerald-200 hover:bg-emerald-100">Ready for Billing</button>
+        </div>
+    </div>
+    
+    <!-- Dynamic Job Cards Grid -->
+    <div id="repairs-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <!-- JS will inject dynamic repair cards here -->
+    </div>
+
+    <!-- Repair Modal (Remains exactly the same) -->
+    <div id="repair-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 sm:p-6">
+        <div id="repair-modal-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
+        <div id="repair-modal-content" class="relative bg-slate-100 rounded-xl shadow-2xl max-w-4xl w-full max-h-[95vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <i class="ph-fill ph-wrench text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            Manage Repair <span class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase tracking-wide">Job #1042</span>
+                        </h2>
+                        <p class="text-xs font-medium text-slate-500 mt-0.5">ABC-1234 | Honda Click 125i | Juan Dela Cruz</p>
+                    </div>
+                </div>
+                <button onclick="closeRepairModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+            <!-- Body -->
+            <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-6">
+                <!-- Section A -->
+                <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Section A: Job Overview (Read-Only)</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-2"><i class="ph-fill ph-cpu text-blue-500"></i> Diagnostic Results</span>
+                            <div class="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 font-mono leading-relaxed h-full">
+                                [DTC: P0118] Engine Coolant Temp Sensor High Circuit.<br>
+                                <span class="text-slate-400 mt-1 block">Scanned: Oct 24, 09:15 AM</span>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-2"><i class="ph-fill ph-magnifying-glass text-orange-500"></i> Physical Inspection Findings</span>
+                            <div class="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed h-full">
+                                Brake pads worn down to 10% on front caliper. Coolant leaking from sensor thread. Verified sensor replacement needed.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                <!-- Section B -->
+                <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                        <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Section B: Parts & Labor Management</h3>
+                        <button class="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-md hover:bg-blue-100 transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-plus"></i> Add Unexpected Parts
+                        </button>
+                    </div>
+                    <div class="mb-5">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-2.5">Reserved Parts Checklist (Approved)</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all shadow-sm">
+                                <div class="flex items-center gap-3.5">
+                                    <input type="checkbox" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+                                    <div>
+                                        <div class="text-sm font-bold text-slate-800">Coolant Temp Sensor (OEM Honda)</div>
+                                        <div class="text-[11px] font-medium text-slate-500 mt-0.5">Part #37870-KZR-601 | Qty: 1 | ₱850.00</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded uppercase tracking-wider">Mark as Installed</span>
+                            </label>
+                            <label class="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all shadow-sm">
+                                <div class="flex items-center gap-3.5">
+                                    <input type="checkbox" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer">
+                                    <div>
+                                        <div class="text-sm font-bold text-slate-800">Front Disc Brake Pads</div>
+                                        <div class="text-[11px] font-medium text-slate-500 mt-0.5">Part #06455-K59-A71 | Qty: 1 set | ₱450.00</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded uppercase tracking-wider">Mark as Installed</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="w-full sm:w-1/3 min-w-[200px]">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1.5">Update Final Labor Cost (₱)</label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₱</span>
+                            <input type="number" value="500" class="w-full pl-8 pr-3 py-2.5 text-sm font-bold text-slate-800 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none shadow-sm">
+                        </div>
+                    </div>
+                </section>
+                <!-- Section C -->
+                <section class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+                    <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">Section C: Post-Repair Verification</h3>
+                    <div class="flex flex-col lg:flex-row gap-6">
+                        <div class="flex-1 space-y-4">
+                            <label class="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-colors">
+                                <span class="text-xs font-semibold text-slate-700">Post-Scanning Performed?</span>
+                                <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-36">
+                                    <label class="check-toggle success flex-1 cursor-pointer"><input type="radio" name="post_scan" class="hidden"><div class="text-center text-[10px] font-bold py-1.5 rounded-md text-slate-500 transition-all">Yes</div></label>
+                                    <label class="check-toggle issue flex-1 cursor-pointer"><input type="radio" name="post_scan" class="hidden" checked><div class="text-center text-[10px] font-bold py-1.5 rounded-md text-slate-500 transition-all">No</div></label>
+                                </div>
+                            </label>
+                            <label class="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-colors">
+                                <span class="text-xs font-semibold text-slate-700">Calibration Performed?</span>
+                                <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-36">
+                                    <label class="check-toggle success flex-1 cursor-pointer"><input type="radio" name="post_cal" class="hidden"><div class="text-center text-[10px] font-bold py-1.5 rounded-md text-slate-500 transition-all">Yes</div></label>
+                                    <label class="check-toggle issue flex-1 cursor-pointer"><input type="radio" name="post_cal" class="hidden" checked><div class="text-center text-[10px] font-bold py-1.5 rounded-md text-slate-500 transition-all">No</div></label>
+                                </div>
+                            </label>
+                            <label class="flex items-center justify-between p-2 hover:bg-slate-50 rounded transition-colors">
+                                <span class="text-xs font-semibold text-slate-700">Final Physical Checking Complete?</span>
+                                <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-36">
+                                    <label class="check-toggle success flex-1 cursor-pointer"><input type="radio" name="post_phys" class="hidden"><div class="text-center text-[10px] font-bold py-1.5 rounded-md text-slate-500 transition-all">Yes</div></label>
+                                    <label class="check-toggle issue flex-1 cursor-pointer"><input type="radio" name="post_phys" class="hidden" checked><div class="text-center text-[10px] font-bold py-1.5 rounded-md text-slate-500 transition-all">No</div></label>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="flex-1 flex flex-col">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1.5">Final Mechanic Notes</label>
+                            <textarea class="flex-1 w-full p-3 text-xs text-slate-700 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 outline-none resize-none shadow-sm" placeholder="Log resolution of problem, e.g., 'Cleared DTC codes after sensor replacement.'"></textarea>
+                        </div>
+                    </div>
+                </section>
+                <!-- Section D -->
+                <section class="bg-slate-800 p-5 rounded-xl shadow-inner text-white flex flex-col sm:flex-row flex-wrap gap-4 items-center justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -top-8 text-slate-700 opacity-20"><i class="ph-fill ph-receipt text-9xl"></i></div>
+                    <div class="z-10 text-center sm:text-left w-full sm:w-auto">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Total Est. Cost</span>
+                        <span class="text-xl font-bold">₱1,800.00</span>
+                    </div>
+                    <div class="text-slate-500 text-2xl font-light hidden sm:block z-10">-</div>
+                    <div class="z-10 text-center sm:text-left w-full sm:w-auto border-t border-slate-700 pt-3 sm:border-none sm:pt-0">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Advance Payment Rcvd</span>
+                        <span class="text-xl font-bold text-emerald-400">₱500.00</span>
+                    </div>
+                    <div class="text-slate-500 text-2xl font-light hidden sm:block z-10">=</div>
+                    <div class="bg-slate-900 px-5 py-3 rounded-lg border border-slate-700 w-full sm:w-auto text-center z-10 shadow-lg">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Pending Balance</span>
+                        <span class="text-2xl font-bold text-blue-400">₱1,300.00</span>
+                    </div>
+                </section>
+            </div>
+            <!-- Section E -->
+            <div class="p-4 sm:p-5 border-t border-slate-200 bg-white shrink-0 flex flex-col-reverse sm:flex-row justify-end gap-3 rounded-b-xl">
+                <button onclick="closeRepairModal()" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Cancel / Hold</button>
+                <button onclick="completeJob(event)" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph-bold ph-check-circle text-lg"></i> Complete Job & Send to Cashier
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

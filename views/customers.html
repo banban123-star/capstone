@@ -1,0 +1,157 @@
+<div id="view-customers" class="view-section active max-w-6xl mx-auto">
+    
+    <!-- Top Action Bar -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col sm:flex-row gap-3 items-center justify-between">
+        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1">
+            <div class="relative w-full sm:max-w-md">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="cust-search" autocomplete="off" placeholder="Search customers or plates..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+            </div>
+            <select id="cust-filter-status" class="py-2 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20">
+                <option value="all">All Customers</option>
+                <option value="in-shop">Currently in Shop</option>
+                <option value="cleared">Cleared</option>
+            </select>
+        </div>
+        <div class="flex gap-2 w-full sm:w-auto shrink-0">
+            <button onclick="openCustomerModal()" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap flex items-center justify-center gap-1.5">
+                <i class="ph-bold ph-user-plus"></i> New Customer
+            </button>
+            <button onclick="openMotorcycleModal()" class="flex-1 sm:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm whitespace-nowrap flex items-center justify-center gap-1.5">
+                <i class="ph-bold ph-motorcycle"></i> Register Vehicle
+            </button>
+        </div>
+    </div>
+
+    <!-- Grouped Customer Data Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[900px]">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                        <th class="p-4 w-8"></th>
+                        <th class="p-4">Customer Details</th>
+                        <th class="p-4">Registered Vehicles</th>
+                        <th class="p-4 text-center">Contact</th>
+                        <th class="p-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <!-- JS will inject dynamic rows here -->
+                <tbody id="customers-tbody" class="divide-y divide-slate-100 text-sm">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modals (Add New Customer / Register Vehicle) -->
+    <!-- (Your existing Modals HTML remains perfectly intact below this) -->
+    <div id="modal-customer" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 sm:p-6">
+        <div id="customer-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeCustomerModal()"></div>
+        <div id="customer-content" class="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col transform scale-95 opacity-0 transition-all duration-300">
+            <div class="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-user-plus text-blue-600"></i> Add New Customer
+                </h2>
+                <button onclick="closeCustomerModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">First Name <span class="text-red-500">*</span></label>
+                        <input type="text" placeholder="e.g. Juan" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Last Name <span class="text-red-500">*</span></label>
+                        <input type="text" placeholder="e.g. Dela Cruz" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Phone Number <span class="text-red-500">*</span></label>
+                        <input type="tel" pattern="[0-9]{4}-[0-9]{3}-[0-9]{4}" placeholder="09XX-XXX-XXXX" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Email Address</label>
+                        <input type="email" placeholder="e.g. juan@example.com" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Home Address</label>
+                        <textarea placeholder="Full address details..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm resize-none min-h-[80px]"></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+                <button onclick="closeCustomerModal()" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2 transition-colors" onclick="alert('Customer Saved successfully!'); closeCustomerModal();">
+                    <i class="ph-bold ph-floppy-disk"></i> Save Customer
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Register Motorcycle Modal -->
+    <div id="modal-motorcycle" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 sm:p-6">
+        <div id="motorcycle-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeMotorcycleModal()"></div>
+        <div id="motorcycle-content" class="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col transform scale-95 opacity-0 transition-all duration-300">
+            <div class="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-motorcycle text-blue-600"></i> Register Motorcycle
+                </h2>
+                <button onclick="closeMotorcycleModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-5">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Select Owner</label>
+                        <div class="relative">
+                            <select class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm appearance-none font-semibold">
+                                <option value="" disabled selected>Search existing customer...</option>
+                                <option>Juan Dela Cruz (0917-123-4567)</option>
+                                <option>Maria Clara (0918-987-6543)</option>
+                            </select>
+                            <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Make / Brand</label>
+                        <select class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                            <option value="" disabled selected>Select Brand</option>
+                            <option>Honda</option>
+                            <option>Yamaha</option>
+                            <option>Suzuki</option>
+                            <option>Kawasaki</option>
+                            <option>Kymco</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Model & Year</label>
+                        <input type="text" placeholder="e.g. Click 125i 2023" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Plate Number <span class="text-red-500">*</span></label>
+                        <input type="text" placeholder="e.g. ABC-1234" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono font-bold uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Color</label>
+                        <input type="text" placeholder="e.g. Matte Black" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                    </div>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Engine / Chassis Number</label>
+                        <input type="text" placeholder="CRITICAL for accurate part matching" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono uppercase">
+                        <p class="text-[10px] text-slate-500 mt-1 flex items-start gap-1"><i class="ph-fill ph-info text-blue-500 mt-0.5"></i> Entering this ensures the OBD Diagnostic System recommends the exact correct OEM parts.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+                <button onclick="closeMotorcycleModal()" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2 transition-colors" onclick="alert('Motorcycle Registered successfully!'); closeMotorcycleModal();">
+                    <i class="ph-bold ph-floppy-disk"></i> Register Vehicle
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

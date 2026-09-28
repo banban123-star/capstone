@@ -1,0 +1,131 @@
+<div id="view-backup" class="view-section active max-w-6xl mx-auto space-y-6">
+    
+    <!-- 1. Status Indicator (Top) -->
+    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">System Backup Status</span>
+            <p class="text-base font-bold text-slate-800" id="last-backup-date-text">Last Manual Backup: Oct 12, 2026 - 4:30 PM</p>
+        </div>
+        <div id="backup-status-container">
+            <!-- Dynamic Status Badge Injected via JS -->
+        </div>
+    </div>
+
+    <!-- 2-Column Main Section: Export & Import -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- 2. Export / Create Backup Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-fill ph-download-simple"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">Create Manual Backup</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Download database snapshot locally</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-600 leading-relaxed mb-6">
+                    Download a complete copy of the current database (Customers, Inventory, Repairs, and Audit Logs). Save this file to a secure external drive.
+                </p>
+            </div>
+            
+            <div class="space-y-4 pt-4 border-t border-slate-100">
+                <button onclick="createManualBackup(event)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph-bold ph-database"></i> Download Database Backup
+                </button>
+                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-start gap-2 text-[11px] text-slate-500 leading-relaxed">
+                    <i class="ph-fill ph-info text-blue-500 mt-0.5 shrink-0 text-sm"></i>
+                    <span><strong>Note:</strong> MotoCare does not provide automatic cloud backups. The protection and storage of this backup file remain your responsibility.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Import / Restore Section -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-fill ph-upload-simple"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">Restore System Data</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Recover or overwrite from a backup archive</p>
+                    </div>
+                </div>
+                
+                <!-- File Upload Area -->
+                <div class="border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50 rounded-lg p-4 text-center cursor-pointer transition-colors mb-4">
+                    <input type="file" id="restore-file-input" class="hidden" accept=".sql,.json" onchange="updateRestoreFileName(this)">
+                    <label for="restore-file-input" class="cursor-pointer flex flex-col items-center gap-1">
+                        <i class="ph ph-file-arrow-up text-2xl text-slate-400"></i>
+                        <span class="text-xs font-semibold text-slate-700" id="restore-file-name">Choose database file (.sql or .json)</span>
+                        <span class="text-[10px] text-slate-400">Drag and drop your backup file here</span>
+                    </label>
+                </div>
+            </div>
+            <div class="space-y-4 pt-4 border-t border-slate-100">
+                <button onclick="openRestorePasswordModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg text-sm font-bold shadow-md shadow-red-500/20 flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph-bold ph-warning"></i> Restore Database
+                </button>
+                <div class="p-3 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2 text-[11px] text-red-700 leading-relaxed font-medium">
+                    <i class="ph-fill ph-warning-circle text-red-500 mt-0.5 shrink-0 text-sm"></i>
+                    <span>WARNING: Restoring a backup will overwrite all current system data. Any transactions made after the backup date will be permanently lost.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Backup History Log Table -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 px-5 py-3.5 border-b border-slate-200 flex justify-between items-center">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i class="ph-fill ph-clock-counter-clockwise text-slate-500"></i> Recent Backup & Restore History
+            </h3>
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Audit Tracked</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[700px]">
+                <thead>
+                    <tr class="bg-slate-50/50 border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+                        <th class="p-3.5">Date & Time</th>
+                        <th class="p-3.5">Action Performed</th>
+                        <th class="p-3.5">User Profile</th>
+                    </tr>
+                </thead>
+                <!-- JS will inject dynamic rows here -->
+                <tbody id="backup-history-tbody" class="divide-y divide-slate-100 text-xs">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal for Restore (Password Prompt) -->
+    <div id="modal-restore-password" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4">
+        <div id="restore-password-backdrop" class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeRestorePasswordModal()"></div>
+        <div id="restore-password-content" class="relative bg-white rounded-xl shadow-2xl max-w-md w-full flex flex-col transform scale-95 opacity-0 transition-all duration-300">
+            <div class="flex items-center justify-between p-4 border-b border-slate-200 bg-red-50">
+                <h2 class="text-sm font-bold text-red-800 flex items-center gap-2">
+                    <i class="ph-fill ph-shield-warning text-lg text-red-600"></i> Security Confirmation Required
+                </h2>
+                <button onclick="closeRestorePasswordModal()" class="p-1 text-slate-400 hover:text-slate-700 rounded-lg transition-colors"><i class="ph ph-x text-lg"></i></button>
+            </div>
+            
+            <div class="p-5 flex flex-col gap-4 text-xs">
+                <p class="text-slate-600 leading-relaxed">
+                    You are about to overwrite the active database with an external file. Please enter your owner password to authorize this action.
+                </p>
+                <div>
+                    <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Owner Password</label>
+                    <input type="password" id="restore-admin-pass" placeholder="Enter password..." class="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-red-500/20 outline-none font-mono text-sm">
+                </div>
+            </div>
+            
+            <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+                <button onclick="closeRestorePasswordModal()" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button onclick="confirmSystemRestore(event)" class="px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 shadow-md transition-colors">Authorize & Restore</button>
+            </div>
+        </div>
+    </div>
+</div>
