@@ -34,44 +34,45 @@
             <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-2 mb-2 px-3">Primary Navigation</div>
 
             <!-- Added data-roles attributes to control visibility -->
-            <button class="nav-link active flex items-center w-full px-3 py-2.5 rounded-lg transition-colors bg-blue-600 text-white shadow-md shadow-blue-900/20" data-target="dashboard" data-roles="owner,chief,sub,cashier">
+            <button class="nav-link active flex items-center w-full px-3 py-2.5 rounded-lg transition-colors bg-blue-600 text-white shadow-md shadow-blue-900/20" data-target="dashboard" data-roles="superadmin,owner,chief,sub,cashier">
                 <i class="ph-fill ph-squares-four text-lg w-6"></i> Dashboard / Home >
+            
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="customers" data-roles="owner,chief,cashier">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="customers" data-roles="superadmin,owner,chief,cashier">
                 <i class="ph ph-users text-lg w-6"></i> Customers & Motorcycles
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="diagnostics" data-roles="owner,chief,sub">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="diagnostics" data-roles="superadmin,owner,chief,sub">
                 <i class="ph ph-stethoscope text-lg w-6"></i> Diagnostics & Inspections
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="repairs" data-roles="owner,chief,sub">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="repairs" data-roles="superadmin,owner,chief,sub">
                 <i class="ph ph-wrench text-lg w-6"></i> Active Repairs
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="inventory" data-roles="owner,chief,sub,cashier">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="inventory" data-roles="superadmin,owner,chief,sub,cashier">
                 <i class="ph ph-package text-lg w-6"></i> Inventory
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="transactions" data-roles="owner,cashier">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="transactions" data-roles="superadmin,owner,cashier">
                 <i class="ph ph-receipt text-lg w-6"></i> Transactions & Billing
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="history" data-roles="owner,chief">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="history" data-roles="superadmin,owner,chief">
                 <i class="ph ph-clock-counter-clockwise text-lg w-6"></i> Service History
             </button>
 
             <!-- Administration & Support -->
             <div id="nav-header-admin" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 px-3">Administration & Support</div>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="reports" data-roles="owner">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="reports" data-roles="superadmin,owner">
                 <i class="ph ph-chart-line-up text-lg w-6"></i> Reports & Monitoring
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="audit" data-roles="owner">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="audit" data-roles="superadmin,owner">
                 <i class="ph ph-shield-check text-lg w-6"></i> Audit Logs
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="users" data-roles="owner">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="users" data-roles="superadmin,owner">
                 <i class="ph ph-user-gear text-lg w-6"></i> User Management
             </button>
 
             <!-- System Settings -->
             <div id="nav-header-settings" class="px-3 py-2 mt-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
                 <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">System Settings</div>
-                <button class="nav-link flex items-center w-full py-1.5 text-slate-300 hover:text-white transition-colors" data-target="backup" data-roles="owner">
+                <button class="nav-link flex items-center w-full py-1.5 text-slate-300 hover:text-white transition-colors" data-target="backup" data-roles="superadmin,owner">
                     <i class="ph ph-database text-base w-6"></i> Backup & Restore
                 </button>
                 <div class="flex items-center justify-between w-full py-1.5 text-slate-300">
@@ -102,6 +103,7 @@
             <div class="pt-3 border-t border-slate-800">
                 <label class="text-[9px] uppercase font-bold text-slate-500 tracking-wider mb-1 block">Simulate Login As:</label>
                 <select id="role-switcher" class="w-full bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-md px-2 py-1.5 outline-none focus:border-blue-500 transition-colors" onchange="switchRole(this.value)">
+                    <option value="superadmin">Super Admin (System)</option>
                     <option value="owner">Shop Owner (User)</option>
                     <option value="chief">Chief Mechanic (Larpus)</option>
                     <option value="sub">Sub-Mechanic (Hiyo)</option>
@@ -146,6 +148,14 @@
             
             <!-- 2x2 Scalable Grid Layout -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                <!-- Super Admin -->
+            <button onclick="promptPin('superadmin', 'System Admin', 'SA', 'bg-slate-800')" class="w-full p-4 bg-slate-50 hover:bg-slate-200 border border-slate-200 hover:border-slate-400 rounded-xl text-left flex items-center gap-4 transition-all group sm:col-span-2 md:col-span-1">
+                <div class="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">SA</div>
+                <div>
+                    <div class="text-base font-bold text-slate-800 group-hover:text-slate-900">System Admin</div>
+                    <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Super Admin</div>
+                </div>
+            </button>
                 <!-- Shop Owner -->
                 <button onclick="promptPin('owner', 'Ivan', 'IG', 'bg-blue-600')" class="w-full p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-left flex items-center gap-4 transition-all group">
                     <div class="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">IG</div>

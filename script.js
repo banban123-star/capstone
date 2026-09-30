@@ -251,6 +251,7 @@ navLinks.forEach(link => {
 
 // --- Role-Based Access Control (RBAC) Simulation ---
 const systemUsers = {
+    superadmin: { name: 'System Admin', role: 'Super Admin', initials: 'SA', color: 'bg-slate-800' },
     owner: { name: 'Admin', role: 'Shop Owner', initials: 'IG', color: 'bg-blue-600' },
     chief: { name: 'Larpus', role: 'Chief Mechanic', initials: 'JB', color: 'bg-purple-600' },
     sub: { name: 'Hiyo', role: 'Sub-Mechanic', initials: 'F', color: 'bg-slate-600' },
