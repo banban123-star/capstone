@@ -2,34 +2,20 @@
     <!-- 1. Inspection Setup -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">1. Inspection Setup</h2>
-        <div class="flex flex-col gap-5">
-            
-            <!-- Motorcycle Selector -->
-            <div class="w-full md:w-1/2">
-                <div class="relative">
-                    <select id="motorcycle-select" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 outline-none text-sm font-medium transition-colors">
-                        <option value="reg-1">Juan Dela Cruz - Honda Click 125i (ABC-123)</option>
-                        <option value="reg-2">Maria Clara - Yamaha NMAX (XYZ-987)</option>
-                        <option value="walkin" class="font-bold text-blue-600">Walk-in / Unregistered Motorcycle</option>
-                    </select>
-                    <i class="ph ph-motorcycle absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
-                </div>
-            </div>
-
-            <!-- Master Toggles -->
-            <div class="flex flex-col sm:flex-row gap-6 pt-2 border-t border-slate-100">
-                <label class="flex items-center gap-2 cursor-pointer group">
-                    <input type="checkbox" id="toggle-physical" class="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" checked onchange="toggleDiagnosticSections()">
-                    <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">Physical Inspection</span>
-                </label>
-                <label class="flex items-center gap-2 cursor-pointer group">
-                    <input type="checkbox" id="toggle-ecu" class="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" onchange="toggleDiagnosticSections()">
-                    <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">ECU/OBD Diagnostic</span>
-                </label>
-            </div>
-
+        
+        <!-- Master Toggles -->
+        <div class="flex flex-col sm:flex-row gap-6">
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" id="toggle-physical" class="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" checked onchange="toggleDiagnosticSections()">
+                <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">Physical Inspection</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" id="toggle-ecu" class="w-5 h-5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer" onchange="toggleDiagnosticSections()">
+                <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">ECU/OBD Diagnostic</span>
+            </label>
         </div>
     </div>
+
                 
               
     <!-- 2 & 3. Single-Column Dynamic Workspace -->
@@ -248,7 +234,10 @@
                     <span>Push to Active Repairs</span>
                 </button>
             </div>
-            <!-- Auto-Assign Parts Modal -->
+        </div>
+    </div>
+
+    <!-- Auto-Assign Parts Modal -->
     <div id="modal-auto-assign" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-4">
         <div id="auto-assign-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeAutoAssignModal()"></div>
         <div id="auto-assign-content" class="relative bg-slate-50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
@@ -266,38 +255,36 @@
                 <p class="text-xs text-slate-600">The system has categorized parts based on your diagnostic results. Review and modify before adding to the repair plan.</p>
                 
                 <!-- Category 1: ECU Diagnostics -->
-                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-b-xl">
-                        <label class="flex items-center gap-3 cursor-pointer group flex-1">
-                            <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p1">
-                            <div>
-                                <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Coolant Temp Sensor (OEM Honda)</div>
-                                <div class="text-[10px] text-slate-500">₱ 850.00 | In Stock: 24</div>
-                            </div>
-                        </label>
-                        <!-- Interactive Quantity Controls -->
-                        <div class="flex items-center bg-white rounded-md border border-slate-200 shadow-sm ml-4">
-                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                            <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p1">1</span>
-                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="24"><i class="ph-bold ph-plus"></i></button>
+                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors bg-white rounded-xl shadow-sm border border-slate-200">
+                    <label class="flex items-center gap-3 cursor-pointer group flex-1">
+                        <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p1">
+                        <div>
+                            <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Coolant Temp Sensor (OEM Honda)</div>
+                            <div class="text-[10px] text-slate-500">₱ 850.00 | In Stock: 24</div>
                         </div>
+                    </label>
+                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ml-4">
+                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p1">1</span>
+                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="24"><i class="ph-bold ph-plus"></i></button>
                     </div>
+                </div>
 
                 <!-- Category 2: Physical Inspection -->
-                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-b-xl">
-                        <label class="flex items-center gap-3 cursor-pointer group flex-1">
-                            <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p2">
-                            <div>
-                                <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Front Disc Brake Pads</div>
-                                <div class="text-[10px] text-slate-500">₱ 450.00 | In Stock: 3</div>
-                            </div>
-                        </label>
-                        <!-- Interactive Quantity Controls -->
-                        <div class="flex items-center bg-white rounded-md border border-slate-200 shadow-sm ml-4">
-                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                            <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p2">1</span>
-                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="3"><i class="ph-bold ph-plus"></i></button>
+                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors bg-white rounded-xl shadow-sm border border-slate-200">
+                    <label class="flex items-center gap-3 cursor-pointer group flex-1">
+                        <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p2">
+                        <div>
+                            <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Front Disc Brake Pads</div>
+                            <div class="text-[10px] text-slate-500">₱ 450.00 | In Stock: 3</div>
                         </div>
+                    </label>
+                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ml-4">
+                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p2">1</span>
+                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="3"><i class="ph-bold ph-plus"></i></button>
                     </div>
+                </div>
 
                 <!-- Category 3: Personally Added by Mechanic -->
                 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -308,24 +295,27 @@
                         <div class="relative">
                             <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                             <input type="text" id="modal-manual-search" autocomplete="off" placeholder="Search and add extra parts..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-purple-500/20 outline-none text-xs shadow-sm transition-all">
-                            
-                            <!-- Autocomplete Dropdown -->
-                            <div id="modal-manual-autocomplete" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-40 overflow-y-auto">
-                            </div>
+                            <div id="modal-manual-autocomplete" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-40 overflow-y-auto"></div>
                         </div>
-                        
-                        <!-- Manual Selected Parts Container (Modal) -->
-                        <div id="modal-manual-container" class="flex flex-col gap-2 empty:hidden">
-                            <!-- Injected chips go here -->
-                        </div>
+                        <div id="modal-manual-container" class="flex flex-col gap-2 empty:hidden"></div>
                     </div>
                 </div>
+            </div>
+
+            <div class="p-3 sm:p-4 border-t border-slate-200 flex justify-end gap-2 bg-white shrink-0">
+                <button type="button" onclick="closeAutoAssignModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 border border-slate-300 hover:bg-slate-100 transition-colors">Cancel</button>
+                <button type="button" onclick="confirmAutoAssign(event)" class="px-5 py-2 rounded-lg text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 shadow-md flex items-center gap-1.5 transition-colors">
+                    <i class="ph-bold ph-check-circle"></i> Confirm & Add to Plan
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Confirm Push to Active Repairs Modal (Mobile-Optimized Multi-Tab) -->
     <div id="modal-push-repair" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-4">
         <div id="push-repair-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closePushRepairModal()"></div>
         <div id="push-repair-content" class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
             
-            <!-- Header -->
             <div class="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50 shrink-0">
                 <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
                     <i class="ph-fill ph-arrow-circle-right text-blue-600 text-lg"></i> Confirm Vehicle for Repair
@@ -335,7 +325,6 @@
                 </button>
             </div>
 
-            <!-- Toggle & Mobile Segmented Navigation -->
             <div class="p-3 bg-slate-50 border-b border-slate-200 shrink-0 flex flex-col gap-3">
                 <div class="flex justify-between items-center px-2">
                     <span class="text-xs font-bold text-slate-600">Register New Customer or Vehicle?</span>
@@ -351,9 +340,7 @@
                 </div>
             </div>
 
-            <!-- Scrollable Body Content -->
             <div class="p-4 sm:p-5 overflow-y-auto flex-1 text-slate-700">
-                
                 <!-- TAB 1: Select Existing -->
                 <div id="pane-push-existing" class="flex flex-col gap-4">
                     <p class="text-xs text-slate-500">Select the target motorcycle or walk-in unit to queue for repair:</p>
@@ -443,7 +430,6 @@
                 </div>
             </div>
 
-            <!-- Footer Buttons -->
             <div class="p-3 sm:p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 shrink-0">
                 <button type="button" onclick="closePushRepairModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
                 <button type="button" onclick="confirmPushRepair(event)" class="px-5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-1.5 transition-colors">
@@ -452,4 +438,4 @@
             </div>
         </div>
     </div>
-
+</div>
