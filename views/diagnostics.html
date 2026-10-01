@@ -3,8 +3,9 @@
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">1. Inspection Setup</h2>
         <div class="flex flex-col gap-5">
+            
+            <!-- Motorcycle Selector -->
             <div class="w-full md:w-1/2">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Select Registered Motorcycle</label>
                 <div class="relative">
                     <select id="motorcycle-select" class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 outline-none text-sm font-medium transition-colors">
                         <option value="reg-1">Juan Dela Cruz - Honda Click 125i (ABC-123)</option>
@@ -13,20 +14,8 @@
                     </select>
                     <i class="ph ph-motorcycle absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
                 </div>
-                
-                <!-- Walk-in Temporary Fields (Hidden by Default) -->
-                <div id="walkin-fields" class="hidden mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-blue-50/50 rounded-lg border border-blue-100 animate-[fadeIn_0.3s_ease-out]">
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Motorcycle Make/Model</label>
-                        <input type="text" placeholder="e.g. Suzuki Raider 150" class="w-full px-3 py-2 rounded border border-slate-300 bg-white outline-none text-sm focus:ring-1 focus:ring-blue-500">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Plate Number</label>
-                        <input type="text" placeholder="e.g. DEF-456" class="w-full px-3 py-2 rounded border border-slate-300 bg-white outline-none text-sm focus:ring-1 focus:ring-blue-500 font-mono uppercase">
-                    </div>
-                </div>
             </div>
-            
+
             <!-- Master Toggles -->
             <div class="flex flex-col sm:flex-row gap-6 pt-2 border-t border-slate-100">
                 <label class="flex items-center gap-2 cursor-pointer group">
@@ -38,9 +27,11 @@
                     <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">ECU/OBD Diagnostic</span>
                 </label>
             </div>
+
         </div>
     </div>
-
+                
+              
     <!-- 2 & 3. Single-Column Dynamic Workspace -->
     <div class="flex flex-col gap-6">
         
@@ -216,21 +207,30 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-            <div class="md:col-span-6 lg:col-span-7 relative">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Add Required Parts for Repair</label>
-                <div class="relative">
-                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="part-search-input" autocomplete="off" placeholder="Search and reserve from inventory..." class="w-full pl-9 pr-4 py-3 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
-                    
-                    <!-- Autocomplete Dropdown -->
-                    <div id="part-autocomplete-dropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-60 overflow-y-auto">
-                        <!-- Options injected via JS -->
-                    </div>
+            <div class="md:col-span-6 lg:col-span-7 relative flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <label class="block text-xs font-semibold text-slate-700">Required Parts & Materials</label>
+                    <button onclick="openAutoAssignModal()" class="text-[10px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-200 px-2.5 py-1 rounded transition-colors flex items-center gap-1.5 shadow-sm">
+                        <i class="ph-bold ph-magic-wand"></i> Auto-Assign from Scan
+                    </button>
                 </div>
                 
-                <!-- Selected Parts Container -->
-                <div id="selected-parts-container" class="mt-3 flex flex-col gap-2 empty:hidden">
-                    <!-- Chips injected via JS -->
+                <!-- Grouped Container for Search and Selected Items -->
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col gap-3">
+                    <div class="relative">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="part-search-input" autocomplete="off" placeholder="Search and reserve from inventory..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm shadow-sm">
+                        
+                        <!-- Autocomplete Dropdown -->
+                        <div id="part-autocomplete-dropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-60 overflow-y-auto">
+                            <!-- Options injected via JS -->
+                        </div>
+                    </div>
+                    
+                    <!-- Selected Parts Container -->
+                    <div id="selected-parts-container" class="flex flex-col gap-2 empty:hidden">
+                        <!-- Chips injected via JS -->
+                    </div>
                 </div>
             </div>
             
@@ -243,9 +243,211 @@
                     <i class="ph-fill ph-pause-circle text-lg"></i>
                     <span class="text-[10px] uppercase">Hold</span>
                 </button>
-                <button class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg text-sm font-bold transition-colors shadow-sm flex flex-col items-center justify-center gap-1">
+                <button onclick="openPushRepairModal()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg text-sm font-bold transition-colors shadow-sm flex flex-col items-center justify-center gap-1">
                     <i class="ph-fill ph-arrow-circle-right text-xl"></i>
                     <span>Push to Active Repairs</span>
+                </button>
+            </div>
+            <!-- Auto-Assign Parts Modal -->
+    <div id="modal-auto-assign" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-4">
+        <div id="auto-assign-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeAutoAssignModal()"></div>
+        <div id="auto-assign-content" class="relative bg-slate-50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
+            
+            <div class="flex items-center justify-between p-4 border-b border-slate-200 bg-white shrink-0">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-magic-wand text-purple-600 text-lg"></i> Review Recommended Parts
+                </h2>
+                <button onclick="closeAutoAssignModal()" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-5 text-slate-700">
+                <p class="text-xs text-slate-600">The system has categorized parts based on your diagnostic results. Review and modify before adding to the repair plan.</p>
+                
+                <!-- Category 1: ECU Diagnostics -->
+                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-b-xl">
+                        <label class="flex items-center gap-3 cursor-pointer group flex-1">
+                            <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p1">
+                            <div>
+                                <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Coolant Temp Sensor (OEM Honda)</div>
+                                <div class="text-[10px] text-slate-500">₱ 850.00 | In Stock: 24</div>
+                            </div>
+                        </label>
+                        <!-- Interactive Quantity Controls -->
+                        <div class="flex items-center bg-white rounded-md border border-slate-200 shadow-sm ml-4">
+                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                            <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p1">1</span>
+                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="24"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                    </div>
+
+                <!-- Category 2: Physical Inspection -->
+                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-b-xl">
+                        <label class="flex items-center gap-3 cursor-pointer group flex-1">
+                            <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p2">
+                            <div>
+                                <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Front Disc Brake Pads</div>
+                                <div class="text-[10px] text-slate-500">₱ 450.00 | In Stock: 3</div>
+                            </div>
+                        </label>
+                        <!-- Interactive Quantity Controls -->
+                        <div class="flex items-center bg-white rounded-md border border-slate-200 shadow-sm ml-4">
+                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                            <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p2">1</span>
+                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="3"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                    </div>
+
+                <!-- Category 3: Personally Added by Mechanic -->
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="bg-slate-100 px-4 py-2 border-b border-slate-200">
+                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"><i class="ph-fill ph-user text-emerald-500 text-sm"></i> Personally Added by Mechanic</span>
+                    </div>
+                    <div class="p-3 flex flex-col gap-3 bg-slate-50/50">
+                        <div class="relative">
+                            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                            <input type="text" id="modal-manual-search" autocomplete="off" placeholder="Search and add extra parts..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-purple-500/20 outline-none text-xs shadow-sm transition-all">
+                            
+                            <!-- Autocomplete Dropdown -->
+                            <div id="modal-manual-autocomplete" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-40 overflow-y-auto">
+                            </div>
+                        </div>
+                        
+                        <!-- Manual Selected Parts Container (Modal) -->
+                        <div id="modal-manual-container" class="flex flex-col gap-2 empty:hidden">
+                            <!-- Injected chips go here -->
+                        </div>
+                    </div>
+                </div>
+    <!-- Confirm Push to Active Repairs Modal (Mobile-Optimized Multi-Tab) -->
+    <div id="modal-push-repair" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-4">
+        <div id="push-repair-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closePushRepairModal()"></div>
+        <div id="push-repair-content" class="relative bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
+            
+            <!-- Header -->
+            <div class="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50 shrink-0">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-arrow-circle-right text-blue-600 text-lg"></i> Confirm Vehicle for Repair
+                </h2>
+                <button onclick="closePushRepairModal()" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Toggle & Mobile Segmented Navigation -->
+            <div class="p-3 bg-slate-50 border-b border-slate-200 shrink-0 flex flex-col gap-3">
+                <div class="flex justify-between items-center px-2">
+                    <span class="text-xs font-bold text-slate-600">Register New Customer or Vehicle?</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-new-reg" class="sr-only peer" onchange="toggleRegistrationMode(this)">
+                        <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                
+                <div id="registration-tabs-container" class="hidden grid grid-cols-2 gap-1 bg-slate-200 p-1 rounded-xl text-xs font-semibold transition-all">
+                    <button type="button" id="tab-btn-customer" onclick="switchPushRepairTab('customer')" class="py-2 rounded-lg transition-all bg-white text-blue-600 shadow-sm font-bold text-center">+ Customer</button>
+                    <button type="button" id="tab-btn-vehicle" onclick="switchPushRepairTab('vehicle')" class="py-2 rounded-lg transition-all text-slate-600 hover:text-slate-900 text-center">+ Vehicle</button>
+                </div>
+            </div>
+
+            <!-- Scrollable Body Content -->
+            <div class="p-4 sm:p-5 overflow-y-auto flex-1 text-slate-700">
+                
+                <!-- TAB 1: Select Existing -->
+                <div id="pane-push-existing" class="flex flex-col gap-4">
+                    <p class="text-xs text-slate-500">Select the target motorcycle or walk-in unit to queue for repair:</p>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Registered Motorcycle</label>
+                        <div class="relative">
+                            <select id="modal-motorcycle-select" class="w-full pl-9 pr-8 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm font-medium">
+                                <option value="reg-1">Juan Dela Cruz - Honda Click 125i (ABC-123)</option>
+                                <option value="reg-2">Maria Clara - Yamaha NMAX (XYZ-987)</option>
+                                <option value="walkin" class="font-bold text-blue-600">Walk-in / Unregistered Motorcycle</option>
+                            </select>
+                            <i class="ph ph-motorcycle absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-base"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: Register Customer -->
+                <div id="pane-push-customer" class="hidden flex flex-col gap-3">
+                    <p class="text-xs text-slate-500">Add a new client profile without leaving diagnostics:</p>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">First Name *</label>
+                            <input type="text" id="quick-cust-first" placeholder="Juan" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs focus:bg-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Last Name *</label>
+                            <input type="text" id="quick-cust-last" placeholder="Dela Cruz" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs focus:bg-white outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Phone Number *</label>
+                        <input type="tel" id="quick-cust-phone" placeholder="09XX-XXX-XXXX" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 font-mono text-xs focus:bg-white outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Home Address</label>
+                        <input type="text" id="quick-cust-address" placeholder="Barangay, City..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs focus:bg-white outline-none">
+                    </div>
+                    <button type="button" onclick="saveQuickCustomer()" class="mt-2 w-full py-2.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors flex items-center justify-center gap-1.5">
+                        <i class="ph-bold ph-user-plus"></i> Save Customer & Select
+                    </button>
+                </div>
+
+                <!-- TAB 3: Register Vehicle -->
+                <div id="pane-push-vehicle" class="hidden flex flex-col gap-3">
+                    <p class="text-xs text-slate-500">Register and link a motorcycle directly to a customer:</p>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Customer / Owner</label>
+                        <select id="quick-veh-owner" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs font-medium focus:bg-white outline-none">
+                            <option value="Juan Dela Cruz">Juan Dela Cruz (0917-123-4567)</option>
+                            <option value="Maria Clara">Maria Clara (0918-987-6543)</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Brand</label>
+                            <select id="quick-veh-brand" size="1" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs focus:bg-white outline-none">
+                                <option>Honda</option>
+                                <option>Yamaha</option>
+                                <option>Suzuki</option>
+                                <option>Kawasaki</option>
+                                <option>Kymco</option>
+                                <option>Vespa</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Model & Year</label>
+                            <input type="text" id="quick-veh-model" placeholder="Click 125i 2023" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs focus:bg-white outline-none">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Plate Number *</label>
+                            <input type="text" id="quick-veh-plate" placeholder="ABC-1234" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 uppercase font-mono text-xs focus:bg-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Color</label>
+                            <input type="text" id="quick-veh-color" placeholder="Matte Black" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-xs focus:bg-white outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Engine / Chassis No.</label>
+                        <input type="text" id="quick-veh-engine" placeholder="Engine series for OBD match" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 uppercase font-mono text-xs focus:bg-white outline-none">
+                    </div>
+                    <button type="button" onclick="saveQuickVehicle()" class="mt-2 w-full py-2.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white transition-colors flex items-center justify-center gap-1.5">
+                        <i class="ph-bold ph-motorcycle"></i> Save Motorcycle & Select
+                    </button>
+                </div>
+            </div>
+
+            <!-- Footer Buttons -->
+            <div class="p-3 sm:p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50 shrink-0">
+                <button type="button" onclick="closePushRepairModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="button" onclick="confirmPushRepair(event)" class="px-5 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-1.5 transition-colors">
+                    <i class="ph-bold ph-arrow-circle-right"></i> Confirm & Push
                 </button>
             </div>
         </div>

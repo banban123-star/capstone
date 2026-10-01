@@ -442,6 +442,268 @@ function toggleModal(modalId, backdropId, contentId, show, effect = 'scale') {
 }
 
 // --- Active Repairs / Inventory Modals ---
+
+function openPushRepairModal() { 
+    const mainSelect = document.getElementById('motorcycle-select');
+    const modalSelect = document.getElementById('modal-motorcycle-select');
+    if (mainSelect && modalSelect) modalSelect.value = mainSelect.value;
+    
+    // Reset toggle switch and tabs on open
+    const toggle = document.getElementById('toggle-new-reg');
+    if(toggle) toggle.checked = false;
+    
+    const tabsContainer = document.getElementById('registration-tabs-container');
+    if(tabsContainer) tabsContainer.classList.add('hidden');
+
+    switchPushRepairTab('existing');
+    toggleModal('modal-push-repair', 'push-repair-backdrop', 'push-repair-content', true); 
+}
+
+function toggleRegistrationMode(checkbox) {
+    const tabsContainer = document.getElementById('registration-tabs-container');
+    if (checkbox.checked) {
+        tabsContainer.classList.remove('hidden');
+        switchPushRepairTab('customer'); // Default to customer when turned on
+    } else {
+        tabsContainer.classList.add('hidden');
+        switchPushRepairTab('existing'); // Revert back to existing dropdown
+    }
+}
+function openAutoAssignModal() {
+    toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', true);
+}
+
+function closeAutoAssignModal() {
+    toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', false);
+    // --- Modal Manual Search & Addition Logic ---
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'modal-manual-search') {
+        const query = e.target.value.toLowerCase();
+        const dropdown = document.getElementById('modal-manual-autocomplete');
+        if (!query) { dropdown.classList.add('hidden'); return; }
+        
+        const matches = mockInventory.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
+        if (matches.length > 0) {
+            dropdown.innerHTML = matches.map(part => `
+                <div class="p-2 border-b border-slate-100 hover:bg-slate-50 cursor-pointer flex justify-between items-center modal-autocomplete-item" data-id="${part.id}">
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">${part.name}</div>
+                        <div class="text-[9px] text-slate-500">Stock: ${part.stock}</div>
+                    </div>
+                    <div class="text-xs font-bold text-emerald-600">₱${part.price.toFixed(2)}</div>
+                </div>
+            `).join('');
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">No parts found.</div>`;
+            dropdown.classList.remove('hidden');
+        }
+    }
+});
+
+document.addEventListener('click', function(e) {
+    // Add part from modal search
+    const item = e.target.closest('.modal-autocomplete-item');
+    if (item) {
+        const partId = item.getAttribute('data-id');
+        const part = mockInventory.find(p => p.id === partId);
+        const container = document.getElementById('modal-manual-container');
+        
+        if (part && part.stock > 0 && !document.getElementById(`modal-manual-part-${part.id}`)) {
+            const html = `
+                <div id="modal-manual-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm" data-id="${part.id}">
+                    <div class="flex-1 min-w-0 pr-2">
+                        <div class="text-xs font-bold text-slate-800 truncate">${part.name}</div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
+                            <button class="px-2 py-0.5 text-slate-400 hover:text-purple-600 btn-qty-minus"><i class="ph-bold ph-minus text-[10px]"></i></button>
+                            <span class="w-5 text-center text-[10px] font-bold text-slate-700 qty-val">1</span>
+                            <button class="px-2 py-0.5 text-slate-400 hover:text-purple-600 btn-qty-plus" data-max="${part.stock}"><i class="ph-bold ph-plus text-[10px]"></i></button>
+                        </div>
+                        <button class="text-slate-400 hover:text-red-500 p-1 rounded btn-remove-modal-part"><i class="ph-bold ph-x text-xs"></i></button>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+        document.getElementById('modal-manual-search').value = '';
+        document.getElementById('modal-manual-autocomplete').classList.add('hidden');
+    }
+    
+    // Remove button inside modal
+    const btnRemove = e.target.closest('.btn-remove-modal-part');
+    if (btnRemove) btnRemove.closest('[id^="modal-manual-part-"]').remove();
+});
+}
+
+function confirmAutoAssign(event) {
+    const btn = event.currentTarget;
+    const originalHTML = btn.innerHTML;
+    
+    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Adding...`;
+    btn.disabled = true;
+
+    setTimeout(() => {
+        const container = document.getElementById('selected-parts-container');
+        if (!container) return;
+        
+        let partsToAssign = [];
+        
+        // 1. Grab ECU Parts
+        if (document.getElementById('chk-auto-p1')?.checked) {
+            const qty = parseInt(document.getElementById('qty-auto-p1')?.textContent) || 1;
+            partsToAssign.push({ id: 'p1', qty: qty, source: 'ecu' });
+        }
+        
+        // 2. Grab Physical Parts
+        if (document.getElementById('chk-auto-p2')?.checked) {
+            const qty = parseInt(document.getElementById('qty-auto-p2')?.textContent) || 1;
+            partsToAssign.push({ id: 'p2', qty: qty, source: 'physical' });
+        }
+
+        // 3. Grab Manually Added Parts from Modal
+        document.querySelectorAll('#modal-manual-container [id^="modal-manual-part-"]').forEach(el => {
+            const id = el.getAttribute('data-id');
+            const qty = parseInt(el.querySelector('.qty-val')?.textContent) || 1;
+            partsToAssign.push({ id: id, qty: qty, source: 'manual' });
+        });
+
+        // Loop and inject into main repair plan
+        partsToAssign.forEach(item => {
+            const part = mockInventory.find(p => p.id === item.id);
+            if (part && part.stock > 0 && !document.getElementById(`selected-part-${part.id}`)) {
+                
+                // Determine Badge Style
+                let badgeHTML = '';
+                if (item.source === 'ecu') {
+                    badgeHTML = `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-blue-200 uppercase tracking-wider"><i class="ph-bold ph-cpu"></i> ECU/OBD</span>`;
+                } else if (item.source === 'physical') {
+                    badgeHTML = `<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-orange-200 uppercase tracking-wider"><i class="ph-bold ph-wrench"></i> Physical</span>`;
+                } else {
+                    badgeHTML = `<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-200 uppercase tracking-wider"><i class="ph-bold ph-user"></i> Manual</span>`;
+                }
+
+                const html = `
+                    <div id="selected-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm animate-[fadeIn_0.2s_ease-out]">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <div class="flex items-center gap-2 mb-0.5">
+                                <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
+                                ${badgeHTML}
+                            </div>
+                            <div class="text-xs text-slate-500">₱ ${part.price.toFixed(2)} / unit</div>
+                        </div>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
+                                <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                                <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${item.qty}</span>
+                                <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
+                            </div>
+                            <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
+            }
+        });
+
+        // Reset Modal State
+        document.getElementById('modal-manual-search').value = '';
+        document.getElementById('modal-manual-container').innerHTML = '';
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        closeAutoAssignModal();
+    }, 600);
+}
+function closePushRepairModal() { 
+    toggleModal('modal-push-repair', 'push-repair-backdrop', 'push-repair-content', false); 
+}
+
+function confirmPushRepair(event) {
+    const btn = event.currentTarget;
+    const originalHTML = btn.innerHTML;
+    
+    // Show a loading state on the button
+    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Pushing...`;
+    btn.disabled = true;
+
+    // Simulate network delay, close the modal, and redirect to the Repairs page
+    setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        closePushRepairModal();
+        
+        alert("Vehicle successfully pushed to the Active Repairs queue!");
+        
+        // Auto-navigate user to the active repairs tab
+        const repairsLink = document.querySelector('.nav-link[data-target="repairs"]');
+        if (repairsLink) repairsLink.click();
+    }, 800);
+}
+
+function switchPushRepairTab(tabKey) {
+    const tabs = ['existing', 'customer', 'vehicle'];
+    tabs.forEach(key => {
+        const pane = document.getElementById(`pane-push-${key}`);
+        const btn = document.getElementById(`tab-btn-${key}`);
+        if (pane) pane.classList.toggle('hidden', key !== tabKey);
+        if (btn) {
+            if (key === tabKey) {
+                btn.className = 'py-2 rounded-lg transition-all bg-white text-blue-600 shadow-sm font-bold text-center';
+            } else {
+                btn.className = 'py-2 rounded-lg transition-all text-slate-600 hover:text-slate-900 text-center';
+            }
+        }
+    });
+}
+
+function saveQuickCustomer() {
+    const first = document.getElementById('quick-cust-first').value.trim();
+    const last = document.getElementById('quick-cust-last').value.trim();
+    const phone = document.getElementById('quick-cust-phone').value.trim();
+
+    if (!first || !last || !phone) {
+        alert('Please provide the first name, last name, and phone number.');
+        return;
+    }
+
+    const fullName = `${first} ${last}`;
+    const vehOwnerSelect = document.getElementById('quick-veh-owner');
+    if (vehOwnerSelect) {
+        const opt = new Option(`${fullName} (${phone})`, fullName, true, true);
+        vehOwnerSelect.add(opt);
+    }
+
+    alert(`Customer "${fullName}" added. You can now register their vehicle or proceed.`);
+    switchPushRepairTab('vehicle');
+}
+
+function saveQuickVehicle() {
+    const owner = document.getElementById('quick-veh-owner').value;
+    const brand = document.getElementById('quick-veh-brand').value;
+    const model = document.getElementById('quick-veh-model').value.trim();
+    const plate = document.getElementById('quick-veh-plate').value.trim();
+
+    if (!plate || !model) {
+        alert('Please provide both the model and plate number.');
+        return;
+    }
+
+    const label = `${owner} - ${brand} ${model} (${plate})`;
+    const modalSelect = document.getElementById('modal-motorcycle-select');
+    const mainSelect = document.getElementById('motorcycle-select');
+
+    if (modalSelect) {
+        const opt = new Option(label, `custom-${Date.now()}`, true, true);
+        modalSelect.add(opt);
+    }
+    if (mainSelect) {
+        const opt2 = new Option(label, `custom-${Date.now()}`, true, true);
+        mainSelect.add(opt2);
+    }
+
+    switchPushRepairTab('existing');
+}
 function openRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop', 'repair-modal-content', true); }
 function closeRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop', 'repair-modal-content', false); }
 function completeJob(event) {
