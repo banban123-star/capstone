@@ -184,3 +184,131 @@ button.m-sheet-row:active { background: #f1f5f9; }
 /* Toast */
 #m-toast { opacity: 0; pointer-events: none; transform: translate(-50%, 8px); transition: opacity .2s, transform .2s; white-space: nowrap; }
 #m-toast.is-show { opacity: 1; transform: translate(-50%, 0); }
+
+
+/* =========================================================
+   PHYSICAL INSPECTION LOG (Diagnostics)
+   Touch-friendly status buttons, chips and checklist rows.
+   ========================================================= */
+
+/* Sections flow in 1 column, 2 columns when the card itself is wide (container query,
+   so it also behaves inside the phone-sized mobile frame on a big monitor) */
+#insp-sections { container-type: inline-size; }
+.insp-grid-inner { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@container (min-width: 820px) {
+    .insp-grid-inner { grid-template-columns: 1fr 1fr; }
+}
+
+.insp-section { scroll-margin-top: 150px; }
+.insp-section.is-collapsed .insp-section-body { display: none; }
+.insp-section.is-collapsed .insp-caret { transform: rotate(-90deg); }
+.insp-caret { transition: transform .2s; }
+
+/* Checklist row */
+.insp-item { border-left: 4px solid #e2e8f0; background: #fff; transition: border-color .15s, background-color .15s; }
+.insp-item[data-status="ok"]    { border-left-color: #10b981; }
+.insp-item[data-status="watch"] { border-left-color: #f59e0b; background: #fffbeb; }
+.insp-item[data-status="fix"]   { border-left-color: #ef4444; background: #fef2f2; }
+.insp-item[data-status="na"]    { border-left-color: #94a3b8; background: #f8fafc; opacity: .8; }
+
+/* Big status buttons (min 44px tall for gloved/greasy fingers) */
+.insp-btn {
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    transition: background-color .12s, color .12s, border-color .12s, transform .08s;
+    -webkit-tap-highlight-color: transparent;
+}
+.insp-btn:active { transform: scale(.94); }
+.insp-btn.ok.is-active    { background: #10b981; border-color: #10b981; color: #fff; }
+.insp-btn.watch.is-active { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+.insp-btn.fix.is-active   { background: #ef4444; border-color: #ef4444; color: #fff; }
+.insp-btn.na.is-active    { background: #64748b; border-color: #64748b; color: #fff; }
+.insp-btn.na { font-size: 11px; }
+
+/* Measurement stepper */
+.insp-step {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: #f1f5f9;
+    color: #475569;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    transition: transform .08s, background-color .12s;
+}
+.insp-step:active { transform: scale(.9); background: #e2e8f0; }
+.insp-num {
+    width: 84px; height: 40px;
+    text-align: center;
+    font-size: 16px; font-weight: 800; color: #1e293b;
+    border: 1.5px solid #cbd5e1; border-radius: 10px;
+    padding-right: 26px;
+    outline: none; background: #fff;
+}
+.insp-num:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
+.insp-unit { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #94a3b8; pointer-events: none; }
+
+/* Tap-able chips (defect tags, complaints, fuel) */
+.insp-chip {
+    display: inline-flex; align-items: center;
+    padding: 8px 12px;
+    min-height: 36px;
+    border-radius: 9999px;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    font-size: 12px; font-weight: 700;
+    transition: background-color .12s, color .12s, border-color .12s, transform .08s;
+    -webkit-tap-highlight-color: transparent;
+}
+.insp-chip:active { transform: scale(.95); }
+.insp-chip.is-active { background: #2563eb; border-color: #2563eb; color: #fff; }
+.insp-item[data-status="fix"] .insp-chip.is-active { background: #dc2626; border-color: #dc2626; }
+.insp-item[data-status="watch"] .insp-chip.is-active { background: #d97706; border-color: #d97706; }
+
+/* Detail panel (tags, note, photo, part) shown for Watch / Fix */
+.insp-detail { animation: fadeIn .2s ease-out; }
+.insp-photo-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 40px; padding: 0 14px;
+    border-radius: 10px; border: 1.5px dashed #94a3b8;
+    background: #fff; color: #475569;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.insp-photo-btn:active { background: #f1f5f9; }
+.insp-thumb { position: relative; width: 40px; height: 40px; border-radius: 8px; overflow: hidden; border: 1.5px solid #e2e8f0; flex-shrink: 0; }
+.insp-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.insp-thumb button { position: absolute; top: 0; right: 0; width: 16px; height: 16px; background: rgba(15, 23, 42, .75); color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center; border-bottom-left-radius: 6px; }
+.insp-part-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    min-height: 40px; padding: 0 14px;
+    border-radius: 10px;
+    background: #eff6ff; color: #1d4ed8; border: 1.5px solid #bfdbfe;
+    font-size: 12px; font-weight: 800;
+}
+.insp-part-btn:active { transform: scale(.96); }
+.insp-part-btn[disabled] { background: #fee2e2; color: #b91c1c; border-color: #fecaca; cursor: not-allowed; }
+.insp-part-btn.is-added { background: #d1fae5; color: #047857; border-color: #a7f3d0; }
+
+/* Section jump pills */
+.insp-pill {
+    flex-shrink: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 11px;
+    border-radius: 9999px;
+    background: #f1f5f9; color: #475569;
+    font-size: 11px; font-weight: 800;
+    border: 1.5px solid transparent;
+    white-space: nowrap;
+}
+.insp-pill.is-done { background: #d1fae5; color: #047857; }
+.insp-pill.has-fix { border-color: #fca5a5; }
+.insp-pill:active { transform: scale(.95); }

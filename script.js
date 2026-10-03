@@ -55,6 +55,40 @@ document.addEventListener('input', function(e) {
     }
 });
 
+// Adds a part chip to the Repair Plan (shared by the search dropdown and the inspection suggestions)
+function addPartToPlan(part) {
+    if (!part) return false;
+    if (part.stock === 0) {
+        alert('This item is currently out of stock.');
+        return false;
+    }
+
+    const container = document.getElementById('selected-parts-container');
+    if (!container) return false;
+
+    // Render line item chip if it doesn't already exist
+    if (!document.getElementById(`selected-part-${part.id}`)) {
+        const html = `
+            <div id="selected-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm animate-[fadeIn_0.2s_ease-out]">
+                <div class="flex-1 min-w-0 pr-2">
+                    <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
+                    <div class="text-xs text-slate-500">₱${part.price.toFixed(2)} / unit</div>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
+                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">1</span>
+                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
+                    </div>
+                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+    return true;
+}
+
 document.addEventListener('click', function(e) {
     // 3. Select Item from Autocomplete
     const autocompleteItem = e.target.closest('.autocomplete-item');
@@ -62,34 +96,9 @@ document.addEventListener('click', function(e) {
         const partId = autocompleteItem.getAttribute('data-id');
         const part = mockInventory.find(p => p.id === partId);
         
-        if (part && part.stock > 0) {
-            const container = document.getElementById('selected-parts-container');
-            
-            // Render line item chip if it doesn't already exist
-            if (!document.getElementById(`selected-part-${part.id}`)) {
-                const html = `
-                    <div id="selected-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm animate-[fadeIn_0.2s_ease-out]">
-                        <div class="flex-1 min-w-0 pr-2">
-                            <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
-                            <div class="text-xs text-slate-500">₱${part.price.toFixed(2)} / unit</div>
-                        </div>
-                        <div class="flex items-center gap-3 shrink-0">
-                            <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
-                                <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                                <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">1</span>
-                                <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
-                            </div>
-                            <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            }
-            
+        if (addPartToPlan(part)) {
             document.getElementById('part-search-input').value = '';
             document.getElementById('part-autocomplete-dropdown').classList.add('hidden');
-        } else if (part && part.stock === 0) {
-            alert('This item is currently out of stock.');
         }
     }
 
@@ -168,6 +177,7 @@ async function loadView(viewName) {
             const isEcuOn = document.getElementById('toggle-ecu')?.checked;
             if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
             if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
+            renderInspection();
         }
 
         // Initialize Inventory view
@@ -701,6 +711,7 @@ function confirmPushRepair(event) {
         closePushRepairModal();
         
         alert("Vehicle successfully pushed to the Active Repairs queue!");
+        clearInspectionDraft();
         
         // Auto-navigate user to the active repairs tab
         const repairsLink = document.querySelector('.nav-link[data-target="repairs"]');
@@ -2681,3 +2692,598 @@ function renderMobileHome() {
         }).join('');
     }
 }
+
+
+// =====================================================================
+// --- Physical Inspection Log (Diagnostics) ---
+// Grouped checklist with big OK / Watch / Fix buttons, measurement
+// steppers that auto-grade, defect tags, notes, photos, parts suggestions
+// and a one-tap "Add to Final Findings". Draft is auto-saved on the device.
+// =====================================================================
+
+const INSPECTION_STORAGE_KEY = 'motocare_physical_inspection_draft';
+
+const inspectionStatuses = [
+    { key: 'ok',    label: 'OK',    icon: 'ph-check-circle' },
+    { key: 'watch', label: 'Watch', icon: 'ph-warning' },
+    { key: 'fix',   label: 'Fix',   icon: 'ph-wrench' },
+    { key: 'na',    label: 'N/A',   icon: 'ph-minus-circle' }
+];
+const inspectionStatusLabels = { ok: 'OK', watch: 'Watch', fix: 'Fix', na: 'N/A' };
+
+// measure.type 'below': Watch when under `soon`, Fix when at/under `fix`
+// measure.type 'range': OK inside [min, max], Watch just outside, Fix far outside
+// part: id from mockInventory to suggest when the item is flagged
+const inspectionSections = [
+    {
+        id: 'tires', title: 'Tires & Wheels', short: 'Tires', icon: 'ph-circle-notch',
+        items: [
+            { id: 'tire_f', label: 'Front Tire', hint: 'Tread depth, cracks, sidewall bulges',
+              measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.6, help: 'OK ≥ 3 mm · Fix ≤ 1.6 mm' },
+              tags: ['Worn tread', 'Cracked sidewall', 'Puncture / nail', 'Uneven wear', 'Bulge'] },
+            { id: 'tire_r', label: 'Rear Tire', hint: 'Tread depth, cracks, sidewall bulges',
+              measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.6, help: 'OK ≥ 3 mm · Fix ≤ 1.6 mm' },
+              tags: ['Worn tread', 'Cracked sidewall', 'Puncture / nail', 'Uneven wear', 'Bulge'] },
+            { id: 'psi_f', label: 'Front Tire Pressure', hint: 'Check cold, set to spec',
+              measure: { type: 'range', unit: 'PSI', start: 30, step: 1, min: 28, max: 33, help: 'OK 28–33 PSI' },
+              tags: ['Too low', 'Too high', 'Slow leak'] },
+            { id: 'psi_r', label: 'Rear Tire Pressure', hint: 'Check cold, set to spec',
+              measure: { type: 'range', unit: 'PSI', start: 32, step: 1, min: 30, max: 36, help: 'OK 30–36 PSI' },
+              tags: ['Too low', 'Too high', 'Slow leak'] },
+            { id: 'wheels', label: 'Wheels / Rims', hint: 'Bends, cracks, loose spokes, bearing play',
+              tags: ['Bent rim', 'Loose spokes', 'Bearing play', 'Cracked'] }
+        ]
+    },
+    {
+        id: 'brakes', title: 'Brakes', short: 'Brakes', icon: 'ph-stop-circle',
+        items: [
+            { id: 'pad_f', label: 'Front Brake Pads', hint: 'Pad thickness and even wear',
+              measure: { type: 'below', unit: 'mm', start: 4, step: 0.5, soon: 4, fix: 2, help: 'OK ≥ 4 mm · Fix ≤ 2 mm' },
+              tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'], part: 'p2' },
+            { id: 'pad_r', label: 'Rear Pads / Shoes', hint: 'Lining thickness and even wear',
+              measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.5, help: 'OK ≥ 3 mm · Fix ≤ 1.5 mm' },
+              tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'] },
+            { id: 'brake_fluid', label: 'Brake Fluid', hint: 'Level and colour (change every 1–2 years)',
+              tags: ['Low level', 'Dark / dirty', 'Contaminated', 'Leak'] },
+            { id: 'brake_feel', label: 'Lever / Pedal Feel', hint: 'Firm, no sponginess or drag',
+              tags: ['Spongy', 'Too soft', 'Dragging', 'Needs adjustment'] },
+            { id: 'brake_disc', label: 'Discs / Drums', hint: 'Scoring, warp, rust',
+              tags: ['Warped', 'Scored', 'Rusted', 'Below min thickness'] }
+        ]
+    },
+    {
+        id: 'engine', title: 'Engine & Fluids', short: 'Engine', icon: 'ph-engine',
+        items: [
+            { id: 'oil', label: 'Engine Oil', hint: 'Level and colour on the dipstick / sight glass',
+              tags: ['Low level', 'Black / dirty', 'Milky', 'Overdue change'], part: 'p4' },
+            { id: 'coolant', label: 'Coolant', hint: 'Liquid-cooled only. Use N/A for air-cooled engines',
+              tags: ['Low level', 'Discoloured', 'Leak'] },
+            { id: 'air_filter', label: 'Air Filter', hint: 'Clogged, oily or torn',
+              tags: ['Clogged', 'Oily', 'Torn'] },
+            { id: 'spark', label: 'Spark Plug', hint: 'Electrode wear and fouling',
+              tags: ['Fouled', 'Worn electrode', 'Wet / oily', 'Wrong gap'], part: 'p5' },
+            { id: 'leaks', label: 'Leaks (visual)', hint: 'Look under the unit and around gaskets',
+              tags: ['Engine oil', 'Coolant', 'Fuel', 'Fork oil', 'Gasket'] }
+        ]
+    },
+    {
+        id: 'drive', title: 'Drivetrain', short: 'Drive', icon: 'ph-link',
+        items: [
+            { id: 'chain', label: 'Chain / CVT Belt', hint: 'Chain slack, rust, belt cracks',
+              measure: { type: 'range', unit: 'mm', start: 25, step: 1, min: 20, max: 35, help: 'Chain slack OK 20–35 mm (skip for CVT belt)' },
+              tags: ['Too loose', 'Too tight', 'Dry / rusty', 'Cracked belt', 'Stretched'], part: 'p3' },
+            { id: 'sprocket', label: 'Sprockets / CVT Rollers', hint: 'Hooked teeth, flat-spotted rollers',
+              tags: ['Hooked teeth', 'Worn rollers', 'Noise', 'Flat spots'] },
+            { id: 'clutch', label: 'Clutch / Free Play', hint: 'Engagement and lever free play',
+              tags: ['Slipping', 'Too stiff', 'Free play off', 'Cable frayed'] }
+        ]
+    },
+    {
+        id: 'electrical', title: 'Electrical', short: 'Electrical', icon: 'ph-lightning',
+        items: [
+            { id: 'battery', label: 'Battery Voltage', hint: 'Engine off, battery rested',
+              measure: { type: 'below', unit: 'V', start: 12.6, step: 0.1, soon: 12.4, fix: 12, help: 'OK ≥ 12.4 V · Fix ≤ 12.0 V' },
+              tags: ['Weak', 'Corroded terminals', 'Swollen', 'Old (2+ years)'] },
+            { id: 'charging', label: 'Charging Voltage', hint: 'Engine running at ~3,000 rpm',
+              measure: { type: 'range', unit: 'V', start: 14, step: 0.1, min: 13.5, max: 14.8, help: 'OK 13.5–14.8 V' },
+              tags: ['Undercharging', 'Overcharging', 'Bad regulator', 'Stator issue'] },
+            { id: 'lights', label: 'Lights & Signals', hint: 'Head, brake, tail, turn signals',
+              tags: ['Headlight out', 'Brake light out', 'Signal out', 'Dim'] },
+            { id: 'horn', label: 'Horn / Switches', hint: 'Horn, kill switch, handlebar controls',
+              tags: ['Weak horn', 'No sound', 'Sticky switch'] },
+            { id: 'starter', label: 'Starter / Wiring', hint: 'Cranking speed, burnt or loose wiring',
+              tags: ['Slow crank', 'Clicking', 'Loose / burnt wiring'] }
+        ]
+    },
+    {
+        id: 'chassis', title: 'Suspension & Steering', short: 'Chassis', icon: 'ph-steering-wheel',
+        items: [
+            { id: 'fork', label: 'Front Fork', hint: 'Seal leaks, stiction, bottoming',
+              tags: ['Leaking seals', 'Bottoming out', 'Stiff', 'Bent'] },
+            { id: 'shock', label: 'Rear Shock(s)', hint: 'Leaks, weak damping, worn bushings',
+              tags: ['Leaking', 'Weak / soft', 'Noisy', 'Worn bushings'] },
+            { id: 'steering', label: 'Steering Bearings', hint: 'Free play and notchiness',
+              tags: ['Loose', 'Notchy', 'Too tight'] },
+            { id: 'frame', label: 'Frame / Swingarm', hint: 'Cracks, bends, rust, loose bolts',
+              tags: ['Crack', 'Bent', 'Rust', 'Loose bolts'] }
+        ]
+    }
+];
+
+const inspectionItems = inspectionSections.flatMap(sec => sec.items.map(item => ({ ...item, section: sec.id })));
+const inspectionItemMap = Object.fromEntries(inspectionItems.map(item => [item.id, item]));
+
+// --- State (auto-saved to this device so a refresh / lost signal never wipes the checklist) ---
+function emptyInspectionState() {
+    return { intake: { odo: '', fuel: '', complaints: [] }, items: {} };
+}
+
+function loadInspectionState() {
+    try {
+        const raw = localStorage.getItem(INSPECTION_STORAGE_KEY);
+        if (raw) {
+            const saved = JSON.parse(raw);
+            return {
+                intake: { ...emptyInspectionState().intake, ...(saved.intake || {}) },
+                items: saved.items || {}
+            };
+        }
+    } catch (err) { /* storage unavailable or corrupt: start fresh */ }
+    return emptyInspectionState();
+}
+
+function saveInspectionState() {
+    try { localStorage.setItem(INSPECTION_STORAGE_KEY, JSON.stringify(inspectionState)); } catch (err) { /* ignore quota errors */ }
+}
+
+let inspectionState = loadInspectionState();
+let inspectionPhotos = {};           // item id -> [dataURL] (memory only, photos are too large for localStorage)
+const inspectionCollapsed = {};      // section id -> true when collapsed
+
+function getInspItem(id) {
+    if (!inspectionState.items[id]) {
+        inspectionState.items[id] = { status: null, manual: false, value: '', tags: [], note: '' };
+    }
+    return inspectionState.items[id];
+}
+
+function inspEsc(text) {
+    return String(text ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// Grades a measurement against the item's thresholds
+function evaluateInspectionMeasure(measure, raw) {
+    const value = parseFloat(raw);
+    if (isNaN(value)) return null;
+    if (measure.type === 'below') {
+        return value <= measure.fix ? 'fix' : value < measure.soon ? 'watch' : 'ok';
+    }
+    if (value >= measure.min && value <= measure.max) return 'ok';
+    const gap = value < measure.min ? measure.min - value : value - measure.max;
+    return gap > (measure.max - measure.min) * 0.5 ? 'fix' : 'watch';
+}
+
+function inspectionAutoText(item, st) {
+    if (!item.measure) return '';
+    const graded = st.value !== '' && !st.manual && st.status;
+    return item.measure.help + (graded ? ` · Auto: ${inspectionStatusLabels[st.status]}` : '');
+}
+
+// --- Rendering ---
+function renderInspectionItem(item) {
+    const st = getInspItem(item.id);
+    const m = item.measure;
+    const showDetail = st.status === 'watch' || st.status === 'fix';
+    const part = item.part ? mockInventory.find(p => p.id === item.part) : null;
+
+    const measureHtml = m ? `
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div class="flex items-center gap-1.5">
+                <button type="button" data-insp="step" data-item="${item.id}" data-dir="-1" class="insp-step" aria-label="Decrease"><i class="ph-bold ph-minus"></i></button>
+                <div class="relative">
+                    <input type="number" inputmode="decimal" step="${m.step}" value="${inspEsc(st.value)}" placeholder="${m.start}" data-insp-input="measure" data-item="${item.id}" class="insp-num">
+                    <span class="insp-unit">${m.unit}</span>
+                </div>
+                <button type="button" data-insp="step" data-item="${item.id}" data-dir="1" class="insp-step" aria-label="Increase"><i class="ph-bold ph-plus"></i></button>
+            </div>
+            <p class="text-[10px] font-semibold text-slate-400 flex-1 min-w-[120px] text-right leading-snug" data-auto="${item.id}">${inspectionAutoText(item, st)}</p>
+        </div>` : '';
+
+    const partHtml = !part ? '' : (part.stock > 0
+        ? `<button type="button" data-insp="addpart" data-part="${part.id}" class="insp-part-btn"><i class="ph-bold ph-plus"></i> ${part.name} <span class="font-semibold opacity-70">· ${part.stock} in stock</span></button>`
+        : `<button type="button" disabled class="insp-part-btn"><i class="ph-bold ph-prohibit"></i> ${part.name} · Out of stock</button>`);
+
+    return `
+        <div class="insp-item rounded-xl border border-slate-200" data-item="${item.id}" data-status="${st.status || 'none'}">
+            <div class="p-3 flex flex-col gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-extrabold text-slate-800 leading-tight">${item.label}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">${item.hint}</p>
+                </div>
+                ${measureHtml}
+                <div class="grid grid-cols-4 gap-1.5">
+                    ${inspectionStatuses.map(s => `
+                        <button type="button" data-insp="status" data-item="${item.id}" data-status="${s.key}" class="insp-btn ${s.key} ${st.status === s.key ? 'is-active' : ''}">
+                            <i class="ph-bold ${s.icon} text-base"></i> ${s.label}
+                        </button>`).join('')}
+                </div>
+                <div class="insp-detail ${showDetail ? '' : 'hidden'} flex flex-col gap-2.5 pt-3 border-t border-slate-200/70" data-detail="${item.id}">
+                    <div class="flex flex-wrap gap-1.5">
+                        ${item.tags.map(tag => `<button type="button" data-insp="tag" data-item="${item.id}" data-tag="${inspEsc(tag)}" class="insp-chip ${st.tags.includes(tag) ? 'is-active' : ''}">${tag}</button>`).join('')}
+                    </div>
+                    <input type="text" placeholder="Add a note (optional)" value="${inspEsc(st.note)}" data-insp-input="note" data-item="${item.id}" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="insp-photo-btn"><i class="ph-bold ph-camera text-base"></i> Photo
+                            <input type="file" accept="image/*" capture="environment" class="hidden" data-insp-file data-item="${item.id}">
+                        </label>
+                        <div class="flex gap-1.5" data-photos="${item.id}"></div>
+                        ${partHtml}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+}
+
+function renderInspectionSection(sec) {
+    return `
+        <div class="insp-section ${inspectionCollapsed[sec.id] ? 'is-collapsed' : ''} bg-white border border-slate-200 rounded-xl overflow-hidden" id="insp-sec-${sec.id}" data-section="${sec.id}">
+            <div class="flex items-center gap-2 px-3.5 py-3 bg-slate-50 border-b border-slate-200">
+                <button type="button" data-insp="toggle-section" data-section="${sec.id}" class="flex items-center gap-2.5 flex-1 min-w-0 text-left">
+                    <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ${sec.icon}"></i></span>
+                    <span class="min-w-0">
+                        <span class="block text-sm font-extrabold text-slate-800">${sec.title}</span>
+                        <span class="block text-[11px] font-semibold text-slate-400" data-sec-count="${sec.id}"></span>
+                    </span>
+                    <i class="ph-bold ph-caret-down insp-caret text-slate-400 ml-auto"></i>
+                </button>
+                <button type="button" data-insp="section-ok" data-section="${sec.id}" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2.5 rounded-lg active:scale-95 transition-transform whitespace-nowrap">Rest OK</button>
+            </div>
+            <div class="insp-section-body p-2.5 flex flex-col gap-2.5">
+                ${sec.items.map(renderInspectionItem).join('')}
+            </div>
+        </div>`;
+}
+
+function renderInspection() {
+    const host = document.getElementById('insp-sections');
+    if (!host) return;
+    host.innerHTML = `<div class="insp-grid-inner" style="align-items:start">${inspectionSections.map(renderInspectionSection).join('')}</div>`;
+    restoreInspectionIntake();
+    inspectionItems.forEach(item => renderInspectionThumbs(item.id));
+    refreshInspectionSummary();
+}
+
+function restoreInspectionIntake() {
+    const { odo, fuel, complaints } = inspectionState.intake;
+    const odoInput = document.getElementById('insp-odo');
+    if (odoInput) odoInput.value = odo;
+    document.querySelectorAll('[data-insp="fuel"]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.fuel === fuel));
+    document.querySelectorAll('[data-insp="complaint"]').forEach(btn => btn.classList.toggle('is-active', complaints.includes(btn.dataset.complaint)));
+}
+
+function renderInspectionThumbs(id) {
+    const box = document.querySelector(`[data-photos="${id}"]`);
+    if (!box) return;
+    box.innerHTML = (inspectionPhotos[id] || []).map((src, index) => `
+        <div class="insp-thumb"><img src="${src}" alt="Inspection photo">
+            <button type="button" data-insp="remove-photo" data-item="${id}" data-index="${index}" aria-label="Remove photo"><i class="ph-bold ph-x"></i></button>
+        </div>`).join('');
+}
+
+// Patches one row in place (keeps keyboard focus while typing a measurement)
+function refreshInspectionRow(id) {
+    const row = document.querySelector(`.insp-item[data-item="${id}"]`);
+    if (!row) return;
+    const st = getInspItem(id);
+    const item = inspectionItemMap[id];
+
+    row.dataset.status = st.status || 'none';
+    row.querySelectorAll('.insp-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.status === st.status));
+    row.querySelector('.insp-detail').classList.toggle('hidden', !(st.status === 'watch' || st.status === 'fix'));
+    row.querySelectorAll('.insp-chip[data-tag]').forEach(chip => chip.classList.toggle('is-active', st.tags.includes(chip.dataset.tag)));
+    const auto = row.querySelector(`[data-auto="${id}"]`);
+    if (auto) auto.textContent = inspectionAutoText(item, st);
+
+    refreshInspectionSummary();
+}
+
+function inspectionFormatEntry(item) {
+    const st = getInspItem(item.id);
+    const value = item.measure && st.value !== '' ? `${st.value} ${item.measure.unit}` : '';
+    return `• ${item.label}${value ? ` (${value})` : ''}${st.tags.length ? ` — ${st.tags.join(', ')}` : ''}${st.note ? ` [${st.note}]` : ''}`;
+}
+
+function buildInspectionFindings() {
+    const { odo, fuel, complaints } = inspectionState.intake;
+    const fix = inspectionItems.filter(i => getInspItem(i.id).status === 'fix');
+    const watch = inspectionItems.filter(i => getInspItem(i.id).status === 'watch');
+    const checked = inspectionItems.filter(i => getInspItem(i.id).status).length;
+    const unchecked = inspectionItems.length - checked;
+
+    const lines = ['— PHYSICAL INSPECTION —'];
+    const meta = [];
+    if (odo) meta.push(`Odometer: ${Number(odo).toLocaleString()} km`);
+    if (fuel) meta.push(`Fuel: ${fuel}`);
+    if (meta.length) lines.push(meta.join(' | '));
+    if (complaints.length) lines.push(`Complaint: ${complaints.join(', ')}`);
+    if (fix.length) lines.push('', 'NEEDS REPAIR / REPLACEMENT:', ...fix.map(inspectionFormatEntry));
+    if (watch.length) lines.push('', 'MONITOR / ADVISE CUSTOMER:', ...watch.map(inspectionFormatEntry));
+    if (!fix.length && !watch.length && checked) lines.push('', 'No issues found on the checked items.');
+    if (unchecked > 0) lines.push('', `(${unchecked} item${unchecked === 1 ? '' : 's'} not inspected)`);
+    lines.push('— END INSPECTION —');
+    return lines.join('\n');
+}
+
+function refreshInspectionSummary() {
+    const total = inspectionItems.length;
+    const counts = { ok: 0, watch: 0, fix: 0, na: 0 };
+    inspectionItems.forEach(item => { const s = getInspItem(item.id).status; if (s) counts[s]++; });
+    const checked = counts.ok + counts.watch + counts.fix + counts.na;
+
+    const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    setText('insp-progress-text', `${checked} / ${total} checked`);
+    setText('insp-count-ok', counts.ok);
+    setText('insp-count-watch', counts.watch);
+    setText('insp-count-fix', counts.fix);
+    const fill = document.getElementById('insp-progress-fill');
+    if (fill) {
+        fill.style.width = `${Math.round((checked / total) * 100)}%`;
+        fill.classList.toggle('bg-emerald-500', checked === total);
+        fill.classList.toggle('bg-blue-500', checked !== total);
+    }
+
+    // Section jump pills + per-section counters
+    const pills = document.getElementById('insp-pills');
+    if (pills) {
+        pills.innerHTML = inspectionSections.map(sec => {
+            const done = sec.items.filter(i => getInspItem(i.id).status).length;
+            const hasFix = sec.items.some(i => getInspItem(i.id).status === 'fix');
+            return `<button type="button" data-insp="jump" data-section="${sec.id}" class="insp-pill ${done === sec.items.length ? 'is-done' : ''} ${hasFix ? 'has-fix' : ''}">
+                <i class="ph-fill ${sec.icon}"></i> ${sec.short} ${done}/${sec.items.length}</button>`;
+        }).join('');
+    }
+    inspectionSections.forEach(sec => {
+        const done = sec.items.filter(i => getInspItem(i.id).status).length;
+        const label = document.querySelector(`[data-sec-count="${sec.id}"]`);
+        if (label) label.textContent = done === sec.items.length ? `All ${done} checked ✓` : `${done}/${sec.items.length} checked`;
+    });
+
+    // Summary panel
+    const summary = document.getElementById('insp-summary');
+    if (!summary) return;
+
+    if (checked === 0) {
+        summary.innerHTML = `
+            <div class="border border-dashed border-slate-300 rounded-xl p-4 text-center text-xs font-semibold text-slate-400">
+                <i class="ph-fill ph-clipboard-text text-2xl block mb-1 text-slate-300"></i>
+                Tap OK / Watch / Fix on each item. Flagged items and suggested parts will be summarized here.
+            </div>`;
+        return;
+    }
+
+    const fix = inspectionItems.filter(i => getInspItem(i.id).status === 'fix');
+    const watch = inspectionItems.filter(i => getInspItem(i.id).status === 'watch');
+    const parts = [...new Set(fix.map(i => i.part).filter(Boolean))].map(id => mockInventory.find(p => p.id === id)).filter(Boolean);
+    const partsInStock = parts.filter(p => p.stock > 0);
+    const partsOut = parts.filter(p => p.stock === 0);
+
+    const entry = (item, tone) => {
+        const st = getInspItem(item.id);
+        const value = item.measure && st.value !== '' ? `${st.value} ${item.measure.unit}` : '';
+        return `
+            <li class="flex items-start gap-2.5 p-2.5 rounded-lg ${tone === 'fix' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}">
+                <i class="ph-fill ${tone === 'fix' ? 'ph-wrench text-red-500' : 'ph-warning text-amber-500'} text-lg mt-0.5 shrink-0"></i>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-slate-800">${item.label}${value ? ` <span class="text-xs font-semibold text-slate-500">· ${value}</span>` : ''}</p>
+                    ${(st.tags.length || st.note) ? `<p class="text-xs text-slate-600 mt-0.5">${[...st.tags, st.note ? `“${inspEsc(st.note)}”` : ''].filter(Boolean).join(' · ')}</p>` : ''}
+                </div>
+                ${(inspectionPhotos[item.id] || []).length ? `<span class="text-[10px] font-bold text-slate-500 flex items-center gap-1 shrink-0"><i class="ph-bold ph-camera"></i>${inspectionPhotos[item.id].length}</span>` : ''}
+            </li>`;
+    };
+
+    summary.innerHTML = `
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-list-checks text-blue-500 text-lg"></i> Inspection Summary</h3>
+                <span class="text-[11px] font-bold text-slate-400">${total - checked} not checked</span>
+            </div>
+            <div class="p-3 flex flex-col gap-3">
+                ${(!fix.length && !watch.length) ? `<p class="text-sm font-bold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-3 flex items-center gap-2"><i class="ph-fill ph-check-circle text-lg"></i> No issues found on the checked items.</p>` : ''}
+                ${fix.length ? `<div><p class="text-[11px] font-bold text-red-600 uppercase tracking-wider mb-1.5">Needs repair / replacement (${fix.length})</p><ul class="flex flex-col gap-1.5">${fix.map(i => entry(i, 'fix')).join('')}</ul></div>` : ''}
+                ${watch.length ? `<div><p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1.5">Monitor / advise customer (${watch.length})</p><ul class="flex flex-col gap-1.5">${watch.map(i => entry(i, 'watch')).join('')}</ul></div>` : ''}
+                ${partsOut.length ? `<p class="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2"><i class="ph-fill ph-package text-base shrink-0"></i> Out of stock, order needed: ${partsOut.map(p => p.name).join(', ')}</p>` : ''}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                    <button type="button" data-insp="to-findings" class="min-h-[48px] rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                        <i class="ph-bold ph-note-pencil text-lg"></i> Add to Final Findings
+                    </button>
+                    <button type="button" data-insp="add-all-parts" ${partsInStock.length ? '' : 'disabled'} class="min-h-[48px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
+                        <i class="ph-bold ph-package text-lg"></i> Add suggested parts${partsInStock.length ? ` (${partsInStock.length})` : ''}
+                    </button>
+                </div>
+            </div>
+        </div>`;
+}
+
+// --- Actions ---
+function setInspectionStatus(id, status) {
+    const st = getInspItem(id);
+    if (st.status === status) {          // tap the active button again to clear it
+        st.status = null;
+        st.manual = false;
+    } else {
+        st.status = status;
+        st.manual = true;
+    }
+    saveInspectionState();
+    refreshInspectionRow(id);
+}
+
+function applyInspectionMeasure(id, raw) {
+    const item = inspectionItemMap[id];
+    const st = getInspItem(id);
+    st.value = raw === '' ? '' : String(raw);
+    if (!st.manual) st.status = evaluateInspectionMeasure(item.measure, st.value);   // auto-grade unless the mechanic overrode it
+    saveInspectionState();
+    refreshInspectionRow(id);
+}
+
+function stepInspectionMeasure(id, dir) {
+    const m = inspectionItemMap[id].measure;
+    const current = parseFloat(getInspItem(id).value);
+    const next = isNaN(current) ? m.start : Math.max(0, Math.round((current + dir * m.step) * 10) / 10);
+    const input = document.querySelector(`.insp-item[data-item="${id}"] [data-insp-input="measure"]`);
+    if (input) input.value = next;
+    applyInspectionMeasure(id, next);
+}
+
+function handleInspectionPhoto(input) {
+    const id = input.dataset.item;
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+            const scale = Math.min(1, 900 / Math.max(img.width, img.height));   // downscale phone photos
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            if (!inspectionPhotos[id]) inspectionPhotos[id] = [];
+            inspectionPhotos[id].push(canvas.toDataURL('image/jpeg', 0.7));
+            renderInspectionThumbs(id);
+            refreshInspectionSummary();
+        };
+        img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+}
+
+function resetInspection(skipConfirm) {
+    if (!skipConfirm && !confirm('Clear all physical inspection results for this vehicle?')) return;
+    inspectionState = emptyInspectionState();
+    inspectionPhotos = {};
+    saveInspectionState();
+    renderInspection();
+}
+
+// Called after a vehicle is pushed to Active Repairs so the next inspection starts clean
+function clearInspectionDraft() {
+    inspectionState = emptyInspectionState();
+    inspectionPhotos = {};
+    saveInspectionState();
+}
+
+function flashInspectionButton(btn, html) {
+    const original = btn.innerHTML;
+    btn.innerHTML = html;
+    setTimeout(() => { if (btn.isConnected) btn.innerHTML = original; }, 1600);
+}
+
+document.addEventListener('click', function(e) {
+    const el = e.target.closest('[data-insp]');
+    if (!el) return;
+    const action = el.dataset.insp;
+
+    if (action === 'status') {
+        setInspectionStatus(el.dataset.item, el.dataset.status);
+
+    } else if (action === 'tag') {
+        const st = getInspItem(el.dataset.item);
+        const tag = el.dataset.tag;
+        st.tags = st.tags.includes(tag) ? st.tags.filter(t => t !== tag) : [...st.tags, tag];
+        saveInspectionState();
+        refreshInspectionRow(el.dataset.item);
+
+    } else if (action === 'step') {
+        stepInspectionMeasure(el.dataset.item, parseInt(el.dataset.dir, 10));
+
+    } else if (action === 'section-ok') {
+        const sec = inspectionSections.find(s => s.id === el.dataset.section);
+        sec.items.forEach(item => {
+            const st = getInspItem(item.id);
+            if (!st.status) { st.status = 'ok'; st.manual = true; refreshInspectionRow(item.id); }
+        });
+        saveInspectionState();
+
+    } else if (action === 'toggle-section') {
+        const id = el.dataset.section;
+        inspectionCollapsed[id] = !inspectionCollapsed[id];
+        document.getElementById(`insp-sec-${id}`)?.classList.toggle('is-collapsed', inspectionCollapsed[id]);
+
+    } else if (action === 'jump') {
+        const id = el.dataset.section;
+        inspectionCollapsed[id] = false;
+        const section = document.getElementById(`insp-sec-${id}`);
+        if (section) {
+            section.classList.remove('is-collapsed');
+            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+    } else if (action === 'fuel') {
+        inspectionState.intake.fuel = inspectionState.intake.fuel === el.dataset.fuel ? '' : el.dataset.fuel;
+        saveInspectionState();
+        restoreInspectionIntake();
+
+    } else if (action === 'complaint') {
+        const list = inspectionState.intake.complaints;
+        const value = el.dataset.complaint;
+        inspectionState.intake.complaints = list.includes(value) ? list.filter(c => c !== value) : [...list, value];
+        saveInspectionState();
+        restoreInspectionIntake();
+
+    } else if (action === 'remove-photo') {
+        inspectionPhotos[el.dataset.item]?.splice(parseInt(el.dataset.index, 10), 1);
+        renderInspectionThumbs(el.dataset.item);
+        refreshInspectionSummary();
+
+    } else if (action === 'addpart') {
+        const part = mockInventory.find(p => p.id === el.dataset.part);
+        if (addPartToPlan(part)) {
+            document.querySelectorAll(`[data-insp="addpart"][data-part="${part.id}"]`).forEach(btn => {
+                btn.classList.add('is-added');
+                btn.innerHTML = '<i class="ph-bold ph-check"></i> Added to plan';
+            });
+        }
+
+    } else if (action === 'add-all-parts') {
+        const fixParts = [...new Set(inspectionItems.filter(i => getInspItem(i.id).status === 'fix').map(i => i.part).filter(Boolean))]
+            .map(id => mockInventory.find(p => p.id === id))
+            .filter(p => p && p.stock > 0);
+        fixParts.forEach(part => addPartToPlan(part));
+        flashInspectionButton(el, `<i class="ph-bold ph-check text-lg"></i> ${fixParts.length} added to plan`);
+
+    } else if (action === 'to-findings') {
+        const textarea = document.getElementById('final-findings');
+        if (!textarea) return;
+        const block = buildInspectionFindings();
+        const existing = /— PHYSICAL INSPECTION —[\s\S]*?— END INSPECTION —/;
+        textarea.value = existing.test(textarea.value)
+            ? textarea.value.replace(existing, block)                      // refresh the earlier block instead of duplicating it
+            : (textarea.value.trim() ? `${textarea.value.trim()}\n\n${block}` : block);
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.max(96, textarea.scrollHeight)}px`;
+        flashInspectionButton(el, '<i class="ph-bold ph-check text-lg"></i> Added to findings');
+
+    } else if (action === 'reset') {
+        resetInspection();
+    }
+});
+
+document.addEventListener('input', function(e) {
+    const target = e.target;
+    if (target.id === 'insp-odo') {
+        inspectionState.intake.odo = target.value;
+        saveInspectionState();
+    } else if (target.dataset && target.dataset.inspInput === 'measure') {
+        applyInspectionMeasure(target.dataset.item, target.value);
+    } else if (target.dataset && target.dataset.inspInput === 'note') {
+        getInspItem(target.dataset.item).note = target.value;
+        saveInspectionState();
+    }
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.matches && e.target.matches('[data-insp-file]')) handleInspectionPhoto(e.target);
+});

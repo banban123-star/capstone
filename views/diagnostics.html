@@ -84,100 +84,86 @@
         </div>
 
         <!-- 3. Physical Inspection Log (Visible by Default) -->
-        <div id="physical-inspection-card" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
-            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">3. Physical Inspection Log</h2>
-            
-            <div class="flex flex-col gap-3 flex-1">
-                <!-- Tire Condition -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Tire Condition</span>
-                    <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-full sm:w-64">
-                        <label class="check-toggle default flex-1 cursor-pointer">
-                            <input type="radio" name="chk_tire" class="hidden" checked>
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Unchecked</div>
-                        </label>
-                        <label class="check-toggle success flex-1 cursor-pointer">
-                            <input type="radio" name="chk_tire" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">OK</div>
-                        </label>
-                        <label class="check-toggle issue flex-1 cursor-pointer">
-                            <input type="radio" name="chk_tire" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Replace</div>
-                        </label>
+        <div id="physical-inspection-card" class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
+
+            <!-- Title -->
+            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pt-5 pb-3">
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">3. Physical Inspection Log</h2>
+                <button type="button" data-insp="reset" class="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                    <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset
+                </button>
+            </div>
+
+            <!-- Sticky progress + section jump bar -->
+            <div class="sticky top-0 z-10 bg-white/95 backdrop-blur border-y border-slate-100 px-4 sm:px-5 py-3 flex flex-col gap-2.5">
+                <div class="flex items-center gap-3">
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between mb-1">
+                            <span id="insp-progress-text" class="text-xs font-extrabold text-slate-700">0 / 0 checked</span>
+                            <div class="flex items-center gap-1.5 text-[10px] font-bold">
+                                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">OK <span id="insp-count-ok">0</span></span>
+                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Watch <span id="insp-count-watch">0</span></span>
+                                <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Fix <span id="insp-count-fix">0</span></span>
+                            </div>
+                        </div>
+                        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="insp-progress-fill" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width:0%"></div>
+                        </div>
                     </div>
                 </div>
-                <!-- Brake Pads/Lines -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Brake Pads/Lines</span>
-                    <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-full sm:w-64">
-                        <label class="check-toggle default flex-1 cursor-pointer">
-                            <input type="radio" name="chk_brake" class="hidden" checked>
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Unchecked</div>
-                        </label>
-                        <label class="check-toggle success flex-1 cursor-pointer">
-                            <input type="radio" name="chk_brake" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">OK</div>
-                        </label>
-                        <label class="check-toggle issue flex-1 cursor-pointer">
-                            <input type="radio" name="chk_brake" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Replace</div>
-                        </label>
+                <div id="insp-pills" class="flex gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1"></div>
+            </div>
+
+            <div class="p-4 sm:p-5 flex flex-col gap-5">
+
+                <!-- Quick legend -->
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-medium">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <b class="text-slate-700">OK</b> good condition</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> <b class="text-slate-700">Watch</b> wearing, advise customer</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> <b class="text-slate-700">Fix</b> repair / replace now</span>
+                </div>
+
+                <!-- Vehicle intake -->
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col gap-4">
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><i class="ph-fill ph-clipboard-text text-blue-500 text-sm"></i> Vehicle Intake</div>
+
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5" for="insp-odo">Odometer (km)</label>
+                            <input type="number" inputmode="numeric" id="insp-odo" placeholder="e.g. 12450" class="w-full px-3 py-3 rounded-xl border border-slate-300 bg-white text-base font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Fuel Level</label>
+                            <div class="grid grid-cols-5 gap-1.5" id="insp-fuel">
+                                <button type="button" data-insp="fuel" data-fuel="E" class="insp-chip justify-center">E</button>
+                                <button type="button" data-insp="fuel" data-fuel="1/4" class="insp-chip justify-center">¼</button>
+                                <button type="button" data-insp="fuel" data-fuel="1/2" class="insp-chip justify-center">½</button>
+                                <button type="button" data-insp="fuel" data-fuel="3/4" class="insp-chip justify-center">¾</button>
+                                <button type="button" data-insp="fuel" data-fuel="F" class="insp-chip justify-center">F</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Customer Complaint <span class="normal-case font-medium text-slate-400">(tap all that apply)</span></label>
+                            <div class="flex flex-wrap gap-1.5" id="insp-complaints">
+                                <button type="button" data-insp="complaint" data-complaint="Hard to start" class="insp-chip">Hard to start</button>
+                                <button type="button" data-insp="complaint" data-complaint="Engine noise" class="insp-chip">Engine noise</button>
+                                <button type="button" data-insp="complaint" data-complaint="Poor acceleration" class="insp-chip">Poor acceleration</button>
+                                <button type="button" data-insp="complaint" data-complaint="Overheating" class="insp-chip">Overheating</button>
+                                <button type="button" data-insp="complaint" data-complaint="Brake problem" class="insp-chip">Brake problem</button>
+                                <button type="button" data-insp="complaint" data-complaint="Vibration" class="insp-chip">Vibration</button>
+                                <button type="button" data-insp="complaint" data-complaint="Oil leak" class="insp-chip">Oil leak</button>
+                                <button type="button" data-insp="complaint" data-complaint="Electrical issue" class="insp-chip">Electrical issue</button>
+                                <button type="button" data-insp="complaint" data-complaint="Regular maintenance" class="insp-chip">Regular maintenance</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <!-- Battery Voltage -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Battery Voltage</span>
-                    <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-full sm:w-64">
-                        <label class="check-toggle default flex-1 cursor-pointer">
-                            <input type="radio" name="chk_batt" class="hidden" checked>
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Unchecked</div>
-                        </label>
-                        <label class="check-toggle success flex-1 cursor-pointer">
-                            <input type="radio" name="chk_batt" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">OK</div>
-                        </label>
-                        <label class="check-toggle issue flex-1 cursor-pointer">
-                            <input type="radio" name="chk_batt" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Replace</div>
-                        </label>
-                    </div>
-                </div>
-                <!-- Chain/Belt Tension -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Chain/Belt Tension</span>
-                    <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-full sm:w-64">
-                        <label class="check-toggle default flex-1 cursor-pointer">
-                            <input type="radio" name="chk_chain" class="hidden" checked>
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Unchecked</div>
-                        </label>
-                        <label class="check-toggle success flex-1 cursor-pointer">
-                            <input type="radio" name="chk_chain" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">OK</div>
-                        </label>
-                        <label class="check-toggle issue flex-1 cursor-pointer">
-                            <input type="radio" name="chk_chain" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Repair</div>
-                        </label>
-                    </div>
-                </div>
-                <!-- Fluid Levels -->
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors border border-transparent hover:border-slate-100">
-                    <span class="text-xs font-bold text-slate-700 uppercase">Fluid Levels</span>
-                    <div class="flex bg-slate-100 rounded-lg p-1 gap-1 w-full sm:w-64">
-                        <label class="check-toggle default flex-1 cursor-pointer">
-                            <input type="radio" name="chk_fluid" class="hidden" checked>
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Unchecked</div>
-                        </label>
-                        <label class="check-toggle success flex-1 cursor-pointer">
-                            <input type="radio" name="chk_fluid" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">OK</div>
-                        </label>
-                        <label class="check-toggle issue flex-1 cursor-pointer">
-                            <input type="radio" name="chk_fluid" class="hidden">
-                            <div class="text-center text-[10px] uppercase font-bold py-2 rounded-md border border-transparent text-slate-500 transition-colors">Refill</div>
-                        </label>
-                    </div>
-                </div>
+
+                <!-- Inspection sections (rendered by renderInspection() in script.js) -->
+                <div id="insp-sections" class="insp-grid"></div>
+
+                <!-- Summary (rendered by refreshInspectionSummary() in script.js) -->
+                <div id="insp-summary"></div>
             </div>
         </div>
     </div>
@@ -189,7 +175,7 @@
         <!-- Centralized Final Notes -->
         <div class="mb-5">
             <label class="block text-xs font-bold text-slate-700 mb-1.5">Final Findings & Diagnosis Verification</label>
-            <textarea class="w-full p-3 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm resize-none h-24" placeholder="Type your professional judgment after considering the ECU/OBD results and physical inspection..."></textarea>
+            <textarea id="final-findings" class="w-full p-3 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm resize-none h-24" placeholder="Type your professional judgment after considering the ECU/OBD results and physical inspection..."></textarea>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
