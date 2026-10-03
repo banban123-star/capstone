@@ -145,12 +145,22 @@ document.addEventListener('change', function(e) {
 const mainContentArea = document.getElementById('main-content-area');
 const headerTitle = document.getElementById('header-title');
 
+let viewLoadToken = 0;
+
 async function loadView(viewName) {
+    const loadToken = ++viewLoadToken;
     try {
-        const response = await fetch(`views/${viewName}.html`);
+        // Chief / Sub-Mechanic get the mobile version of a screen once it has been converted
+        const useMobileView = document.body.classList.contains('mobile-app') && mobileViews.includes(viewName);
+        const response = await fetch(`views/${useMobileView ? 'mobile/' : ''}${viewName}.html`);
         if (!response.ok) throw new Error('File not found');
         const html = await response.text();
+        if (loadToken !== viewLoadToken) return; // a newer navigation superseded this one
         mainContentArea.innerHTML = html;
+        mainContentArea.classList.toggle('m-screen', useMobileView);
+        mainContentArea.scrollTop = 0;
+
+        if (useMobileView && viewName === 'dashboard') renderMobileHome();
 
         // Initialize Diagnostics view state
         if (viewName === 'diagnostics') {
@@ -242,7 +252,9 @@ navLinks.forEach(link => {
             activeIcon.classList.add('ph-fill');
         }
 
-        headerTitle.textContent = this.textContent.trim();
+        const isMobileMode = document.body.classList.contains('mobile-app');
+        headerTitle.textContent = (isMobileMode && mobileTitles[targetId]) ? mobileTitles[targetId] : this.textContent.trim();
+        if (isMobileMode) syncMobileNav(targetId);
         loadView(targetId); // FETCH THE HTML FILE
 
         if(window.innerWidth < 1024) toggleSidebar(false);
@@ -258,8 +270,16 @@ const systemUsers = {
     cashier: { name: 'Sarah Lee', role: 'Cashier', initials: 'SL', color: 'bg-emerald-600' }
 };
 
+let currentRole = 'owner';
+
 function switchRole(roleId) {
     const user = systemUsers[roleId];
+    currentRole = roleId;
+
+    // 0. Chief / Sub-Mechanic run in the mobile-app UI; every other role keeps the desktop UI
+    const wasMobile = document.body.classList.contains('mobile-app');
+    const isMobile = applyMobileMode(roleId);
+    document.querySelectorAll('#role-switcher, #m-role-switcher').forEach(s => { s.value = roleId; });
     
     // 1. Update Profile UI
     document.getElementById('user-name').textContent = user.name;
@@ -301,6 +321,9 @@ function switchRole(roleId) {
     // 4. Force redirect to Dashboard if the user is currently on a restricted page
     if (!isCurrentViewAllowed) {
         document.querySelector('.nav-link[data-target="dashboard"]').click();
+    } else if (wasMobile || isMobile) {
+        // Entering/leaving mobile mode (or switching between the two mobile roles): re-render the current screen
+        document.querySelector(`.nav-link[data-target="${currentActiveTarget}"]`)?.click();
     }
 }
 
@@ -470,8 +493,51 @@ function toggleRegistrationMode(checkbox) {
     }
 }
 function openAutoAssignModal() {
+    if (typeof updateAutoAssignTotal === 'function') updateAutoAssignTotal();
     toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', true);
 }
+
+window.toggleRejectReason = function(checkbox, reasonId) {
+    const reasonDiv = document.getElementById(reasonId);
+    if(reasonDiv) {
+        if(!checkbox.checked) {
+            reasonDiv.classList.remove('hidden');
+        } else {
+            reasonDiv.classList.add('hidden');
+        }
+    }
+};
+
+window.updateAutoAssignTotal = function() {
+    let total = 0;
+    // Calculate Pre-Assigned Items
+    ['p1', 'p2'].forEach(id => {
+        const chk = document.getElementById(`chk-auto-${id}`);
+        const qtySpan = document.getElementById(`qty-auto-${id}`);
+        if (chk && chk.checked && qtySpan) {
+            const price = parseFloat(chk.getAttribute('data-price')) || 0;
+            const qty = parseInt(qtySpan.textContent) || 1;
+            total += price * qty;
+        }
+    });
+    // Calculate Manually Added Items
+    document.querySelectorAll('#modal-manual-container [id^="modal-manual-part-"]').forEach(el => {
+        const price = parseFloat(el.getAttribute('data-price')) || 0;
+        const qty = parseInt(el.querySelector('.qty-val')?.textContent) || 1;
+        total += price * qty;
+    });
+    // Update DOM
+    const totalEl = document.getElementById('auto-assign-total');
+    if(totalEl) totalEl.textContent = `₱ ${total.toFixed(2)}`;
+};
+
+// Global click listener to automatically trigger subtotal updates inside the modal
+document.addEventListener('click', function(e) {
+    if(e.target.closest('#modal-auto-assign')) {
+        setTimeout(() => { if (typeof updateAutoAssignTotal === 'function') updateAutoAssignTotal(); }, 50);
+    }
+});
+
 
 function closeAutoAssignModal() {
     toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', false);
@@ -511,17 +577,18 @@ document.addEventListener('click', function(e) {
         
         if (part && part.stock > 0 && !document.getElementById(`modal-manual-part-${part.id}`)) {
             const html = `
-                <div id="modal-manual-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm" data-id="${part.id}">
+                <div id="modal-manual-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm" data-id="${part.id}" data-price="${part.price}">
                     <div class="flex-1 min-w-0 pr-2">
-                        <div class="text-xs font-bold text-slate-800 truncate">${part.name}</div>
+                        <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
+                        <div class="text-[10px] text-slate-500">₱ ${part.price.toFixed(2)} | In Stock: ${part.stock}</div>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
-                        <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
-                            <button class="px-2 py-0.5 text-slate-400 hover:text-purple-600 btn-qty-minus"><i class="ph-bold ph-minus text-[10px]"></i></button>
-                            <span class="w-5 text-center text-[10px] font-bold text-slate-700 qty-val">1</span>
-                            <button class="px-2 py-0.5 text-slate-400 hover:text-purple-600 btn-qty-plus" data-max="${part.stock}"><i class="ph-bold ph-plus text-[10px]"></i></button>
+                        <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ml-4">
+                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                            <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">1</span>
+                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
                         </div>
-                        <button class="text-slate-400 hover:text-red-500 p-1 rounded btn-remove-modal-part"><i class="ph-bold ph-x text-xs"></i></button>
+                        <button class="text-slate-400 hover:text-red-500 p-1 rounded btn-remove-modal-part"><i class="ph-bold ph-x text-lg"></i></button>
                     </div>
                 </div>
             `;
@@ -1421,51 +1488,6 @@ document.addEventListener('change', function(e) {
     if (e.target.id === 'history-mech-filter') renderHistory();
 });
 
-
-// --- NEW: Interactive Reports & Analytics Logic ---
-
-function renderReports(dateRange) {
-    // 1. Highlight the active filter button
-    const filterBtns = document.querySelectorAll('.report-date-btn');
-    if (filterBtns.length > 0) {
-        filterBtns.forEach(btn => {
-            // Revert all buttons to default styling
-            btn.classList.remove('bg-blue-600', 'text-white', 'border-transparent');
-            btn.classList.add('bg-white', 'text-slate-600', 'border-slate-200');
-            
-            // Set active styling on the clicked button
-            if (btn.getAttribute('data-range') === dateRange) {
-                btn.classList.add('bg-blue-600', 'text-white', 'border-transparent');
-                btn.classList.remove('bg-white', 'text-slate-600', 'border-slate-200');
-            }
-        });
-    }
-
-    // 2. Simulated Dynamic UI updates (You can link this to real data later)
-    console.log(`Reports view successfully updated for range: ${dateRange}`);
-    
-    // Example (Optional): Update a summary card if it exists in your reports.html
-    /*
-    const revenueAmount = document.getElementById('report-revenue-amount');
-    if (revenueAmount) {
-        if (dateRange === 'today') revenueAmount.textContent = '₱4,500.00';
-        else if (dateRange === 'week') revenueAmount.textContent = '₱32,000.00';
-        else if (dateRange === 'month') revenueAmount.textContent = '₱145,000.00';
-        else if (dateRange === 'year') revenueAmount.textContent = '₱1,750,000.00';
-    }
-    */
-}
-
-// Attach Event Listeners for Report Date Filters
-document.addEventListener('click', function(e) {
-    const dateBtn = e.target.closest('.report-date-btn');
-    if (dateBtn) {
-        const range = dateBtn.getAttribute('data-range');
-        if (range) {
-            renderReports(range);
-        }
-    }
-});
 // --- Interactive Reports & Monitoring Logic ---
 
 const mockReportData = {
@@ -2455,3 +2477,207 @@ document.addEventListener('input', function(e) {
 document.addEventListener('change', function(e) {
     if (e.target.id === 'cust-filter-status') renderCustomers();
 });
+
+
+// =====================================================================
+// --- Mobile App Mode (Chief Mechanic & Sub-Mechanic) ---
+// Only these roles get the mobile UI. Screens are converted one at a time:
+// add the screen name to `mobileViews` once views/mobile/<name>.html exists.
+// =====================================================================
+
+const MOBILE_ROLES = ['chief', 'sub'];
+
+// Screens that already have a mobile version (views/mobile/<name>.html)
+const mobileViews = ['dashboard'];
+
+// Short app-bar titles (the sidebar labels are too long for a phone)
+const mobileTitles = {
+    dashboard: 'Home',
+    repairs: 'Active Repairs',
+    diagnostics: 'Diagnostics',
+    inventory: 'Parts & Inventory',
+    customers: 'Customers',
+    history: 'Service History'
+};
+
+// Mock jobs for the mobile Home screen (mechanic names match systemUsers)
+const mockMobileJobs = [
+    { id: 'JOB #1042', plate: 'ABC-1234', model: 'Honda Click 125i', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus', progress: 45 },
+    { id: 'JOB #1041', plate: 'XYZ-9876', model: 'Yamaha NMAX', task: 'Throttle body cleaning & oil change', status: 'Pending Post-Scan', tone: 'purple', mechanic: 'Hiyo', progress: 90 },
+    { id: 'JOB #1043', plate: 'DEF-5678', model: 'Honda ADV 160', task: 'Chain & sprocket set', status: 'In Progress', tone: 'blue', mechanic: 'Hiyo', progress: 60 },
+    { id: 'JOB #1044', plate: 'QRS-4455', model: 'Suzuki Raider R150', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 30 }
+];
+
+const mobileTones = {
+    orange: { chip: 'bg-orange-100 text-orange-700', bar: 'bg-orange-500' },
+    purple: { chip: 'bg-purple-100 text-purple-700', bar: 'bg-purple-500' },
+    blue:   { chip: 'bg-blue-100 text-blue-700',     bar: 'bg-blue-500' }
+};
+
+// Jobs visible to a role: Chief sees the whole shop, Sub only their own
+function getMobileJobs(roleId) {
+    if (roleId === 'chief') return mockMobileJobs;
+    return mockMobileJobs.filter(job => job.mechanic === systemUsers[roleId].name);
+}
+
+// Toggles mobile mode + fills the shell (app bar avatar, More sheet, tab badge). Returns true if mobile.
+function applyMobileMode(roleId) {
+    const isMobile = MOBILE_ROLES.includes(roleId);
+    document.body.classList.toggle('mobile-app', isMobile);
+
+    if (!isMobile) {
+        mToggleMore(false);
+        mainContentArea.classList.remove('m-screen');
+        return false;
+    }
+
+    const user = systemUsers[roleId];
+    ['m-header-avatar', 'm-sheet-avatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = user.initials;
+        el.classList.remove('bg-blue-600', 'bg-purple-600', 'bg-slate-600', 'bg-slate-800', 'bg-emerald-600');
+        el.classList.add(user.color);
+    });
+    document.getElementById('m-sheet-name').textContent = user.name;
+    document.getElementById('m-sheet-role').textContent = user.role;
+    document.getElementById('m-jobs-badge').textContent = getMobileJobs(roleId).length;
+
+    // Role-gated pieces of the mobile shell (e.g. Chief-only sheet rows)
+    document.querySelectorAll('#m-more-sheet [data-mroles]').forEach(el => {
+        el.style.display = el.dataset.mroles.split(',').includes(roleId) ? '' : 'none';
+    });
+    return true;
+}
+
+// Bottom tab bar -> reuses the (hidden) sidebar links so all routing stays in one place
+function mNav(target) {
+    mToggleMore(false);
+    document.querySelector(`.nav-link[data-target="${target}"]`)?.click();
+}
+
+// Highlight the active tab; "More" owns the screens that have no tab of their own
+function syncMobileNav(target) {
+    const tabIds = ['dashboard', 'repairs', 'diagnostics', 'inventory'];
+    const activeTab = tabIds.includes(target) ? target : 'more';
+    document.querySelectorAll('.m-tab[data-mtab]').forEach(tab => {
+        tab.classList.toggle('is-active', tab.dataset.mtab === activeTab);
+    });
+}
+
+function mToggleMore(show) {
+    document.getElementById('m-more-backdrop')?.classList.toggle('is-open', show);
+    document.getElementById('m-more-sheet')?.classList.toggle('is-open', show);
+}
+
+let mToastTimer = null;
+function mToast(message) {
+    const toast = document.getElementById('m-toast');
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('is-show');
+    clearTimeout(mToastTimer);
+    mToastTimer = setTimeout(() => toast.classList.remove('is-show'), 2000);
+}
+
+function mApprove(plate, btn) {
+    btn.closest('.m-review-card')?.remove();
+    mToast(`Post-scan approved for ${plate}`);
+    if (!document.querySelector('#m-review-list .m-review-card')) {
+        document.getElementById('m-review-list').innerHTML = `
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center text-xs font-semibold text-slate-400">
+                <i class="ph-fill ph-check-circle text-emerald-400 text-2xl block mb-1"></i> All caught up
+            </div>`;
+    }
+}
+
+// Fills views/mobile/dashboard.html for the current role (Chief vs Sub)
+function renderMobileHome() {
+    const roleId = currentRole;
+    const user = systemUsers[roleId];
+    const isChief = roleId === 'chief';
+    const jobs = getMobileJobs(roleId);
+    const hour = new Date().getHours();
+
+    // Hero (role-coloured) + greeting
+    const hero = document.getElementById('m-hero');
+    hero.classList.remove('from-purple-600', 'to-indigo-700', 'from-sky-600', 'to-blue-700');
+    hero.classList.add(...(isChief ? ['from-purple-600', 'to-indigo-700'] : ['from-sky-600', 'to-blue-700']));
+    document.getElementById('m-greeting').textContent = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
+    document.getElementById('m-name').textContent = user.name;
+    document.getElementById('m-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    document.getElementById('m-role-chip').innerHTML = `<i class="ph-fill ${isChief ? 'ph-crown-simple' : 'ph-wrench'}"></i> ${user.role}`;
+
+    // Role-gated blocks inside the view
+    document.querySelectorAll('#m-home [data-mroles]').forEach(el => {
+        el.style.display = el.dataset.mroles.split(',').includes(roleId) ? '' : 'none';
+    });
+
+    // Stats
+    document.getElementById('m-stat-active').textContent = jobs.length;
+    document.getElementById('m-stat-waiting').textContent = jobs.filter(j => j.status === 'Waiting Parts').length;
+
+    // Job cards
+    document.getElementById('m-jobs-title').textContent = isChief ? 'Shop Jobs' : 'My Jobs';
+    const jobsList = document.getElementById('m-jobs-list');
+    jobsList.innerHTML = jobs.length ? jobs.map(job => {
+        const tone = mobileTones[job.tone];
+        return `
+            <button onclick="mNav('repairs')" class="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-slate-800">${job.plate}</span>
+                            <span class="text-[10px] font-bold text-slate-400">${job.id}</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5 truncate">${job.model}</p>
+                    </div>
+                    <span class="px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap ${tone.chip}">${job.status}</span>
+                </div>
+                <p class="text-xs text-slate-600 mt-2">${job.task}</p>
+                <div class="mt-3 flex items-center gap-3">
+                    <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ${tone.bar}" style="width:${job.progress}%"></div></div>
+                    <span class="text-[10px] font-bold text-slate-500">${job.progress}%</span>
+                </div>
+                ${isChief ? `<div class="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"><i class="ph-fill ph-user-circle text-base"></i> ${job.mechanic}</div>` : ''}
+            </button>`;
+    }).join('') : `
+        <div class="bg-white rounded-2xl border border-slate-100 p-6 text-center text-xs font-semibold text-slate-400">
+            <i class="ph-fill ph-coffee text-3xl block mb-1 text-slate-300"></i> No jobs assigned to you
+        </div>`;
+
+    // Chief-only: post-scan approvals + team workload
+    if (isChief) {
+        const reviews = mockMobileJobs.filter(j => j.status === 'Pending Post-Scan');
+        document.getElementById('m-review-list').innerHTML = reviews.length ? reviews.map(job => `
+            <div class="m-review-card bg-white rounded-2xl p-4 shadow-sm border border-purple-100 flex items-center gap-3">
+                <span class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-cpu"></i></span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-extrabold text-slate-800">${job.plate} <span class="text-[11px] font-semibold text-slate-400">· ${job.mechanic}</span></p>
+                    <p class="text-xs text-slate-500 truncate">Post-repair scan ready for approval</p>
+                </div>
+                <button onclick="mApprove('${job.plate}', this)" class="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold active:scale-95 transition-transform">Approve</button>
+            </div>`).join('') : `
+            <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center text-xs font-semibold text-slate-400">All caught up</div>`;
+
+        const team = [
+            { name: 'Larpus', initials: 'JB', color: 'bg-purple-600', role: 'Chief' },
+            { name: 'Hiyo', initials: 'F', color: 'bg-slate-600', role: 'Sub' }
+        ];
+        document.getElementById('m-team-list').innerHTML = team.map(member => {
+            const count = mockMobileJobs.filter(j => j.mechanic === member.name).length;
+            const pct = Math.min(100, Math.round((count / mockMobileJobs.length) * 100));
+            return `
+                <div class="flex items-center gap-3 p-3.5">
+                    <span class="w-9 h-9 rounded-full ${member.color} text-white flex items-center justify-center text-xs font-bold shrink-0">${member.initials}</span>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between">
+                            <p class="text-sm font-bold text-slate-800">${member.name} <span class="text-[10px] font-semibold text-slate-400">${member.role}</span></p>
+                            <span class="text-xs font-bold text-slate-500">${count} job${count === 1 ? '' : 's'}</span>
+                        </div>
+                        <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1.5"><div class="h-full bg-blue-500 rounded-full" style="width:${pct}%"></div></div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+}
