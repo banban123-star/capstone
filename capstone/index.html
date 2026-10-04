@@ -75,10 +75,10 @@
                 <button class="nav-link flex items-center w-full py-1.5 text-slate-300 hover:text-white transition-colors" data-target="backup" data-roles="superadmin,owner">
                     <i class="ph ph-database text-base w-6"></i> Backup & Restore
                 </button>
-                <div class="flex items-center justify-between w-full py-1.5 text-slate-300">
-                    <div class="flex items-center"><i class="ph ph-cloud-check text-base w-6"></i> Offline Sync</div>
-                    <div class="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
-                </div>
+                <!-- Desktop to Mobile Toggle (Owner) -->
+                <button class="flex items-center w-full py-1.5 mt-2 text-blue-400 hover:text-blue-300 transition-colors font-semibold" onclick="toggleOwnerMobileMode()" data-roles="owner">
+                    <i class="ph ph-device-mobile text-base w-6"></i> Switch to Mobile UI
+                </button>
             </div>
         </nav>
 

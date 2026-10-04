@@ -2839,6 +2839,12 @@ document.addEventListener('change', function(e) {
 // =====================================================================
 
 const MOBILE_ROLES = ['chief', 'sub'];
+let forceOwnerMobile = false; // Tracks if owner manually toggled mobile UI
+
+window.toggleOwnerMobileMode = function() {
+    forceOwnerMobile = !forceOwnerMobile;
+    switchRole(currentRole); // Re-trigger UI setup
+};
 
 // Screens that already have a mobile version (views/mobile/<name>.html)
 const mobileViews = ['dashboard'];
@@ -2869,13 +2875,13 @@ const mobileTones = {
 
 // Jobs visible to a role: Chief sees the whole shop, Sub only their own
 function getMobileJobs(roleId) {
-    if (roleId === 'chief') return mockMobileJobs;
+    if (roleId === 'chief' || roleId === 'owner') return mockMobileJobs;
     return mockMobileJobs.filter(job => job.mechanic === systemUsers[roleId].name);
 }
 
 // Toggles mobile mode + fills the shell (app bar avatar, More sheet, tab badge). Returns true if mobile.
 function applyMobileMode(roleId) {
-    const isMobile = MOBILE_ROLES.includes(roleId);
+    const isMobile = MOBILE_ROLES.includes(roleId) || (roleId === 'owner' && forceOwnerMobile);
     document.body.classList.toggle('mobile-app', isMobile);
 
     if (!isMobile) {
@@ -2948,7 +2954,7 @@ function mApprove(plate, btn) {
 function renderMobileHome() {
     const roleId = currentRole;
     const user = systemUsers[roleId];
-    const isChief = roleId === 'chief';
+    const isChief = roleId === 'chief' || roleId === 'owner';
     const jobs = getMobileJobs(roleId);
     const hour = new Date().getHours();
 
