@@ -3224,7 +3224,8 @@ function saveInspectionState() {
 
 let inspectionState = loadInspectionState();
 let inspectionPhotos = {};           // item id -> [dataURL] (memory only, photos are too large for localStorage)
-const inspectionCollapsed = {};      // section id -> true when collapsed
+const inspectionCollapsed = {};      // section id -> true when collapsed (sections start collapsed until opened)
+const isInspectionCollapsed = id => inspectionCollapsed[id] !== false;
 
 function getInspItem(id) {
     if (!inspectionState.items[id]) {
@@ -3312,7 +3313,7 @@ function renderInspectionItem(item) {
 
 function renderInspectionSection(sec) {
     return `
-        <div class="insp-section ${inspectionCollapsed[sec.id] ? 'is-collapsed' : ''} bg-white border border-slate-200 rounded-xl overflow-hidden" id="insp-sec-${sec.id}" data-section="${sec.id}">
+        <div class="insp-section ${isInspectionCollapsed(sec.id) ? 'is-collapsed' : ''} bg-white border border-slate-200 rounded-xl overflow-hidden" id="insp-sec-${sec.id}" data-section="${sec.id}">
             <div class="flex items-center gap-2 px-3.5 py-3 bg-slate-50 border-b border-slate-200">
                 <button type="button" data-insp="toggle-section" data-section="${sec.id}" class="flex items-center gap-2.5 flex-1 min-w-0 text-left">
                     <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ${sec.icon}"></i></span>
@@ -3599,7 +3600,7 @@ document.addEventListener('click', function(e) {
 
     } else if (action === 'toggle-section') {
         const id = el.dataset.section;
-        inspectionCollapsed[id] = !inspectionCollapsed[id];
+        inspectionCollapsed[id] = !isInspectionCollapsed(id);
         document.getElementById(`insp-sec-${id}`)?.classList.toggle('is-collapsed', inspectionCollapsed[id]);
 
     } else if (action === 'jump') {
