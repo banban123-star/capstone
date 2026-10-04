@@ -312,3 +312,16 @@ button.m-sheet-row:active { background: #f1f5f9; }
 .insp-pill.is-done { background: #d1fae5; color: #047857; }
 .insp-pill.has-fix { border-color: #fca5a5; }
 .insp-pill:active { transform: scale(.95); }
+/* ==========================================================================
+   DIAGNOSTICS WORKFLOW STEPPER
+   ========================================================================== */
+.diag-step { color: #94a3b8; white-space: nowrap; }
+.diag-step-dot {
+    width: 1.5rem; height: 1.5rem; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
+    background: #f1f5f9; border: 1px solid #e2e8f0; color: #94a3b8; font-size: 0.7rem; flex-shrink: 0; transition: all .2s;
+}
+.diag-step.is-active { color: #1d4ed8; }
+.diag-step.is-active .diag-step-dot { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+.diag-step.is-done { color: #047857; }
+.diag-step.is-done .diag-step-dot { background: #10b981; border-color: #10b981; color: #fff; }
+@media (max-width: 480px) { .diag-step > span:last-child { display: none; } .diag-step.is-active > span:last-child { display: inline; } }

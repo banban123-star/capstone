@@ -4,7 +4,26 @@ const mockInventory = [
     { id: 'p2', name: 'Front Disc Brake Pads', sku: '06455-K59-A71', price: 450.00, stock: 3 },
     { id: 'p3', name: 'Yamaha V-Belt', sku: '2DP-E7641-00', price: 1200.00, stock: 0 },
     { id: 'p4', name: 'Yamalube Standard Engine Oil', sku: 'YAM-OIL-STD', price: 400.00, stock: 45 },
-    { id: 'p5', name: 'Spark Plug (NGK CPR8EA-9)', sku: 'NGK-CPR8EA', price: 250.00, stock: 12 }
+    { id: 'p5', name: 'Spark Plug (NGK CPR8EA-9)', sku: 'NGK-CPR8EA', price: 250.00, stock: 12 },
+    { id: 'p6', name: 'Air Filter Element', sku: 'AF-17210-KZR', price: 320.00, stock: 9 },
+    { id: 'p7', name: 'Brake Fluid DOT 3 (250ml)', sku: 'BF-DOT3-250', price: 180.00, stock: 14 },
+    { id: 'p8', name: 'Front Tire 80/90-14 Tubeless', sku: 'TR-8090-14F', price: 1650.00, stock: 2 },
+    { id: 'p9', name: 'Rear Tire 90/90-14 Tubeless', sku: 'TR-9090-14R', price: 1850.00, stock: 0 },
+    { id: 'p10', name: 'Motorcycle Battery 12V 5Ah', sku: 'BAT-12V5AH', price: 1450.00, stock: 5 },
+    { id: 'p11', name: 'Headlight Bulb (H4)', sku: 'BLB-H4-35', price: 140.00, stock: 18 },
+    { id: 'p12', name: 'Brake / Tail Light Bulb', sku: 'BLB-BRK-21', price: 60.00, stock: 25 },
+    { id: 'p13', name: 'Chain & Sprocket Kit', sku: 'CHN-428-KIT', price: 1850.00, stock: 4 },
+    { id: 'p14', name: 'CVT Roller Set', sku: 'CVT-RLR-SET', price: 520.00, stock: 6 },
+    { id: 'p15', name: 'Oil Filter', sku: 'OF-15410-KZR', price: 150.00, stock: 20 },
+    { id: 'p16', name: 'Radiator Coolant (1L)', sku: 'CLT-1L', price: 220.00, stock: 10 },
+    { id: 'p17', name: 'Clutch Cable', sku: 'CBL-CLT-01', price: 280.00, stock: 7 },
+    { id: 'p18', name: 'Regulator / Rectifier', sku: 'REG-RECT-12V', price: 950.00, stock: 2 },
+    { id: 'p19', name: 'Fork Oil Seal Kit', sku: 'FRK-SEAL-KIT', price: 480.00, stock: 3 },
+    { id: 'p20', name: 'Rear Brake Shoes', sku: 'BRK-SHOE-R', price: 260.00, stock: 6 },
+    { id: 'p21', name: 'Front Brake Disc', sku: 'BRK-DISC-F', price: 1350.00, stock: 2 },
+    { id: 'p22', name: 'Tire Patch / Sealant Kit', sku: 'TR-PATCH-KIT', price: 120.00, stock: 15 },
+    { id: 'p23', name: 'Chain Lube Spray', sku: 'CHN-LUBE-SP', price: 210.00, stock: 14 },
+    { id: 'p25', name: 'Turn Signal Bulb', sku: 'BLB-SIG-10', price: 45.00, stock: 30 }
 ];
 
 document.addEventListener('change', function(e) {
@@ -55,39 +74,6 @@ document.addEventListener('input', function(e) {
     }
 });
 
-// Adds a part chip to the Repair Plan (shared by the search dropdown and the inspection suggestions)
-function addPartToPlan(part) {
-    if (!part) return false;
-    if (part.stock === 0) {
-        alert('This item is currently out of stock.');
-        return false;
-    }
-
-    const container = document.getElementById('selected-parts-container');
-    if (!container) return false;
-
-    // Render line item chip if it doesn't already exist
-    if (!document.getElementById(`selected-part-${part.id}`)) {
-        const html = `
-            <div id="selected-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm animate-[fadeIn_0.2s_ease-out]">
-                <div class="flex-1 min-w-0 pr-2">
-                    <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
-                    <div class="text-xs text-slate-500">₱${part.price.toFixed(2)} / unit</div>
-                </div>
-                <div class="flex items-center gap-3 shrink-0">
-                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
-                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">1</span>
-                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
-                    </div>
-                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
-                </div>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
-    }
-    return true;
-}
 
 document.addEventListener('click', function(e) {
     // 3. Select Item from Autocomplete
@@ -178,6 +164,8 @@ async function loadView(viewName) {
             if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
             if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
             renderInspection();
+            planReviewed = false;
+            updatePlanTotals();
         }
 
         // Initialize Inventory view
@@ -399,6 +387,7 @@ document.addEventListener('click', function(e) {
             runScanBtn.classList.replace('bg-blue-400', 'bg-blue-600');
             dtcResultsContainer.classList.remove('hidden');
             dtcResultsContainer.classList.add('animate-[fadeIn_0.5s_ease-out]');
+            setTimeout(() => { if (typeof offerAutoAssign === 'function') offerAutoAssign(); }, 700);   // scan finished -> review auto-assigned parts
         }, 1500);
     }
 
@@ -489,7 +478,9 @@ function openPushRepairModal() {
     if(tabsContainer) tabsContainer.classList.add('hidden');
 
     switchPushRepairTab('existing');
+    renderPushPlanSummary();
     toggleModal('modal-push-repair', 'push-repair-backdrop', 'push-repair-content', true); 
+    setTimeout(updateDiagStepper, 0);
 }
 
 function toggleRegistrationMode(checkbox) {
@@ -502,9 +493,573 @@ function toggleRegistrationMode(checkbox) {
         switchPushRepairTab('existing'); // Revert back to existing dropdown
     }
 }
+// =====================================================================
+// Diagnosis -> Parts plan -> Registration flow
+// Auto-assigns parts from the ECU/OBD scan + physical inspection, lets the
+// mechanic edit / finalize them, then continues to "Confirm Vehicle for Repair".
+// =====================================================================
+
+const fmtPeso = n => '₱ ' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const sourceBadgeStyles = {
+    ecu:      { cls: 'bg-blue-50 text-blue-600 border-blue-200',         icon: 'ph-cpu',    label: 'ECU/OBD' },
+    physical: { cls: 'bg-orange-50 text-orange-600 border-orange-200',   icon: 'ph-wrench', label: 'Physical' },
+    manual:   { cls: 'bg-emerald-50 text-emerald-600 border-emerald-200', icon: 'ph-user',   label: 'Manual' }
+};
+function sourceBadgesHTML(sources) {
+    return (sources && sources.length ? sources : ['manual']).map(s => {
+        const b = sourceBadgeStyles[s] || sourceBadgeStyles.manual;
+        return `<span class="inline-flex items-center gap-1 ${b.cls} px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ${b.icon}"></i> ${b.label}</span>`;
+    }).join('');
+}
+
+let planReviewed = false;      // true once the mechanic finalized the parts list
+let planCommitting = false;
+let reviewItems = [];          // working list shown inside the review modal
+
+function escHTML(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+// Adds a part chip to the Repair Plan (shared by the search dropdown, the inspection suggestions and the review modal)
+function addPartToPlan(part, opts = {}) {
+    if (!part) return false;
+    if (part.stock === 0) {
+        alert('This item is currently out of stock.');
+        return false;
+    }
+
+    const container = document.getElementById('selected-parts-container');
+    if (!container) return false;
+
+    const qty = Math.max(1, Math.min(opts.qty || 1, part.stock));
+    const sources = opts.sources && opts.sources.length ? opts.sources : ['manual'];
+    const reasons = opts.reasons || [];
+
+    if (!document.getElementById(`selected-part-${part.id}`)) {
+        const html = `
+            <div id="selected-part-${part.id}" data-id="${part.id}" data-price="${part.price}" data-sources="${sources.join(',')}" data-reasons="${escHTML(reasons.join(' | '))}"
+                 class="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm animate-[fadeIn_0.2s_ease-out]">
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
+                        <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
+                        ${sourceBadgesHTML(sources)}
+                    </div>
+                    <div class="text-xs text-slate-500">₱${part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700">${fmtPeso(part.price * qty)}</span></div>
+                    ${reasons.length ? `<div class="text-[10px] text-slate-400 mt-0.5 truncate" title="${escHTML(reasons.join(' | '))}"><i class="ph ph-info"></i> ${escHTML(reasons.join(' · '))}</div>` : ''}
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
+                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
+                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${qty}</span>
+                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
+                    </div>
+                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+    updatePlanTotals();
+    return true;
+}
+
+// Recalculates line totals, parts total, estimated total, empty state, badge and stepper
+function updatePlanTotals() {
+    const container = document.getElementById('selected-parts-container');
+    if (!container) return;
+    let total = 0, count = 0;
+    container.querySelectorAll('[id^="selected-part-"]').forEach(chip => {
+        const price = parseFloat(chip.dataset.price) || 0;
+        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
+        total += price * qty;
+        count++;
+        const lt = chip.querySelector('.line-total');
+        if (lt) lt.textContent = fmtPeso(price * qty);
+    });
+    const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    set('plan-parts-count', count);
+    set('plan-parts-total', fmtPeso(total));
+    set('plan-grand-total', fmtPeso(total + labor));
+    document.getElementById('plan-empty')?.classList.toggle('hidden', count > 0);
+
+    const badge = document.getElementById('plan-state-badge');
+    if (badge) {
+        const done = planReviewed && count > 0;
+        badge.textContent = done ? 'Parts finalized' : (count ? 'Needs review' : 'Draft');
+        badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full border ' + (done
+            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            : count ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200');
+    }
+    updateDiagStepper();
+}
+
+function hasDiagnosisData() {
+    let inspected = 0;
+    if (typeof inspectionItems !== 'undefined' && typeof getInspItem === 'function') {
+        inspected = inspectionItems.filter(i => getInspItem(i.id).status).length;
+    }
+    const dtcVisible = document.getElementById('toggle-ecu')?.checked && !document.getElementById('dtc-results-container')?.classList.contains('hidden');
+    const findings = (document.getElementById('final-findings')?.value || '').trim();
+    return inspected > 0 || !!dtcVisible || !!findings;
+}
+
+function updateDiagStepper() {
+    const steps = document.querySelectorAll('#diag-stepper .diag-step');
+    if (!steps.length) return;
+    const pushOpen = !document.getElementById('modal-push-repair')?.classList.contains('hidden');
+    const done = [hasDiagnosisData(), planReviewed && document.querySelectorAll('#selected-parts-container [id^="selected-part-"]').length > 0, false];
+    let activeSet = false;
+    steps.forEach((el, i) => {
+        const isDone = done[i];
+        const isActive = !isDone && !activeSet || (i === 2 && pushOpen);
+        if (isActive) activeSet = true;
+        el.classList.toggle('is-done', isDone);
+        el.classList.toggle('is-active', isActive && !isDone);
+        el.querySelector('.diag-step-dot').innerHTML = isDone ? '<i class="ph-bold ph-check"></i>' : (i + 1);
+    });
+}
+
+// =====================================================================
+// AUTO-ASSIGN RULE ENGINE (if / else)
+// Reads the diagnosis (ECU codes, inspection results, odometer, complaints)
+// and decides which inventory parts to assign. The mechanic edits the result
+// in the Review screen before finalizing.
+//   level 'fix'   -> recommended (pre-ticked when in stock)
+//   level 'watch' -> optional   (unticked)
+// =====================================================================
+
+let reviewNotes = [];           // diagnosis items that need labor/service only (no stock part)
+let autoAssignPrompted = false; // pop the review screen once when the inspection is completed
+
+// ECU / OBD trouble code -> parts
+function partsForDtc(code) {
+    const c = String(code || '').toUpperCase();
+    const out = [];
+    if (c === 'P0117' || c === 'P0118' || c === 'P0119') {
+        out.push({ id: 'p1', qty: 1 });                       // coolant temp sensor circuit
+    } else if (/^P030[0-6]$/.test(c)) {
+        out.push({ id: 'p5', qty: 1 });                       // misfire -> spark plug
+    } else if (c === 'P0562' || c === 'P0563') {
+        out.push({ id: 'p10', qty: 1 });                      // system voltage -> battery
+    } else if (c === 'P0171' || c === 'P0172') {
+        out.push({ id: 'p6', qty: 1 });                       // fuel trim -> air filter
+        out.push({ id: 'p5', qty: 1 });
+    } else if (c === 'P0217') {
+        out.push({ id: 'p16', qty: 1 });                      // overtemp -> coolant
+    }
+    return out;
+}
+
+// One inspection item (status Fix / Watch) -> parts
+function partsForInspectionItem(item, st) {
+    const out = [];
+    const has = (...tags) => tags.some(t => st.tags.includes(t));
+    const isFix = st.status === 'fix';
+    const push = (id, qty, why) => out.push({ id, qty: qty || 1, why });
+
+    if (item.id === 'tire_f' || item.id === 'tire_r') {
+        const front = item.id === 'tire_f';
+        if (has('Puncture / nail') && !has('Cracked sidewall', 'Bulge', 'Worn tread')) {
+            push('p22', 1, 'Puncture repair only');           // patch / sealant kit, tire still usable
+        } else {
+            push(front ? 'p8' : 'p9', 1);                     // replace the tire
+        }
+    } else if (item.id === 'psi_f' || item.id === 'psi_r') {
+        if (has('Slow leak')) push('p22', 1, 'Slow leak');
+    } else if (item.id === 'pad_f') {
+        push('p2', 1);
+    } else if (item.id === 'pad_r') {
+        push('p20', 1);
+    } else if (item.id === 'brake_fluid') {
+        push('p7', 1);
+    } else if (item.id === 'brake_feel') {
+        if (has('Spongy', 'Too soft')) push('p7', 1, 'Bleed brake line');
+    } else if (item.id === 'brake_disc') {
+        if (has('Warped', 'Scored', 'Below min thickness')) push('p21', 1);
+    } else if (item.id === 'oil') {
+        push('p4', 1);
+        if (isFix && has('Black / dirty', 'Milky', 'Overdue change')) push('p15', 1, 'Change filter with oil');
+    } else if (item.id === 'coolant') {
+        push('p16', 1);
+    } else if (item.id === 'air_filter') {
+        push('p6', 1);
+    } else if (item.id === 'spark') {
+        push('p5', 1);
+    } else if (item.id === 'leaks') {
+        if (has('Engine oil')) push('p4', 1, 'Top up after leak repair');
+        else if (has('Coolant')) push('p16', 1, 'Top up after leak repair');
+    } else if (item.id === 'chain') {
+        if (has('Cracked belt')) push('p3', 1);                          // CVT drive belt
+        else if (has('Dry / rusty') && !isFix) push('p23', 1);           // just lube it
+        else if (isFix || has('Stretched', 'Too loose', 'Too tight')) push('p13', 1);  // chain + sprocket set
+    } else if (item.id === 'sprocket') {
+        if (has('Worn rollers', 'Flat spots')) push('p14', 1);           // CVT rollers
+        else push('p13', 1);
+    } else if (item.id === 'clutch') {
+        if (has('Cable frayed')) push('p17', 1);
+    } else if (item.id === 'battery') {
+        const onlyTerminals = has('Corroded terminals') && !has('Weak', 'Swollen', 'Old (2+ years)');
+        if (!onlyTerminals || isFix) push('p10', 1);                     // terminal cleaning alone needs no part
+    } else if (item.id === 'charging') {
+        if (has('Bad regulator', 'Overcharging')) push('p18', 1);
+    } else if (item.id === 'lights') {
+        if (has('Headlight out')) push('p11', 1);
+        if (has('Brake light out')) push('p12', 1);
+        if (has('Signal out')) push('p25', 1);
+    } else if (item.id === 'fork') {
+        if (has('Leaking seals')) push('p19', 1);
+    }
+    // everything else (wheels, shocks, steering, frame, horn, starter...) = labor / service, no stock part
+    return out;
+}
+
+// Odometer + complaints -> maintenance parts (always optional)
+function partsForServiceAndComplaints(odo, complaints) {
+    const out = [];
+    const km = parseInt(odo, 10);
+
+    if (complaints.includes('Regular maintenance')) {
+        if (isNaN(km)) {
+            out.push({ id: 'p4', qty: 1, why: 'Regular maintenance (enter odometer for full interval)' });
+        } else {
+            if (km >= 3000)  out.push({ id: 'p4',  qty: 1, why: `Oil change interval (${km.toLocaleString()} km)` });
+            if (km >= 6000)  out.push({ id: 'p15', qty: 1, why: 'Oil filter interval (6,000 km)' });
+            if (km >= 10000) out.push({ id: 'p5',  qty: 1, why: 'Spark plug interval (10,000 km)' });
+            if (km >= 12000) out.push({ id: 'p6',  qty: 1, why: 'Air filter interval (12,000 km)' });
+            if (km >= 20000) out.push({ id: 'p3',  qty: 1, why: 'Drive belt interval (20,000 km)' });
+        }
+    }
+    complaints.forEach(c => {
+        if (c === 'Overheating') out.push({ id: 'p16', qty: 1, why: 'Complaint: Overheating' });
+        else if (c === 'Hard to start') out.push({ id: 'p5', qty: 1, why: 'Complaint: Hard to start' });
+        else if (c === 'Poor acceleration') out.push({ id: 'p6', qty: 1, why: 'Complaint: Poor acceleration' });
+        else if (c === 'Brake problem') out.push({ id: 'p7', qty: 1, why: 'Complaint: Brake problem' });
+        else if (c === 'Oil leak') out.push({ id: 'p4', qty: 1, why: 'Complaint: Oil leak (top up)' });
+    });
+    return out;
+}
+
+// Diagnosis -> suggested parts (merged, de-duplicated)
+function buildDiagnosisSuggestions() {
+    const list = [];
+    reviewNotes = [];
+
+    const add = (id, source, reason, level, qty) => {
+        const part = mockInventory.find(p => p.id === id);
+        if (!part) return;
+        const q = Math.max(1, Math.min(qty || 1, part.stock || 1));
+        let s = list.find(x => x.id === id);
+        if (!s) {
+            s = { id, qty: q, sources: [], reasons: [], level, checked: level !== 'watch' && part.stock > 0 };
+            list.push(s);
+        } else {
+            s.qty = Math.max(s.qty, q);
+        }
+        if (!s.sources.includes(source)) s.sources.push(source);
+        if (reason && !s.reasons.includes(reason)) s.reasons.push(reason);
+        if (level !== 'watch' && s.level === 'watch') { s.level = level; s.checked = part.stock > 0; }
+    };
+
+    // 1. ECU / OBD codes currently shown in the results table
+    const dtcVisible = document.getElementById('toggle-ecu')?.checked && !document.getElementById('dtc-results-container')?.classList.contains('hidden');
+    if (dtcVisible) {
+        document.querySelectorAll('#dtc-results-container tbody tr').forEach(tr => {
+            const cells = tr.querySelectorAll('td');
+            const code = cells[0]?.textContent.trim();
+            if (!code) return;
+            const desc = cells[1]?.textContent.trim() || '';
+            const found = partsForDtc(code);
+            if (found.length) found.forEach(p => add(p.id, 'ecu', `${code}: ${desc}`, 'fix', p.qty));
+            else reviewNotes.push(`${code}${desc ? ' (' + desc + ')' : ''}: no stock part mapped. Needs mechanic's diagnosis.`);
+        });
+    }
+
+    // 2. Physical inspection: Fix -> recommended, Watch -> optional
+    const physicalOn = document.getElementById('toggle-physical')?.checked !== false;
+    if (physicalOn && typeof inspectionItems !== 'undefined' && typeof getInspItem === 'function') {
+        inspectionItems.forEach(item => {
+            const st = getInspItem(item.id);
+            if (st.status !== 'fix' && st.status !== 'watch') return;
+            const statusLabel = st.status === 'fix' ? 'Fix' : 'Watch';
+            const detail = [...st.tags, st.value !== '' && item.measure ? `${st.value} ${item.measure.unit}` : ''].filter(Boolean).join(', ');
+            const found = partsForInspectionItem(item, st);
+
+            if (found.length) {
+                found.forEach(p => add(p.id, 'physical', `${item.label} (${statusLabel})${detail ? ': ' + detail : ''}${p.why ? ' · ' + p.why : ''}`, st.status, p.qty));
+            } else if (st.status === 'fix') {
+                reviewNotes.push(`${item.label}${detail ? ' (' + detail + ')' : ''}: labor / service only, no stock part needed.`);
+            }
+        });
+
+        // 3. Odometer service intervals + customer complaints (optional suggestions)
+        const { odo, complaints } = inspectionState.intake;
+        partsForServiceAndComplaints(odo, complaints).forEach(p => add(p.id, 'physical', p.why, 'watch', p.qty));
+    }
+    return list;
+}
+
+// Pops the review screen when the diagnosis produced suggestions
+function offerAutoAssign() {
+    const open = id => !document.getElementById(id)?.classList.contains('hidden');
+    if (!document.getElementById('modal-auto-assign') || open('modal-auto-assign') || open('modal-push-repair')) return;
+    if (buildDiagnosisSuggestions().length > 0) openAutoAssignModal();
+}
+
+// Called after inspection edits: once every item is checked, pop the screen
+function maybeAutoPopAssign() {
+    if (typeof inspectionItems === 'undefined') return;
+    const done = inspectionItems.filter(i => getInspItem(i.id).status).length;
+    if (done < inspectionItems.length) { autoAssignPrompted = false; return; }
+    if (autoAssignPrompted) return;
+    autoAssignPrompted = true;
+    setTimeout(offerAutoAssign, 400);
+}
+
 function openAutoAssignModal() {
-    if (typeof updateAutoAssignTotal === 'function') updateAutoAssignTotal();
+    reviewItems = buildDiagnosisSuggestions();
+
+    // Merge anything already in the plan (keep mechanic's qty / manual items)
+    document.querySelectorAll('#selected-parts-container [id^="selected-part-"]').forEach(chip => {
+        const id = chip.dataset.id;
+        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
+        const existing = reviewItems.find(r => r.id === id);
+        if (existing) {
+            existing.qty = qty; existing.checked = true;
+        } else {
+            reviewItems.push({
+                id, qty, checked: true, level: 'manual',
+                sources: (chip.dataset.sources || 'manual').split(','),
+                reasons: chip.dataset.reasons ? chip.dataset.reasons.split(' | ') : []
+            });
+        }
+    });
+
+    const modalSearch = document.getElementById('modal-manual-search');
+    if (modalSearch) modalSearch.value = '';
+    renderReviewList();
     toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', true);
+}
+
+function renderReviewList() {
+    const wrap = document.getElementById('ra-list');
+    if (!wrap) return;
+
+    const groups = [
+        { key: 'rec',    title: 'Recommended replacements',  note: 'Based on ECU codes and items marked Fix', icon: 'ph-seal-check', tone: 'text-red-600',     filter: r => r.level === 'fix' || r.level === 'ecu' },
+        { key: 'watch',  title: 'Optional: flagged Watch',   note: 'Worn but not critical. Tick to include',  icon: 'ph-warning',    tone: 'text-amber-600',   filter: r => r.level === 'watch' },
+        { key: 'manual', title: 'Added by mechanic',         note: 'Manually added or kept from your plan',   icon: 'ph-user',       tone: 'text-emerald-600', filter: r => r.level === 'manual' }
+    ];
+
+    const rowHTML = r => {
+        const part = mockInventory.find(p => p.id === r.id);
+        if (!part) return '';
+        const out = part.stock === 0;
+        const low = !out && part.stock <= 3;
+        const stockTxt = out ? '<span class="text-red-600 font-bold">Out of stock · order needed</span>'
+            : `<span class="${low ? 'text-amber-600' : 'text-emerald-600'} font-semibold">In stock: ${part.stock}${low ? ' (low)' : ''}</span>`;
+        return `
+        <div class="flex items-start gap-3 p-3 bg-white rounded-xl border ${r.checked ? 'border-purple-200 ring-1 ring-purple-100' : 'border-slate-200'} shadow-sm ${out ? 'opacity-70' : ''}">
+            <input type="checkbox" data-ra="toggle" data-id="${r.id}" ${r.checked ? 'checked' : ''} ${out ? 'disabled' : ''} class="mt-1 w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer">
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span class="text-sm font-bold text-slate-800">${part.name}</span>
+                    ${sourceBadgesHTML(r.sources)}
+                </div>
+                ${r.reasons.length ? `<div class="text-[11px] text-slate-500 mt-0.5">${r.reasons.map(escHTML).join('<br>')}</div>` : ''}
+                <div class="text-[11px] text-slate-500 mt-1">${fmtPeso(part.price)} each · ${stockTxt}</div>
+            </div>
+            <div class="flex flex-col items-end gap-1.5 shrink-0">
+                <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ${r.checked && !out ? '' : 'opacity-40 pointer-events-none'}">
+                    <button data-ra="minus" data-id="${r.id}" class="px-2 py-1 text-slate-400 hover:text-purple-600 transition-colors"><i class="ph-bold ph-minus"></i></button>
+                    <span class="w-6 text-center text-xs font-bold text-slate-700">${r.qty}</span>
+                    <button data-ra="plus" data-id="${r.id}" class="px-2 py-1 text-slate-400 hover:text-purple-600 transition-colors"><i class="ph-bold ph-plus"></i></button>
+                </div>
+                <div class="text-xs font-extrabold ${r.checked ? 'text-slate-800' : 'text-slate-300'}">${fmtPeso(part.price * r.qty)}</div>
+                ${r.level === 'manual' ? `<button data-ra="remove" data-id="${r.id}" class="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center gap-1"><i class="ph-bold ph-trash"></i> Remove</button>` : ''}
+            </div>
+        </div>`;
+    };
+
+    let html = groups.map(g => {
+        const rows = reviewItems.filter(g.filter);
+        if (!rows.length) return '';
+        return `<div class="flex flex-col gap-2">
+            <div class="flex items-baseline justify-between gap-2 px-1">
+                <span class="text-[11px] font-bold uppercase tracking-wider ${g.tone} flex items-center gap-1.5"><i class="ph-fill ${g.icon} text-sm"></i> ${g.title} (${rows.length})</span>
+                <span class="text-[10px] text-slate-400 hidden sm:inline">${g.note}</span>
+            </div>
+            ${rows.map(rowHTML).join('')}
+        </div>`;
+    }).join('');
+
+    if (!reviewItems.length) {
+        html = `<div class="border border-dashed border-slate-300 rounded-xl p-6 text-center bg-white">
+            <i class="ph-fill ph-clipboard-text text-3xl text-slate-300 block mb-1"></i>
+            <p class="text-sm font-bold text-slate-500">No parts matched the diagnosis.</p>
+            <p class="text-xs text-slate-400 mt-0.5">Mark items as <b>Fix</b> in the inspection or run an ECU scan, or add parts manually below.</p>
+        </div>`;
+    }
+    if (reviewNotes.length) {
+        html += `<div class="rounded-xl border border-slate-200 bg-white p-3 text-[11px] text-slate-500">
+            <p class="font-bold text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5"><i class="ph-fill ph-info text-slate-400"></i> No stock part needed / mapped</p>
+            <ul class="list-disc pl-4 flex flex-col gap-0.5">${reviewNotes.map(n => `<li>${escHTML(n)}</li>`).join('')}</ul>
+        </div>`;
+    }
+    wrap.innerHTML = html;
+
+    // Basis chips
+    const fixN = reviewItems.filter(r => r.level === 'fix' || r.level === 'ecu').length;
+    const watchN = reviewItems.filter(r => r.level === 'watch').length;
+    const ecuN = reviewItems.filter(r => r.sources.includes('ecu')).length;
+    const basis = document.getElementById('ra-basis');
+    if (basis) {
+        const chip = (cls, txt) => `<span class="px-2 py-1 rounded-full border ${cls}">${txt}</span>`;
+        basis.innerHTML = hasDiagnosisData()
+            ? [chip('bg-blue-50 text-blue-600 border-blue-200', `${ecuN} from ECU/OBD`),
+               chip('bg-red-50 text-red-600 border-red-200', `${fixN} recommended`),
+               chip('bg-amber-50 text-amber-600 border-amber-200', `${watchN} optional`)].join('')
+            : chip('bg-slate-100 text-slate-500 border-slate-200', 'No diagnosis recorded yet. Add parts manually.');
+    }
+
+    // Totals
+    let total = 0, n = 0;
+    reviewItems.forEach(r => {
+        const part = mockInventory.find(p => p.id === r.id);
+        if (part && r.checked) { total += part.price * r.qty; n++; }
+    });
+    const totalEl = document.getElementById('auto-assign-total');
+    if (totalEl) totalEl.textContent = fmtPeso(total);
+    const countEl = document.getElementById('ra-count');
+    if (countEl) countEl.textContent = n;
+}
+
+function closeAutoAssignModal() {
+    toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', false);
+}
+
+// Review modal interactions (single set of delegated listeners)
+document.addEventListener('click', function(e) {
+    const ra = e.target.closest('#ra-list [data-ra]');
+    if (ra && ra.dataset.ra !== 'toggle') {
+        const r = reviewItems.find(x => x.id === ra.dataset.id);
+        const part = r && mockInventory.find(p => p.id === r.id);
+        if (r && part) {
+            if (ra.dataset.ra === 'minus' && r.qty > 1) r.qty--;
+            else if (ra.dataset.ra === 'plus') {
+                if (r.qty < part.stock) r.qty++;
+                else alert(`Only ${part.stock} units available in stock.`);
+            } else if (ra.dataset.ra === 'remove') reviewItems = reviewItems.filter(x => x !== r);
+            renderReviewList();
+        }
+    }
+
+    // Add part from the modal search
+    const item = e.target.closest('.modal-autocomplete-item');
+    if (item) {
+        const part = mockInventory.find(p => p.id === item.dataset.id);
+        if (part && part.stock > 0) {
+            const existing = reviewItems.find(r => r.id === part.id);
+            if (existing) existing.checked = true;
+            else reviewItems.push({ id: part.id, qty: 1, checked: true, level: 'manual', sources: ['manual'], reasons: [] });
+            renderReviewList();
+        }
+        document.getElementById('modal-manual-search').value = '';
+        document.getElementById('modal-manual-autocomplete').classList.add('hidden');
+    } else if (!e.target.closest('#modal-manual-search')) {
+        document.getElementById('modal-manual-autocomplete')?.classList.add('hidden');
+    }
+
+    // Keep plan totals / stepper fresh after any qty / remove click or typing in the diagnostics view
+    if (e.target.closest('#view-diagnostics') || e.target.closest('#modal-push-repair')) {
+        if (e.target.closest('#selected-parts-container .btn-qty-minus, #selected-parts-container .btn-qty-plus, #selected-parts-container .btn-remove-part') && !planCommitting) planReviewed = false;
+        setTimeout(updatePlanTotals, 0);
+    }
+});
+
+document.addEventListener('change', function(e) {
+    if (e.target.matches && e.target.matches('#ra-list [data-ra="toggle"]')) {
+        const r = reviewItems.find(x => x.id === e.target.dataset.id);
+        if (r) { r.checked = e.target.checked; renderReviewList(); }
+    }
+    if (e.target.id === 'toggle-ecu' || e.target.id === 'toggle-physical') setTimeout(updatePlanTotals, 0);
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'labor-cost-input' || e.target.id === 'final-findings') updatePlanTotals();
+
+    if (e.target.id === 'modal-manual-search') {
+        const query = e.target.value.toLowerCase();
+        const dropdown = document.getElementById('modal-manual-autocomplete');
+        if (!query) { dropdown.classList.add('hidden'); return; }
+
+        const matches = mockInventory.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
+        dropdown.innerHTML = matches.length ? matches.map(part => `
+            <div class="p-2 border-b border-slate-100 hover:bg-slate-50 ${part.stock > 0 ? 'cursor-pointer modal-autocomplete-item' : 'opacity-50'} flex justify-between items-center" data-id="${part.id}">
+                <div>
+                    <div class="text-xs font-bold text-slate-800">${part.name}</div>
+                    <div class="text-[9px] ${part.stock > 0 ? 'text-slate-500' : 'text-red-500 font-bold'}">${part.stock > 0 ? 'Stock: ' + part.stock : 'Out of stock'}</div>
+                </div>
+                <div class="text-xs font-bold text-emerald-600">₱${part.price.toFixed(2)}</div>
+            </div>
+        `).join('') : `<div class="p-3 text-xs text-slate-500 text-center">No parts found.</div>`;
+        dropdown.classList.remove('hidden');
+    }
+});
+
+// Commit the reviewed list into the Repair Plan; optionally continue to registration
+function confirmAutoAssign(event, proceed) {
+    const btn = event.currentTarget;
+    const originalHTML = btn.innerHTML;
+    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Saving...`;
+    btn.disabled = true;
+
+    setTimeout(() => {
+        const container = document.getElementById('selected-parts-container');
+        if (container) {
+            planCommitting = true;
+            container.innerHTML = '';
+            reviewItems.filter(r => r.checked).forEach(r => {
+                const part = mockInventory.find(p => p.id === r.id);
+                addPartToPlan(part, { qty: r.qty, sources: r.sources, reasons: r.reasons });
+            });
+            planReviewed = true;
+            planCommitting = false;
+            updatePlanTotals();
+        }
+
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        closeAutoAssignModal();
+        if (proceed) setTimeout(openPushRepairModal, 320);
+    }, 400);
+}
+
+// "Proceed" button: auto-assign from diagnosis -> mechanic edits/finalizes -> registration
+function proceedFromDiagnosis() {
+    if (!hasDiagnosisData() && !confirm('No diagnosis has been recorded yet (no inspection results, ECU codes or findings).\n\nContinue anyway?')) return;
+    openAutoAssignModal();
+}
+
+function renderPushPlanSummary() {
+    const box = document.getElementById('push-plan-summary');
+    if (!box) return;
+    const chips = [...document.querySelectorAll('#selected-parts-container [id^="selected-part-"]')];
+    const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
+    let parts = 0;
+    const rows = chips.map(chip => {
+        const price = parseFloat(chip.dataset.price) || 0;
+        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
+        parts += price * qty;
+        const name = chip.querySelector('.text-sm')?.textContent || '';
+        return `<li class="flex justify-between gap-2"><span class="truncate">${qty} × ${escHTML(name)}</span><span class="font-semibold shrink-0">${fmtPeso(price * qty)}</span></li>`;
+    });
+    box.innerHTML = `
+        <div class="flex items-center justify-between mb-1.5">
+            <span class="font-bold text-blue-700 uppercase text-[11px] tracking-wider flex items-center gap-1.5"><i class="ph-fill ph-wrench"></i> Repair plan</span>
+            <button type="button" onclick="closePushRepairModal(); setTimeout(openAutoAssignModal, 320);" class="text-[10px] font-bold text-blue-600 hover:underline">Edit parts</button>
+        </div>
+        ${chips.length ? `<ul class="flex flex-col gap-1 text-slate-600 mb-2">${rows.join('')}</ul>` : '<p class="text-slate-500 mb-2">No parts assigned (labor / inspection only).</p>'}
+        <div class="border-t border-blue-100 pt-1.5 flex justify-between font-bold text-slate-800"><span>Est. total (parts${labor ? ' + labor' : ''})</span><span>${fmtPeso(parts + labor)}</span></div>`;
 }
 
 window.toggleRejectReason = function(checkbox, reasonId) {
@@ -517,181 +1072,6 @@ window.toggleRejectReason = function(checkbox, reasonId) {
         }
     }
 };
-
-window.updateAutoAssignTotal = function() {
-    let total = 0;
-    // Calculate Pre-Assigned Items
-    ['p1', 'p2'].forEach(id => {
-        const chk = document.getElementById(`chk-auto-${id}`);
-        const qtySpan = document.getElementById(`qty-auto-${id}`);
-        if (chk && chk.checked && qtySpan) {
-            const price = parseFloat(chk.getAttribute('data-price')) || 0;
-            const qty = parseInt(qtySpan.textContent) || 1;
-            total += price * qty;
-        }
-    });
-    // Calculate Manually Added Items
-    document.querySelectorAll('#modal-manual-container [id^="modal-manual-part-"]').forEach(el => {
-        const price = parseFloat(el.getAttribute('data-price')) || 0;
-        const qty = parseInt(el.querySelector('.qty-val')?.textContent) || 1;
-        total += price * qty;
-    });
-    // Update DOM
-    const totalEl = document.getElementById('auto-assign-total');
-    if(totalEl) totalEl.textContent = `₱ ${total.toFixed(2)}`;
-};
-
-// Global click listener to automatically trigger subtotal updates inside the modal
-document.addEventListener('click', function(e) {
-    if(e.target.closest('#modal-auto-assign')) {
-        setTimeout(() => { if (typeof updateAutoAssignTotal === 'function') updateAutoAssignTotal(); }, 50);
-    }
-});
-
-
-function closeAutoAssignModal() {
-    toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', false);
-    // --- Modal Manual Search & Addition Logic ---
-document.addEventListener('input', function(e) {
-    if (e.target.id === 'modal-manual-search') {
-        const query = e.target.value.toLowerCase();
-        const dropdown = document.getElementById('modal-manual-autocomplete');
-        if (!query) { dropdown.classList.add('hidden'); return; }
-        
-        const matches = mockInventory.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
-        if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(part => `
-                <div class="p-2 border-b border-slate-100 hover:bg-slate-50 cursor-pointer flex justify-between items-center modal-autocomplete-item" data-id="${part.id}">
-                    <div>
-                        <div class="text-xs font-bold text-slate-800">${part.name}</div>
-                        <div class="text-[9px] text-slate-500">Stock: ${part.stock}</div>
-                    </div>
-                    <div class="text-xs font-bold text-emerald-600">₱${part.price.toFixed(2)}</div>
-                </div>
-            `).join('');
-            dropdown.classList.remove('hidden');
-        } else {
-            dropdown.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center">No parts found.</div>`;
-            dropdown.classList.remove('hidden');
-        }
-    }
-});
-
-document.addEventListener('click', function(e) {
-    // Add part from modal search
-    const item = e.target.closest('.modal-autocomplete-item');
-    if (item) {
-        const partId = item.getAttribute('data-id');
-        const part = mockInventory.find(p => p.id === partId);
-        const container = document.getElementById('modal-manual-container');
-        
-        if (part && part.stock > 0 && !document.getElementById(`modal-manual-part-${part.id}`)) {
-            const html = `
-                <div id="modal-manual-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm" data-id="${part.id}" data-price="${part.price}">
-                    <div class="flex-1 min-w-0 pr-2">
-                        <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
-                        <div class="text-[10px] text-slate-500">₱ ${part.price.toFixed(2)} | In Stock: ${part.stock}</div>
-                    </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                        <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ml-4">
-                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                            <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">1</span>
-                            <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
-                        </div>
-                        <button class="text-slate-400 hover:text-red-500 p-1 rounded btn-remove-modal-part"><i class="ph-bold ph-x text-lg"></i></button>
-                    </div>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', html);
-        }
-        document.getElementById('modal-manual-search').value = '';
-        document.getElementById('modal-manual-autocomplete').classList.add('hidden');
-    }
-    
-    // Remove button inside modal
-    const btnRemove = e.target.closest('.btn-remove-modal-part');
-    if (btnRemove) btnRemove.closest('[id^="modal-manual-part-"]').remove();
-});
-}
-
-function confirmAutoAssign(event) {
-    const btn = event.currentTarget;
-    const originalHTML = btn.innerHTML;
-    
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Adding...`;
-    btn.disabled = true;
-
-    setTimeout(() => {
-        const container = document.getElementById('selected-parts-container');
-        if (!container) return;
-        
-        let partsToAssign = [];
-        
-        // 1. Grab ECU Parts
-        if (document.getElementById('chk-auto-p1')?.checked) {
-            const qty = parseInt(document.getElementById('qty-auto-p1')?.textContent) || 1;
-            partsToAssign.push({ id: 'p1', qty: qty, source: 'ecu' });
-        }
-        
-        // 2. Grab Physical Parts
-        if (document.getElementById('chk-auto-p2')?.checked) {
-            const qty = parseInt(document.getElementById('qty-auto-p2')?.textContent) || 1;
-            partsToAssign.push({ id: 'p2', qty: qty, source: 'physical' });
-        }
-
-        // 3. Grab Manually Added Parts from Modal
-        document.querySelectorAll('#modal-manual-container [id^="modal-manual-part-"]').forEach(el => {
-            const id = el.getAttribute('data-id');
-            const qty = parseInt(el.querySelector('.qty-val')?.textContent) || 1;
-            partsToAssign.push({ id: id, qty: qty, source: 'manual' });
-        });
-
-        // Loop and inject into main repair plan
-        partsToAssign.forEach(item => {
-            const part = mockInventory.find(p => p.id === item.id);
-            if (part && part.stock > 0 && !document.getElementById(`selected-part-${part.id}`)) {
-                
-                // Determine Badge Style
-                let badgeHTML = '';
-                if (item.source === 'ecu') {
-                    badgeHTML = `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-blue-200 uppercase tracking-wider"><i class="ph-bold ph-cpu"></i> ECU/OBD</span>`;
-                } else if (item.source === 'physical') {
-                    badgeHTML = `<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-orange-200 uppercase tracking-wider"><i class="ph-bold ph-wrench"></i> Physical</span>`;
-                } else {
-                    badgeHTML = `<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 px-1.5 py-0.5 rounded text-[9px] font-bold border border-emerald-200 uppercase tracking-wider"><i class="ph-bold ph-user"></i> Manual</span>`;
-                }
-
-                const html = `
-                    <div id="selected-part-${part.id}" class="flex items-center justify-between bg-white border border-slate-200 rounded-lg p-2 shadow-sm animate-[fadeIn_0.2s_ease-out]">
-                        <div class="flex-1 min-w-0 pr-2">
-                            <div class="flex items-center gap-2 mb-0.5">
-                                <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
-                                ${badgeHTML}
-                            </div>
-                            <div class="text-xs text-slate-500">₱ ${part.price.toFixed(2)} / unit</div>
-                        </div>
-                        <div class="flex items-center gap-3 shrink-0">
-                            <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
-                                <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                                <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${item.qty}</span>
-                                <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
-                            </div>
-                            <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
-                        </div>
-                    </div>
-                `;
-                container.insertAdjacentHTML('beforeend', html);
-            }
-        });
-
-        // Reset Modal State
-        document.getElementById('modal-manual-search').value = '';
-        document.getElementById('modal-manual-container').innerHTML = '';
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        closeAutoAssignModal();
-    }, 600);
-}
 function closePushRepairModal() { 
     toggleModal('modal-push-repair', 'push-repair-backdrop', 'push-repair-content', false); 
 }
@@ -712,6 +1092,12 @@ function confirmPushRepair(event) {
         
         alert("Vehicle successfully pushed to the Active Repairs queue!");
         clearInspectionDraft();
+        const planBox = document.getElementById('selected-parts-container');
+        if (planBox) planBox.innerHTML = '';
+        const laborInput = document.getElementById('labor-cost-input');
+        if (laborInput) laborInput.value = '';
+        planReviewed = false;
+        updatePlanTotals();
         
         // Auto-navigate user to the active repairs tab
         const repairsLink = document.querySelector('.nav-link[data-target="repairs"]');
@@ -3063,9 +3449,8 @@ function refreshInspectionSummary() {
 
     const fix = inspectionItems.filter(i => getInspItem(i.id).status === 'fix');
     const watch = inspectionItems.filter(i => getInspItem(i.id).status === 'watch');
-    const parts = [...new Set(fix.map(i => i.part).filter(Boolean))].map(id => mockInventory.find(p => p.id === id)).filter(Boolean);
-    const partsInStock = parts.filter(p => p.stock > 0);
-    const partsOut = parts.filter(p => p.stock === 0);
+    const suggested = buildDiagnosisSuggestions();
+    const partsOut = suggested.filter(s => s.level !== 'watch').map(s => mockInventory.find(p => p.id === s.id)).filter(p => p && p.stock === 0);
 
     const entry = (item, tone) => {
         const st = getInspItem(item.id);
@@ -3096,8 +3481,8 @@ function refreshInspectionSummary() {
                     <button type="button" data-insp="to-findings" class="min-h-[48px] rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
                         <i class="ph-bold ph-note-pencil text-lg"></i> Add to Final Findings
                     </button>
-                    <button type="button" data-insp="add-all-parts" ${partsInStock.length ? '' : 'disabled'} class="min-h-[48px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed">
-                        <i class="ph-bold ph-package text-lg"></i> Add suggested parts${partsInStock.length ? ` (${partsInStock.length})` : ''}
+                    <button type="button" data-insp="auto-assign" class="min-h-[48px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                        <i class="ph-bold ph-magic-wand text-lg"></i> Auto-Assign Parts${suggested.length ? ` (${suggested.length})` : ''}
                     </button>
                 </div>
             </div>
@@ -3116,6 +3501,7 @@ function setInspectionStatus(id, status) {
     }
     saveInspectionState();
     refreshInspectionRow(id);
+    maybeAutoPopAssign();
 }
 
 function applyInspectionMeasure(id, raw) {
@@ -3125,6 +3511,7 @@ function applyInspectionMeasure(id, raw) {
     if (!st.manual) st.status = evaluateInspectionMeasure(item.measure, st.value);   // auto-grade unless the mechanic overrode it
     saveInspectionState();
     refreshInspectionRow(id);
+    maybeAutoPopAssign();
 }
 
 function stepInspectionMeasure(id, dir) {
@@ -3164,6 +3551,7 @@ function resetInspection(skipConfirm) {
     if (!skipConfirm && !confirm('Clear all physical inspection results for this vehicle?')) return;
     inspectionState = emptyInspectionState();
     inspectionPhotos = {};
+    autoAssignPrompted = false;
     saveInspectionState();
     renderInspection();
 }
@@ -3172,6 +3560,7 @@ function resetInspection(skipConfirm) {
 function clearInspectionDraft() {
     inspectionState = emptyInspectionState();
     inspectionPhotos = {};
+    autoAssignPrompted = false;
     saveInspectionState();
 }
 
@@ -3206,6 +3595,7 @@ document.addEventListener('click', function(e) {
             if (!st.status) { st.status = 'ok'; st.manual = true; refreshInspectionRow(item.id); }
         });
         saveInspectionState();
+        maybeAutoPopAssign();
 
     } else if (action === 'toggle-section') {
         const id = el.dataset.section;

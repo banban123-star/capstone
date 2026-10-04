@@ -1,4 +1,11 @@
 <div id="view-diagnostics" class="view-section active max-w-6xl mx-auto space-y-6">
+    <!-- Workflow stepper -->
+    <div id="diag-stepper" class="bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-3 flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-bold">
+        <div class="diag-step flex items-center gap-2" data-step="1"><span class="diag-step-dot">1</span><span>Diagnose</span></div><div class="flex-1 h-px bg-slate-200"></div>
+        <div class="diag-step flex items-center gap-2" data-step="2"><span class="diag-step-dot">2</span><span>Parts &amp; Plan</span></div><div class="flex-1 h-px bg-slate-200"></div>
+        <div class="diag-step flex items-center gap-2" data-step="3"><span class="diag-step-dot">3</span><span>Register &amp; Confirm</span></div>
+    </div>
+
     <!-- 1. Inspection Setup -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">1. Inspection Setup</h2>
@@ -170,129 +177,131 @@
 
     <!-- 4. Repair Plan & Handoff -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">4. Repair Plan & Handoff</h2>
-        
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-4">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Repair Plan &amp; Handoff</h2>
+            <span id="plan-state-badge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Draft</span>
+        </div>
+
         <!-- Centralized Final Notes -->
         <div class="mb-5">
-            <label class="block text-xs font-bold text-slate-700 mb-1.5">Final Findings & Diagnosis Verification</label>
+            <label class="block text-xs font-bold text-slate-700 mb-1.5">Final Findings &amp; Diagnosis Verification</label>
             <textarea id="final-findings" class="w-full p-3 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm resize-none h-24" placeholder="Type your professional judgment after considering the ECU/OBD results and physical inspection..."></textarea>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-            <div class="md:col-span-6 lg:col-span-7 relative flex flex-col gap-2">
-                <div class="flex items-center justify-between">
-                    <label class="block text-xs font-semibold text-slate-700">Required Parts & Materials</label>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            <!-- Parts plan -->
+            <div class="lg:col-span-8 flex flex-col gap-2">
+                <div class="flex items-center justify-between gap-2">
+                    <label class="block text-xs font-semibold text-slate-700">Required Parts &amp; Materials</label>
                     <button onclick="openAutoAssignModal()" class="text-[10px] font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-200 px-2.5 py-1 rounded transition-colors flex items-center gap-1.5 shadow-sm">
-                        <i class="ph-bold ph-magic-wand"></i> Auto-Assign from Scan
+                        <i class="ph-bold ph-magic-wand"></i> Auto-Assign from Diagnosis
                     </button>
                 </div>
-                
-                <!-- Grouped Container for Search and Selected Items -->
-                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex flex-col gap-3">
+
+                <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 flex flex-col gap-3">
                     <div class="relative">
                         <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                         <input type="text" id="part-search-input" autocomplete="off" placeholder="Search and reserve from inventory..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm shadow-sm">
-                        
-                        <!-- Autocomplete Dropdown -->
-                        <div id="part-autocomplete-dropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-60 overflow-y-auto">
-                            <!-- Options injected via JS -->
-                        </div>
+                        <div id="part-autocomplete-dropdown" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-60 overflow-y-auto"></div>
                     </div>
-                    
+
+                    <!-- Empty state -->
+                    <div id="plan-empty" class="border border-dashed border-slate-300 rounded-lg p-4 text-center">
+                        <i class="ph-fill ph-package text-2xl text-slate-300 block mb-1"></i>
+                        <p class="text-xs font-semibold text-slate-400">No parts yet. Press <b class="text-blue-600">Proceed</b> to auto-assign parts from the diagnosis, then edit them.</p>
+                    </div>
+
                     <!-- Selected Parts Container -->
-                    <div id="selected-parts-container" class="flex flex-col gap-2 empty:hidden">
-                        <!-- Chips injected via JS -->
-                    </div>
+                    <div id="selected-parts-container" class="flex flex-col gap-2 empty:hidden"></div>
                 </div>
             </div>
-            
-            <div class="md:col-span-2 lg:col-span-2">
-                <label class="block text-xs font-semibold text-slate-500 mb-1.5">Est. Labor Cost (₱)</label>
-                <input type="number" placeholder="0.00" class="w-full px-3 py-3 rounded-lg border border-slate-300 bg-slate-50 outline-none text-sm font-semibold">
-            </div>
-            <div class="md:col-span-4 lg:col-span-3 flex gap-2 self-end">
-                <button class="w-1/3 bg-orange-100 hover:bg-orange-200 text-orange-700 p-3 rounded-lg text-xs font-bold transition-colors shadow-sm flex flex-col items-center justify-center gap-1 border border-orange-200">
-                    <i class="ph-fill ph-pause-circle text-lg"></i>
-                    <span class="text-[10px] uppercase">Hold</span>
-                </button>
-                <button onclick="openPushRepairModal()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-lg text-sm font-bold transition-colors shadow-sm flex flex-col items-center justify-center gap-1">
-                    <i class="ph-fill ph-arrow-circle-right text-xl"></i>
-                    <span>Push to Active Repairs</span>
-                </button>
+
+            <!-- Cost summary + actions -->
+            <div class="lg:col-span-4 flex flex-col gap-3">
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3.5 flex flex-col gap-2.5">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-semibold text-slate-500">Parts (<span id="plan-parts-count">0</span>)</span>
+                        <span id="plan-parts-total" class="font-bold text-slate-800">₱ 0.00</span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2 text-xs">
+                        <label for="labor-cost-input" class="font-semibold text-slate-500">Est. Labor (₱)</label>
+                        <input id="labor-cost-input" type="number" min="0" placeholder="0.00" class="w-28 px-2 py-1.5 rounded-lg border border-slate-300 bg-white outline-none text-sm font-semibold text-right focus:ring-2 focus:ring-blue-500/20">
+                    </div>
+                    <div class="border-t border-slate-200 pt-2.5 flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-600 uppercase">Estimated Total</span>
+                        <span id="plan-grand-total" class="text-lg font-extrabold text-blue-700">₱ 0.00</span>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button class="w-1/3 bg-orange-100 hover:bg-orange-200 text-orange-700 p-3 rounded-xl text-xs font-bold transition-colors shadow-sm flex flex-col items-center justify-center gap-1 border border-orange-200">
+                        <i class="ph-fill ph-pause-circle text-lg"></i>
+                        <span class="text-[10px] uppercase">Hold</span>
+                    </button>
+                    <button onclick="proceedFromDiagnosis()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl text-sm font-bold transition-colors shadow-sm flex flex-col items-center justify-center gap-1">
+                        <i class="ph-fill ph-arrow-circle-right text-xl"></i>
+                        <span>Proceed</span>
+                    </button>
+                </div>
+                <p class="text-[10px] text-slate-400 leading-snug">Proceed reviews the auto-assigned parts, lets you finalize them, then continues to vehicle registration.</p>
             </div>
         </div>
     </div>
 
-    <!-- Auto-Assign Parts Modal -->
+    <!-- Review Parts & Materials Modal (auto-assigned from diagnosis, editable by the mechanic) -->
     <div id="modal-auto-assign" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-4">
         <div id="auto-assign-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeAutoAssignModal()"></div>
         <div id="auto-assign-content" class="relative bg-slate-50 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
-            
-            <div class="flex items-center justify-between p-4 border-b border-slate-200 bg-white shrink-0">
-                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <i class="ph-fill ph-magic-wand text-purple-600 text-lg"></i> Review Recommended Parts
-                </h2>
+
+            <div class="flex items-start justify-between p-4 border-b border-slate-200 bg-white shrink-0 gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <i class="ph-fill ph-magic-wand text-xl"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800 leading-tight">Review Parts &amp; Materials</h2>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Auto-assigned from your diagnosis. Edit, remove or add items, then finalize.</p>
+                    </div>
+                </div>
                 <button onclick="closeAutoAssignModal()" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors">
                     <i class="ph ph-x text-lg"></i>
                 </button>
             </div>
 
-            <div class="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-5 text-slate-700">
-                <p class="text-xs text-slate-600">The system has categorized parts based on your diagnostic results. Review and modify before adding to the repair plan.</p>
-                
-                <!-- Category 1: ECU Diagnostics -->
-                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors bg-white rounded-xl shadow-sm border border-slate-200">
-                    <label class="flex items-center gap-3 cursor-pointer group flex-1">
-                        <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p1">
-                        <div>
-                            <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Coolant Temp Sensor (OEM Honda)</div>
-                            <div class="text-[10px] text-slate-500">₱ 850.00 | In Stock: 24</div>
-                        </div>
-                    </label>
-                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ml-4">
-                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p1">1</span>
-                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="24"><i class="ph-bold ph-plus"></i></button>
-                    </div>
-                </div>
+            <!-- Diagnosis basis chips -->
+            <div id="ra-basis" class="px-4 py-2.5 bg-white border-b border-slate-100 flex flex-wrap gap-1.5 shrink-0 text-[10px] font-bold"></div>
 
-                <!-- Category 2: Physical Inspection -->
-                <div class="p-3 flex items-center justify-between hover:bg-slate-50 transition-colors bg-white rounded-xl shadow-sm border border-slate-200">
-                    <label class="flex items-center gap-3 cursor-pointer group flex-1">
-                        <input type="checkbox" checked class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500" id="chk-auto-p2">
-                        <div>
-                            <div class="text-sm font-bold text-slate-800 group-hover:text-purple-600 transition-colors">Front Disc Brake Pads</div>
-                            <div class="text-[10px] text-slate-500">₱ 450.00 | In Stock: 3</div>
-                        </div>
-                    </label>
-                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ml-4">
-                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val" id="qty-auto-p2">1</span>
-                        <button class="px-2 py-1 text-slate-400 hover:text-purple-600 btn-qty-plus transition-colors" data-max="3"><i class="ph-bold ph-plus"></i></button>
-                    </div>
-                </div>
+            <div class="p-4 sm:p-5 overflow-y-auto flex-1 flex flex-col gap-4 text-slate-700">
+                <!-- Rendered by renderReviewList() in script.js -->
+                <div id="ra-list" class="flex flex-col gap-4"></div>
 
-                <!-- Category 3: Personally Added by Mechanic -->
-                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                    <div class="bg-slate-100 px-4 py-2 border-b border-slate-200">
-                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"><i class="ph-fill ph-user text-emerald-500 text-sm"></i> Personally Added by Mechanic</span>
+                <!-- Add extra parts -->
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+                    <div class="bg-slate-100 px-4 py-2 border-b border-slate-200 rounded-t-xl">
+                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"><i class="ph-fill ph-user text-emerald-500 text-sm"></i> Add Extra Part / Material</span>
                     </div>
-                    <div class="p-3 flex flex-col gap-3 bg-slate-50/50">
+                    <div class="p-3 bg-slate-50/50 rounded-b-xl">
                         <div class="relative">
                             <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="modal-manual-search" autocomplete="off" placeholder="Search and add extra parts..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-purple-500/20 outline-none text-xs shadow-sm transition-all">
+                            <input type="text" id="modal-manual-search" autocomplete="off" placeholder="Search inventory by name or SKU..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-purple-500/20 outline-none text-xs shadow-sm transition-all">
                             <div id="modal-manual-autocomplete" class="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg hidden flex flex-col max-h-40 overflow-y-auto"></div>
                         </div>
-                        <div id="modal-manual-container" class="flex flex-col gap-2 empty:hidden"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="p-3 sm:p-4 border-t border-slate-200 flex justify-end gap-2 bg-white shrink-0">
-                <button type="button" onclick="closeAutoAssignModal()" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-600 border border-slate-300 hover:bg-slate-100 transition-colors">Cancel</button>
-                <button type="button" onclick="confirmAutoAssign(event)" class="px-5 py-2 rounded-lg text-xs font-bold bg-purple-600 text-white hover:bg-purple-700 shadow-md flex items-center gap-1.5 transition-colors">
-                    <i class="ph-bold ph-check-circle"></i> Confirm & Add to Plan
-                </button>
+            <div class="p-3 sm:p-4 border-t border-slate-200 bg-white shrink-0 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div class="flex items-baseline justify-between sm:justify-start sm:flex-1 gap-2">
+                    <span class="text-[11px] font-bold text-slate-500 uppercase"><span id="ra-count">0</span> item(s) · Parts total</span>
+                    <span id="auto-assign-total" class="text-lg font-extrabold text-slate-800">₱ 0.00</span>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeAutoAssignModal()" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 border border-slate-300 hover:bg-slate-100 transition-colors">Cancel</button>
+                    <button type="button" onclick="confirmAutoAssign(event, false)" class="px-3 py-2 rounded-lg text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 transition-colors">Save to Plan</button>
+                    <button type="button" onclick="confirmAutoAssign(event, true)" class="px-4 py-2 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-1.5 transition-colors">
+                        <i class="ph-bold ph-check-circle"></i> Finalize &amp; Continue
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -329,6 +338,7 @@
             <div class="p-4 sm:p-5 overflow-y-auto flex-1 text-slate-700">
                 <!-- TAB 1: Select Existing -->
                 <div id="pane-push-existing" class="flex flex-col gap-4">
+                    <div id="push-plan-summary" class="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-xs"></div>
                     <p class="text-xs text-slate-500">Select the target motorcycle or walk-in unit to queue for repair:</p>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Registered Motorcycle</label>
