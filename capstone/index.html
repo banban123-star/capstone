@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotoCare - Shop Management System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="text-slate-800 h-screen overflow-hidden flex">
+
+    <div id="mobile-overlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden transition-opacity opacity-0 lg:hidden"></div>
+
+    <aside id="sidebar" class="fixed lg:relative z-50 h-full bg-slate-900 text-slate-300 flex flex-col w-72 -translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none flex-shrink-0">
+        <div class="h-16 flex items-center justify-between px-5 shrink-0 border-b border-slate-800 bg-slate-950">
+            <div class="flex items-center text-blue-500 font-bold text-xl">
+                <i class="ph-fill ph-motorcycle text-2xl mr-2"></i>
+                <span class="text-white">MotoCare</span>
+            </div>
+            <button id="mobile-close-btn" class="lg:hidden p-2 rounded-lg hover:bg-slate-800 text-slate-400">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto py-4 px-3 flex flex-col gap-1 text-sm font-medium">
+            <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-2 mb-2 px-3">Primary Navigation</div>
+
+            <!-- Added data-roles attributes to control visibility -->
+            <button class="nav-link active flex items-center w-full px-3 py-2.5 rounded-lg transition-colors bg-blue-600 text-white shadow-md shadow-blue-900/20" data-target="dashboard" data-roles="superadmin,owner,chief,sub">
+                <i class="ph-fill ph-squares-four text-lg w-6"></i> Dashboard
+            
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="customers" data-roles="superadmin,owner,chief">
+                <i class="ph ph-users text-lg w-6"></i> Customers & Motorcycles
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="diagnostics" data-roles="superadmin,owner,chief,sub">
+                <i class="ph ph-stethoscope text-lg w-6"></i> Diagnostics & Inspections
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="repairs" data-roles="superadmin,owner,chief,sub">
+                <i class="ph ph-wrench text-lg w-6"></i> Active Repairs
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="inventory" data-roles="superadmin,owner,chief,sub">
+                <i class="ph ph-package text-lg w-6"></i> Inventory
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="transactions" data-roles="superadmin,owner">
+                <i class="ph ph-receipt text-lg w-6"></i> Transactions & Billing
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="history" data-roles="superadmin,owner,chief">
+                <i class="ph ph-clock-counter-clockwise text-lg w-6"></i> Service History
+            </button>
+
+            <!-- Administration & Support -->
+            <div id="nav-header-admin" class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-6 mb-2 px-3">Administration & Support</div>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="reports" data-roles="superadmin,owner">
+                <i class="ph ph-chart-line-up text-lg w-6"></i> Reports & Monitoring
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="audit" data-roles="superadmin,owner">
+                <i class="ph ph-shield-check text-lg w-6"></i> Audit Logs
+            </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="users" data-roles="superadmin,owner">
+                <i class="ph ph-user-gear text-lg w-6"></i> User Management
+            </button>
+
+            <!-- System Settings -->
+            <div id="nav-header-settings" class="px-3 py-2 mt-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
+                <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">System Settings</div>
+                <button class="nav-link flex items-center w-full py-1.5 text-slate-300 hover:text-white transition-colors" data-target="backup" data-roles="superadmin,owner">
+                    <i class="ph ph-database text-base w-6"></i> Backup & Restore
+                </button>
+                <div class="flex items-center justify-between w-full py-1.5 text-slate-300">
+                    <div class="flex items-center"><i class="ph ph-cloud-check text-base w-6"></i> Offline Sync</div>
+                    <div class="w-2 h-2 bg-emerald-500 rounded-full shadow-[0_0_5px_rgba(16,185,129,0.5)]"></div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Dynamic User Profile & Role Switcher -->
+        <div class="p-4 bg-slate-950 border-t border-slate-800 shrink-0 flex flex-col gap-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div id="user-avatar" class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-inner">
+                        IG
+                    </div>
+                    <div class="flex flex-col truncate">
+                        <span id="user-name" class="text-sm font-bold text-slate-200 leading-none truncate">User</span>
+                        <span id="user-role-text" class="text-[10px] text-slate-500 mt-1 truncate">Shop Owner</span>
+                    </div>
+                </div>
+                <button class="text-slate-400 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors shrink-0" title="Log Out" onclick="handleLogout()">
+                    <i class="ph ph-sign-out text-lg"></i>
+                </button>
+            </div>
+            
+            <!-- Development Role Switcher -->
+            <div class="pt-3 border-t border-slate-800">
+                <label class="text-[9px] uppercase font-bold text-slate-500 tracking-wider mb-1 block">Simulate Login As:</label>
+                <select id="role-switcher" class="w-full bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-md px-2 py-1.5 outline-none focus:border-blue-500 transition-colors" onchange="switchRole(this.value)">
+                    <option value="superadmin">Super Admin (System)</option>
+                    <option value="owner">Shop Owner (User)</option>
+                    <option value="chief">Chief Mechanic (Larpus)</option>
+                    <option value="sub">Sub-Mechanic (Hiyo)</option>
+                </select>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col h-screen min-w-0 bg-slate-100">
+        <header class="h-16 flex items-center px-4 sm:px-6 bg-white border-b border-slate-200 shrink-0 shadow-sm z-10">
+            <button id="sidebar-toggle" class="p-2 -ml-2 mr-3 rounded-lg hover:bg-slate-100 text-slate-600 lg:hidden">
+                <i class="ph ph-list text-2xl"></i>
+            </button>
+            <h1 id="header-title" class="text-lg font-bold text-slate-800">Dashboard / Home</h1>
+        </header>
+
+        <!-- Dynamic Content loads here -->
+        <div id="main-content-area" class="flex-1 overflow-auto p-4 sm:p-6 relative">
+            <!-- Fetch API will insert views here -->
+        </div>
+    </main>
+
+    <!-- Login Screen Overlay -->
+    <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-slate-900/95 flex-col items-center justify-center p-4 backdrop-blur-md">
+        
+        <!-- Profile Selection View -->
+        <div id="login-profile-view" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 flex flex-col gap-6 text-center transform transition-all relative">
+            
+            <!-- NEW: Close Button -->
+            <button onclick="closeLoginScreen()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-lg transition-colors bg-slate-50 hover:bg-slate-100">
+                <i class="ph-bold ph-x text-xl"></i>
+            </button>
+
+            <div class="flex items-center justify-center text-blue-600 font-bold text-3xl mb-2">
+                <i class="ph-fill ph-motorcycle mr-2 text-4xl"></i> MotoCare
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">Welcome Back</h2>
+                <p class="text-sm text-slate-500 mt-1">Select your profile to sign in.</p>
+            </div>
+            
+            <!-- 2x2 Scalable Grid Layout -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                <!-- Super Admin -->
+            <button onclick="promptPin('superadmin', 'System Admin', 'SA', 'bg-slate-800')" class="w-full p-4 bg-slate-50 hover:bg-slate-200 border border-slate-200 hover:border-slate-400 rounded-xl text-left flex items-center gap-4 transition-all group sm:col-span-2 md:col-span-1">
+                <div class="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">SA</div>
+                <div>
+                    <div class="text-base font-bold text-slate-800 group-hover:text-slate-900">System Admin</div>
+                    <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Super Admin</div>
+                </div>
+            </button>
+                <!-- Shop Owner -->
+                <button onclick="promptPin('owner', 'Ivan', 'IG', 'bg-blue-600')" class="w-full p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-left flex items-center gap-4 transition-all group">
+                    <div class="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">IG</div>
+                    <div>
+                        <div class="text-base font-bold text-slate-800 group-hover:text-blue-700">Ivan</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Shop Owner</div>
+                    </div>
+                </button>
+                <!-- Chief Mechanic -->
+                <button onclick="promptPin('chief', 'Larpus', 'JB', 'bg-purple-600')" class="w-full p-4 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-xl text-left flex items-center gap-4 transition-all group">
+                    <div class="w-12 h-12 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">JB</div>
+                    <div>
+                        <div class="text-base font-bold text-slate-800 group-hover:text-purple-700">Larpus</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Chief Mechanic</div>
+                    </div>
+                </button>
+                <!-- Sub-Mechanic -->
+                <button onclick="promptPin('sub', 'Hiyo', 'F', 'bg-slate-600')" class="w-full p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-400 rounded-xl text-left flex items-center gap-4 transition-all group">
+                    <div class="w-12 h-12 rounded-full bg-slate-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">F</div>
+                    <div>
+                        <div class="text-base font-bold text-slate-800 group-hover:text-slate-700">Hiyo</div>
+                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Sub-Mechanic</div>
+                    </div>
+                </button>
+            
+            
+            
+            <!-- System Status Footer -->
+            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium">
+                <span>MotoCare OS v1.2.4</span>
+                <span class="flex items-center gap-1.5 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Database Online</span>
+            </div>
+        </div>
+
+        <!-- PIN Pad View (Hidden by default) -->
+        <div id="login-pin-view" class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col gap-6 text-center transform transition-all hidden relative">
+            <button onclick="backToProfiles()" class="absolute top-4 left-4 text-slate-400 hover:text-slate-700 p-2 rounded-lg transition-colors bg-slate-50 hover:bg-slate-100"><i class="ph-bold ph-arrow-left text-xl"></i></button>
+            
+            <div class="flex flex-col items-center gap-2 mt-4">
+                <div id="pin-avatar" class="w-16 h-16 rounded-full text-white flex items-center justify-center font-bold text-2xl shadow-inner"></div>
+                <div>
+                    <h2 id="pin-name" class="text-xl font-bold text-slate-800">Name</h2>
+                    <p class="text-sm text-slate-500 mt-0.5">Enter your 4-digit PIN</p>
+                </div>
+            </div>
+
+            <!-- PIN Display -->
+            <div class="flex justify-center gap-4 my-2">
+                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
+                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
+            </div>
+
+            <!-- Numpad -->
+            <div class="grid grid-cols-3 gap-3">
+                <button onclick="addPin('1')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">1</button>
+                <button onclick="addPin('2')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">2</button>
+                <button onclick="addPin('3')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">3</button>
+                <button onclick="addPin('4')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">4</button>
+                <button onclick="addPin('5')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">5</button>
+                <button onclick="addPin('6')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">6</button>
+                <button onclick="addPin('7')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">7</button>
+                <button onclick="addPin('8')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">8</button>
+                <button onclick="addPin('9')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">9</button>
+                <button onclick="clearPin()" class="p-4 text-xl font-bold text-slate-400 bg-transparent rounded-xl hover:text-red-500 transition-colors"><i class="ph-bold ph-x"></i></button>
+                <button onclick="addPin('0')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">0</button>
+                <button onclick="removePin()" class="p-4 text-xl font-bold text-slate-400 bg-transparent rounded-xl hover:text-slate-700 transition-colors"><i class="ph-bold ph-backspace"></i></button>
+            </div>
+
+            <button id="btn-login-submit" onclick="submitLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-500/30 flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" disabled>
+                Sign In
+            </button>
+            
+            <button onclick="alert('Admin Override Triggered. Please enter Master PIN or check email for recovery link.')" class="text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-wider mt-1 transition-colors underline underline-offset-2">Forgot PIN? / Admin Override</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

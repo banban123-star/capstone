@@ -265,7 +265,7 @@ const systemUsers = {
     owner: { name: 'Admin', role: 'Shop Owner', initials: 'IG', color: 'bg-blue-600' },
     chief: { name: 'Larpus', role: 'Chief Mechanic', initials: 'JB', color: 'bg-purple-600' },
     sub: { name: 'Hiyo', role: 'Sub-Mechanic', initials: 'F', color: 'bg-slate-600' },
-    cashier: { name: 'Sarah Lee', role: 'Cashier', initials: 'SL', color: 'bg-emerald-600' }
+    
 };
 
 let currentRole = 'owner';
@@ -1173,13 +1173,11 @@ function closeRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop
 function completeJob(event) {
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Sending to Cashier...`;
     btn.disabled = true;
     setTimeout(() => {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeRepairModal();
-        alert("Job successfully marked ready for billing and pushed to Cashier.");
     }, 800);
 }
 
@@ -1971,23 +1969,8 @@ document.addEventListener('click', function(e) {
 });
 // --- Interactive Audit Logs Logic ---
 
-const mockAuditData = [
-    {
-        id: '1',
-        date: 'Oct 24, 2026',
-        time: '08:00:12 AM',
-        dateGroup: 'today',
-        userName: 'Sarah Lee',
-        userRole: 'Cashier',
-        roleFilter: 'cashier',
-        module: 'Authentication',
-        moduleFilter: 'authentication',
-        action: 'Successful user login.',
-        severity: 'Routine',
-        severityClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        dotClass: 'bg-emerald-500',
-        hasDetails: false
-    },
+const mockAuditData = [    
+    
     {
         id: '2',
         date: 'Oct 24, 2026',
@@ -2010,28 +1993,7 @@ const mockAuditData = [
         afterLabelTheme: 'text-yellow-600',
         reason: 'Reason: Inventory Correction'
     },
-    {
-        id: '3',
-        date: 'Oct 24, 2026',
-        time: '14:32:05 PM',
-        dateGroup: 'today',
-        userName: 'Sarah Lee',
-        userRole: 'Cashier',
-        roleFilter: 'cashier',
-        module: 'Billing',
-        moduleFilter: 'billing',
-        action: "Settled final balance for Repair Transaction.",
-        severity: 'Modification',
-        severityClass: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-        dotClass: 'bg-yellow-500',
-        hasDetails: true,
-        targetId: 'TXN-103',
-        beforeValue: 'Status: Pending Final Settlement',
-        afterValue: 'Status: Fully Paid (₱2,000.00 Rcvd)',
-        afterTheme: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-        afterLabelTheme: 'text-emerald-600',
-        reason: ''
-    },
+
     {
         id: '4',
         date: 'Oct 23, 2026',
@@ -2162,13 +2124,7 @@ const mockUserData = [
         status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
         lastLoginDate: 'Oct 24, 2026', lastLoginTime: '07:50 AM', avatarClass: 'bg-slate-100 text-slate-600 border border-slate-200'
     },
-    {
-        id: 'u4', initials: 'SL', name: 'Sarah Lee', username: '@sarah.cashier',
-        roleName: 'Cashier', roleValue: 'cashier', roleIcon: 'ph-shopping-cart', roleClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200 opacity-60',
-        status: 'Suspended', statusValue: 'suspended', statusClass: 'bg-slate-100 text-slate-500 border border-slate-200', statusDot: 'bg-slate-400',
-        lastLoginDate: 'Sep 30, 2026', lastLoginTime: '17:00 PM', avatarClass: 'bg-slate-200 text-slate-400',
-        rowClass: 'opacity-75 bg-slate-50/50'
-    }
+    
 ];
 
 function renderUsers() {

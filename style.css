@@ -58,7 +58,7 @@ body {
 /* =========================================================
    MOBILE APP MODE (Chief Mechanic & Sub-Mechanic only)
    Activated by adding `mobile-app` to <body> (see applyMobileMode in script.js).
-   Super Admin / Owner / Cashier never get this class, so they stay desktop.
+   Super Admin / Owner / never get this class, so they stay desktop.
    ========================================================= */
 
 /* Mobile-only shell pieces are hidden unless mobile-app is active */

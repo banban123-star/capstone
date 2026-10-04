@@ -34,11 +34,11 @@
             <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-2 mb-2 px-3">Primary Navigation</div>
 
             <!-- Added data-roles attributes to control visibility -->
-            <button class="nav-link active flex items-center w-full px-3 py-2.5 rounded-lg transition-colors bg-blue-600 text-white shadow-md shadow-blue-900/20" data-target="dashboard" data-roles="superadmin,owner,chief,sub,cashier">
-                <i class="ph-fill ph-squares-four text-lg w-6"></i> Dashboard / Home >
+            <button class="nav-link active flex items-center w-full px-3 py-2.5 rounded-lg transition-colors bg-blue-600 text-white shadow-md shadow-blue-900/20" data-target="dashboard" data-roles="superadmin,owner,chief,sub">
+                <i class="ph-fill ph-squares-four text-lg w-6"></i> Dashboard
             
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="customers" data-roles="superadmin,owner,chief,cashier">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="customers" data-roles="superadmin,owner,chief">
                 <i class="ph ph-users text-lg w-6"></i> Customers & Motorcycles
             </button>
             <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="diagnostics" data-roles="superadmin,owner,chief,sub">
@@ -47,10 +47,10 @@
             <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="repairs" data-roles="superadmin,owner,chief,sub">
                 <i class="ph ph-wrench text-lg w-6"></i> Active Repairs
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="inventory" data-roles="superadmin,owner,chief,sub,cashier">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="inventory" data-roles="superadmin,owner,chief,sub">
                 <i class="ph ph-package text-lg w-6"></i> Inventory
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="transactions" data-roles="superadmin,owner,cashier">
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="transactions" data-roles="superadmin,owner">
                 <i class="ph ph-receipt text-lg w-6"></i> Transactions & Billing
             </button>
             <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="history" data-roles="superadmin,owner,chief">
@@ -107,7 +107,7 @@
                     <option value="owner">Shop Owner (User)</option>
                     <option value="chief">Chief Mechanic (Larpus)</option>
                     <option value="sub">Sub-Mechanic (Hiyo)</option>
-                    <option value="cashier">Cashier (Sarah)</option>
+                
                 </select>
             </div>
         </div>
@@ -191,7 +191,7 @@
                     <option value="owner">Shop Owner (User)</option>
                     <option value="chief">Chief Mechanic (Larpus)</option>
                     <option value="sub">Sub-Mechanic (Hiyo)</option>
-                    <option value="cashier">Cashier (Sarah)</option>
+                
                 </select>
             </div>
 
@@ -258,15 +258,6 @@
                         <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Sub-Mechanic</div>
                     </div>
                 </button>
-                <!-- Cashier -->
-                <button onclick="promptPin('cashier', 'Sarah Lee', 'SL', 'bg-emerald-600')" class="w-full p-4 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-left flex items-center gap-4 transition-all group">
-                    <div class="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">SL</div>
-                    <div>
-                        <div class="text-base font-bold text-slate-800 group-hover:text-emerald-700">Sarah Lee</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Cashier</div>
-                    </div>
-                </button>
-            </div>
             
             
             
