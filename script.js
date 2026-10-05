@@ -72,8 +72,14 @@ document.addEventListener('input', function(e) {
             dropdown.classList.remove('hidden');
         }
     }
+    
+    // Update plan totals when typing in Final Findings or Labor Cost
+    if (e.target.id === 'final-findings' || e.target.id === 'labor-cost-input') {
+        if (typeof updatePlanTotals === 'function') {
+            updatePlanTotals();
+        }
+    }
 });
-
 
 document.addEventListener('click', function(e) {
     // 3. Select Item from Autocomplete
@@ -82,9 +88,12 @@ document.addEventListener('click', function(e) {
         const partId = autocompleteItem.getAttribute('data-id');
         const part = mockInventory.find(p => p.id === partId);
         
-        if (addPartToPlan(part)) {
+        if (part) {
             document.getElementById('part-search-input').value = '';
             document.getElementById('part-autocomplete-dropdown').classList.add('hidden');
+            if (typeof openManualPartForm === 'function') {
+                openManualPartForm(part);
+            }
         }
     }
 
@@ -93,7 +102,10 @@ document.addEventListener('click', function(e) {
     if (btnMinus) {
         const valSpan = btnMinus.nextElementSibling;
         let qty = parseInt(valSpan.textContent);
-        if (qty > 1) valSpan.textContent = qty - 1;
+        if (qty > 1) {
+            valSpan.textContent = qty - 1;
+            if (typeof updatePlanTotals === 'function') updatePlanTotals();
+        }
     }
 
     const btnPlus = e.target.closest('.btn-qty-plus');
@@ -103,6 +115,7 @@ document.addEventListener('click', function(e) {
         let max = parseInt(btnPlus.getAttribute('data-max'));
         if (qty < max) {
             valSpan.textContent = qty + 1;
+            if (typeof updatePlanTotals === 'function') updatePlanTotals();
         } else {
             alert(`Only ${max} units available in stock.`);
         }
@@ -111,6 +124,7 @@ document.addEventListener('click', function(e) {
     const btnRemove = e.target.closest('.btn-remove-part');
     if (btnRemove) {
         btnRemove.closest('div[id^="selected-part-"]').remove();
+        if (typeof updatePlanTotals === 'function') updatePlanTotals();
     }
     
     // 5. Hide Autocomplete Dropdown when clicking outside
@@ -119,25 +133,68 @@ document.addEventListener('click', function(e) {
         if (dropdown) dropdown.classList.add('hidden');
     }
 });
-window.switchDiagStep = function(step) {
+let currentDiagStep = 1;
+
+window.switchDiagStep = function(step, fromStepper = false) {
+    if (fromStepper && step > currentDiagStep) return;
+
     const step1 = document.getElementById('step-1-diagnose');
     const step2 = document.getElementById('step-2-plan');
-    if (!step1 || !step2) return;
+    const step3 = document.getElementById('step-3-register');
+    if (!step1 || !step2 || !step3) return;
 
-    if (step === 1) {
-        step1.classList.remove('hidden');
-        step1.classList.add('flex');
-        step2.classList.add('hidden');
-        step2.classList.remove('flex');
-    } else if (step === 2) {
-        step1.classList.add('hidden');
-        step1.classList.remove('flex');
-        step2.classList.remove('hidden');
-        step2.classList.add('flex');
+    const previousStep = currentDiagStep;
+    currentDiagStep = step;
+
+    if (step === 2 && previousStep === 1) {
+        if (!planReviewed) {
+            syncPlanFromDiagnosis(true);
+        }
     }
-    // Scroll back to the top of the view smoothly
+
+    if (step === 3) {
+        if (typeof renderStep3Summary === 'function') renderStep3Summary();
+    }
+
+    [step1, step2, step3].forEach((el, idx) => {
+        if (idx + 1 === step) {
+            el.classList.remove('hidden');
+            el.classList.add('flex');
+            el.classList.remove('animate-[fadeIn_0.2s_ease-out]');
+            void el.offsetWidth; // trigger reflow
+            el.classList.add('animate-[fadeIn_0.2s_ease-out]');
+        } else {
+            el.classList.add('hidden');
+            el.classList.remove('flex');
+        }
+    });
+
     document.getElementById('main-content-area').scrollTo({ top: 0, behavior: 'smooth' });
+    updateDiagStepper();
 };
+function updateSectionNumbering() {
+    let count = 1;
+    const setupTitle = document.getElementById('title-inspection-setup');
+    if (setupTitle) setupTitle.textContent = `${count++}. Inspection Setup`;
+
+    const ecuCard = document.getElementById('ecu-scan-card');
+    const ecuTitle = document.getElementById('title-ecu-scan');
+    if (ecuCard && !ecuCard.classList.contains('hidden') && ecuTitle) {
+        ecuTitle.textContent = `${count++}. ECU / OBD Diagnostic`;
+    }
+
+    const physCard = document.getElementById('physical-inspection-card');
+    const physTitle = document.getElementById('title-physical-inspection');
+    if (physCard && !physCard.classList.contains('hidden') && physTitle) {
+        physTitle.textContent = `${count++}. Physical Inspection Log`;
+    }
+
+    const intakeTitle = document.getElementById('title-vehicle-intake');
+    if (intakeTitle) {
+        intakeTitle.textContent = `${count++}. Vehicle Intake`;
+    }
+}
+
 // --- Diagnostics View Toggle Handler ---
 document.addEventListener('change', function(e) {
     // Check if the changed element is one of our master toggles
@@ -151,6 +208,8 @@ document.addEventListener('change', function(e) {
         // Toggle the Tailwind 'hidden' class based on checkbox state
         if (physicalCard) physicalCard.classList.toggle('hidden', !isPhysicalOn);
         if (ecuCard) ecuCard.classList.toggle('hidden', !isEcuOn);
+        
+        updateSectionNumbering();
     }
 });
 
@@ -181,8 +240,10 @@ async function loadView(viewName) {
             const isEcuOn = document.getElementById('toggle-ecu')?.checked;
             if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
             if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
+            updateSectionNumbering();
             renderInspection();
             planReviewed = false;
+            currentDiagStep = 1;
             updatePlanTotals();
         }
 
@@ -405,7 +466,6 @@ document.addEventListener('click', function(e) {
             runScanBtn.classList.replace('bg-blue-400', 'bg-blue-600');
             dtcResultsContainer.classList.remove('hidden');
             dtcResultsContainer.classList.add('animate-[fadeIn_0.5s_ease-out]');
-            setTimeout(() => { if (typeof offerAutoAssign === 'function') offerAutoAssign(); }, 700);   // scan finished -> review auto-assigned parts
         }, 1500);
     }
 
@@ -481,36 +541,6 @@ function toggleModal(modalId, backdropId, contentId, show, effect = 'scale') {
     }
 }
 
-// --- Active Repairs / Inventory Modals ---
-
-function openPushRepairModal() { 
-    const mainSelect = document.getElementById('motorcycle-select');
-    const modalSelect = document.getElementById('modal-motorcycle-select');
-    if (mainSelect && modalSelect) modalSelect.value = mainSelect.value;
-    
-    // Reset toggle switch and tabs on open
-    const toggle = document.getElementById('toggle-new-reg');
-    if(toggle) toggle.checked = false;
-    
-    const tabsContainer = document.getElementById('registration-tabs-container');
-    if(tabsContainer) tabsContainer.classList.add('hidden');
-
-    switchPushRepairTab('existing');
-    renderPushPlanSummary();
-    toggleModal('modal-push-repair', 'push-repair-backdrop', 'push-repair-content', true); 
-    setTimeout(updateDiagStepper, 0);
-}
-
-function toggleRegistrationMode(checkbox) {
-    const tabsContainer = document.getElementById('registration-tabs-container');
-    if (checkbox.checked) {
-        tabsContainer.classList.remove('hidden');
-        switchPushRepairTab('customer'); // Default to customer when turned on
-    } else {
-        tabsContainer.classList.add('hidden');
-        switchPushRepairTab('existing'); // Revert back to existing dropdown
-    }
-}
 // =====================================================================
 // Diagnosis -> Parts plan -> Registration flow
 // Auto-assigns parts from the ECU/OBD scan + physical inspection, lets the
@@ -531,75 +561,308 @@ function sourceBadgesHTML(sources) {
     }).join('');
 }
 
-let planReviewed = false;      // true once the mechanic finalized the parts list
-let planCommitting = false;
-let reviewItems = [];          // working list shown inside the review modal
+let planReviewed = false;
+let repairPlanParts = [];      // true once the mechanic finalized the parts list
 
-function escHTML(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function escHTML(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 // Adds a part chip to the Repair Plan (shared by the search dropdown, the inspection suggestions and the review modal)
+
+// --- Manual Part Form Logic ---
+window.openManualPartForm = function(part) {
+    const form = document.getElementById('manual-part-add-form');
+    if (!form) return;
+    
+    document.getElementById('manual-part-id').value = part.id;
+    document.getElementById('manual-part-name').textContent = part.name;
+    document.getElementById('manual-part-qty').value = 1;
+    document.getElementById('manual-part-qty').max = part.stock;
+    
+    const select = document.getElementById('manual-part-target');
+    select.innerHTML = '';
+    
+    // Populate options from flagged items
+    if (inspectionState.flaggedItems && inspectionState.flaggedItems.length > 0) {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = "Diagnosis Items";
+        inspectionState.flaggedItems.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = `${item.name}|${item.category}`;
+            opt.textContent = `${item.name} (${item.category})`;
+            optgroup.appendChild(opt);
+        });
+        select.appendChild(optgroup);
+    }
+    
+    const optgroup2 = document.createElement('optgroup');
+    optgroup2.label = "Other";
+    optgroup2.innerHTML = `
+        <option value="General / Shop supplies|Other / General">General / Shop supplies</option>
+        <option value="other|Other / General">Other repair...</option>
+    `;
+    select.appendChild(optgroup2);
+    
+    toggleManualPartOther();
+    form.classList.remove('hidden');
+};
+
+window.cancelManualPart = function() {
+    const form = document.getElementById('manual-part-add-form');
+    if (form) form.classList.add('hidden');
+};
+
+window.toggleManualPartOther = function() {
+    const select = document.getElementById('manual-part-target');
+    const otherWrapper = document.getElementById('manual-part-other-wrapper');
+    if (select.value.startsWith('other|')) {
+        otherWrapper.classList.remove('hidden');
+    } else {
+        otherWrapper.classList.add('hidden');
+    }
+};
+
+window.confirmManualPart = function() {
+    const partId = document.getElementById('manual-part-id').value;
+    const part = mockInventory.find(p => p.id === partId);
+    if (!part) return;
+    
+    let qty = parseInt(document.getElementById('manual-part-qty').value);
+    if (isNaN(qty) || qty < 1) qty = 1;
+    if (qty > part.stock && part.stock > 0) {
+        alert(`Only ${part.stock} units available in stock.`);
+        return;
+    }
+    
+    const selectValue = document.getElementById('manual-part-target').value;
+    let target = '';
+    let category = '';
+    
+    if (selectValue.startsWith('other|')) {
+        target = document.getElementById('manual-part-other-input').value.trim() || 'Other Repair';
+        category = 'Other / General';
+    } else {
+        const parts = selectValue.split('|');
+        target = parts[0];
+        category = parts[1] || 'Other / General';
+    }
+    
+    addPartToPlan(part, { qty: qty, target: target, category: category });
+    cancelManualPart();
+};
+
+window.changePartTarget = function(selectElement) {
+    const row = selectElement.closest('[id^="selected-part-"]');
+    if (!row) return;
+    const partId = row.dataset.id;
+    const oldTarget = row.dataset.target;
+    const newVal = selectElement.value;
+    let newTarget, newCategory;
+    
+    if (newVal === 'other') {
+        const custom = prompt("Enter description for other repair:");
+        if (custom && custom.trim()) {
+            newTarget = custom.trim();
+            newCategory = 'Other / General';
+        } else {
+            // Revert selection
+            selectElement.value = oldTarget;
+            return;
+        }
+    } else {
+        const parts = newVal.split('|');
+        newTarget = parts[0];
+        newCategory = parts[1] || 'Other / General';
+    }
+    
+    // Find the exact item. Note: if there are multiple parts with same ID but different targets, we need to match by ID AND target
+    const idx = repairPlanParts.findIndex(p => p.id === partId && p.target === oldTarget);
+    if (idx !== -1) {
+        const item = repairPlanParts[idx];
+        item.target = newTarget;
+        item.category = newCategory;
+        
+        // Merge if identical part ID and new target already exists
+        const existingIdx = repairPlanParts.findIndex((p, i) => i !== idx && p.id === partId && p.target === newTarget);
+        if (existingIdx !== -1) {
+            repairPlanParts[existingIdx].qty += item.qty;
+            repairPlanParts.splice(idx, 1);
+        }
+        
+        renderRepairPlan();
+        updatePlanTotals();
+    }
+};
+
+window.getDropdownOptionsHTML = function(currentValue) {
+    let options = [];
+    if (inspectionState.flaggedItems) {
+        options = inspectionState.flaggedItems.map(item => `<option value="${escHTML(item.name)}|${escHTML(item.category)}" ${currentValue === item.name ? 'selected' : ''}>${escHTML(item.name)}</option>`);
+    }
+    
+    const genValue = "General / Shop supplies|Other / General";
+    const genSelected = currentValue === "General / Shop supplies" ? 'selected' : '';
+    const otherSelected = (!inspectionState.flaggedItems || !inspectionState.flaggedItems.some(i => i.name === currentValue)) && currentValue !== "General / Shop supplies" ? 'selected' : '';
+    
+    return `
+        <optgroup label="Diagnosis Items">
+            ${options.join('')}
+        </optgroup>
+        <optgroup label="Other">
+            <option value="General / Shop supplies|Other / General" ${genSelected}>General / Shop supplies</option>
+            ${otherSelected ? `<option value="${escHTML(currentValue)}|Other / General" selected>${escHTML(currentValue)}</option>` : ''}
+            <option value="other">Other repair...</option>
+        </optgroup>
+    `;
+};
+
 function addPartToPlan(part, opts = {}) {
     if (!part) return false;
-    if (part.stock === 0) {
-        alert('This item is currently out of stock.');
-        return false;
-    }
-
-    const container = document.getElementById('selected-parts-container');
-    if (!container) return false;
-
+    
     const qty = Math.max(1, Math.min(opts.qty || 1, part.stock));
-    const sources = opts.sources && opts.sources.length ? opts.sources : ['manual'];
-    const reasons = opts.reasons || [];
-
-    if (!document.getElementById(`selected-part-${part.id}`)) {
-        const html = `
-            <div id="selected-part-${part.id}" data-id="${part.id}" data-price="${part.price}" data-sources="${sources.join(',')}" data-reasons="${escHTML(reasons.join(' | '))}"
-                 class="flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm animate-[fadeIn_0.2s_ease-out]">
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
-                        <div class="text-sm font-bold text-slate-800 truncate">${part.name}</div>
-                        ${sourceBadgesHTML(sources)}
-                    </div>
-                    <div class="text-xs text-slate-500">₱${part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700">${fmtPeso(part.price * qty)}</span></div>
-                    ${reasons.length ? `<div class="text-[10px] text-slate-400 mt-0.5 truncate" title="${escHTML(reasons.join(' | '))}"><i class="ph ph-info"></i> ${escHTML(reasons.join(' · '))}</div>` : ''}
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
-                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-minus transition-colors"><i class="ph-bold ph-minus"></i></button>
-                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${qty}</span>
-                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 btn-qty-plus transition-colors" data-max="${part.stock}"><i class="ph-bold ph-plus"></i></button>
-                    </div>
-                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 btn-remove-part transition-colors" title="Remove part"><i class="ph-bold ph-x"></i></button>
-                </div>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', html);
+    const target = opts.target || 'Other / General';
+    const category = opts.category || 'Manual Addition';
+    const isAuto = opts.sources && (opts.sources.includes('ecu') || opts.sources.includes('physical')) ? true : false;
+    
+    // Find existing part with EXACT SAME TARGET to increase quantity
+    const existing = repairPlanParts.find(p => p.id === part.id && p.target === target);
+    if (existing) {
+        existing.qty = Math.min(existing.qty + qty, part.stock > 0 ? part.stock : existing.qty + qty);
+    } else {
+        repairPlanParts.push({
+            id: part.id,
+            part: part,
+            qty: qty,
+            target: target,
+            category: category,
+            isAuto: opts.target === undefined ? false : isAuto, // if opts.target is passed manually, isAuto is false
+            stock: part.stock
+        });
     }
+    
+    renderRepairPlan();
     updatePlanTotals();
     return true;
 }
 
 // Recalculates line totals, parts total, estimated total, empty state, badge and stepper
-function updatePlanTotals() {
+
+function renderRepairPlan() {
     const container = document.getElementById('selected-parts-container');
     if (!container) return;
-    let total = 0, count = 0;
-    container.querySelectorAll('[id^="selected-part-"]').forEach(chip => {
-        const price = parseFloat(chip.dataset.price) || 0;
-        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
-        total += price * qty;
-        count++;
-        const lt = chip.querySelector('.line-total');
-        if (lt) lt.textContent = fmtPeso(price * qty);
+    
+    container.innerHTML = '';
+    
+    if (repairPlanParts.length === 0) {
+        document.getElementById('plan-empty')?.classList.remove('hidden');
+        return;
+    }
+    
+    document.getElementById('plan-empty')?.classList.add('hidden');
+    
+    // Group by target
+    const groups = {};
+    repairPlanParts.forEach(p => {
+        if (!groups[p.target]) groups[p.target] = { category: p.category, items: [] };
+        groups[p.target].items.push(p);
     });
+    
+    for (const [target, group] of Object.entries(groups)) {
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'col-span-full mt-4 first:mt-0 mb-2 border-b border-slate-200 pb-1';
+        groupHeader.innerHTML = `<h4 class="text-xs font-bold text-slate-700 uppercase">${escHTML(target)} <span class="text-[10px] font-normal text-slate-400 ml-1">(${escHTML(group.category)})</span></h4>`;
+        container.appendChild(groupHeader);
+        
+        group.items.forEach(p => {
+            const outOfStock = p.stock === 0;
+            const row = document.createElement('div');
+            // Must have this ID for Step 3 to find it, or Step 3 needs updating. Wait, Step 3 uses [id^="selected-part-"]
+            row.id = `selected-part-${p.id}`;
+            row.dataset.id = p.id;
+            row.dataset.price = p.part.price;
+            row.dataset.target = p.target;
+            row.dataset.category = p.category;
+            row.dataset.isAuto = p.isAuto;
+            row.className = 'flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm mb-2 col-span-full';
+            
+            row.innerHTML = `
+                <div class="flex-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
+                        <div class="text-sm font-bold ${outOfStock ? 'text-red-500' : 'text-slate-800'} truncate">${escHTML(p.part.name)}</div>
+                        ${p.isAuto ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Auto-assigned</span>` : `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Added by mechanic</span>`}
+                        ${outOfStock ? `<span class="inline-flex items-center gap-1 bg-red-50 text-red-600 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Out of stock</span>` : ''}
+                    </div>
+                    <div class="text-xs text-slate-500">
+                        SKU: ${escHTML(p.part.sku)} · ₱${p.part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700">₱ ${(p.part.price * p.qty).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                        For: 
+                        <select class="bg-transparent border border-slate-200 rounded px-1 py-0.5 outline-none hover:border-blue-300 focus:border-blue-500" onchange="changePartTarget(this)">
+                            ${getDropdownOptionsHTML(target)}
+                        </select>
+                        ${outOfStock ? ' <span class="text-red-500 ml-1 font-semibold">• Order needed</span>' : ''}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
+                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 transition-colors" onclick="updatePlanQty(-1, this)"><i class="ph-bold ph-minus"></i></button>
+                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${p.qty}</span>
+                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 transition-colors" onclick="updatePlanQty(1, this)"><i class="ph-bold ph-plus"></i></button>
+                    </div>
+                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 transition-colors" title="Remove part" onclick="removePlanPart(this)"><i class="ph-bold ph-x"></i></button>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+}
+
+window.updatePlanQty = function(delta, btnElement) {
+    const row = btnElement.closest('[id^="selected-part-"]');
+    if (!row) return;
+    const id = row.dataset.id;
+    const target = row.dataset.target;
+    
+    const item = repairPlanParts.find(p => p.id === id && p.target === target);
+    if (item) {
+        if (delta > 0 && item.qty >= item.stock && item.stock > 0) {
+            alert(`Only ${item.stock} units available in stock.`);
+            return;
+        }
+        if (item.qty + delta > 0) {
+            item.qty += delta;
+            renderRepairPlan();
+            updatePlanTotals();
+        }
+    }
+}
+
+window.removePlanPart = function(btnElement) {
+    const row = btnElement.closest('[id^="selected-part-"]');
+    if (!row) return;
+    const id = row.dataset.id;
+    const target = row.dataset.target;
+    
+    const idx = repairPlanParts.findIndex(p => p.id === id && p.target === target);
+    if (idx !== -1) {
+        repairPlanParts.splice(idx, 1);
+        renderRepairPlan();
+        updatePlanTotals();
+    }
+}
+
+function updatePlanTotals() {
+    let total = 0, count = 0;
+    repairPlanParts.forEach(p => {
+        total += p.part.price * p.qty;
+        count++;
+    });
+    
     const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
     set('plan-parts-count', count);
     set('plan-parts-total', fmtPeso(total));
     set('plan-grand-total', fmtPeso(total + labor));
-    document.getElementById('plan-empty')?.classList.toggle('hidden', count > 0);
-
+    
     const badge = document.getElementById('plan-state-badge');
     if (badge) {
         const done = planReviewed && count > 0;
@@ -607,6 +870,12 @@ function updatePlanTotals() {
         badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full border ' + (done
             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
             : count ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200');
+    }
+
+    const btnNext2 = document.getElementById('btn-next-step2');
+    if (btnNext2) {
+        const findings = document.getElementById('final-findings')?.value.trim() || '';
+        btnNext2.disabled = findings.length === 0;
     }
     updateDiagStepper();
 }
@@ -624,16 +893,30 @@ function hasDiagnosisData() {
 function updateDiagStepper() {
     const steps = document.querySelectorAll('#diag-stepper .diag-step');
     if (!steps.length) return;
-    const pushOpen = !document.getElementById('modal-push-repair')?.classList.contains('hidden');
-    const done = [hasDiagnosisData(), planReviewed && document.querySelectorAll('#selected-parts-container [id^="selected-part-"]').length > 0, false];
-    let activeSet = false;
+    
     steps.forEach((el, i) => {
-        const isDone = done[i];
-        const isActive = !isDone && !activeSet || (i === 2 && pushOpen);
-        if (isActive) activeSet = true;
+        const stepNum = i + 1;
+        const isDone = stepNum < currentDiagStep;
+        const isActive = stepNum === currentDiagStep;
+        
         el.classList.toggle('is-done', isDone);
-        el.classList.toggle('is-active', isActive && !isDone);
-        el.querySelector('.diag-step-dot').innerHTML = isDone ? '<i class="ph-bold ph-check"></i>' : (i + 1);
+        el.classList.toggle('is-active', isActive);
+        
+        const dot = el.querySelector('.diag-step-dot');
+        if (dot) dot.innerHTML = isDone ? '<i class="ph-bold ph-check"></i>' : stepNum;
+        
+        if (isDone) {
+            el.classList.add('cursor-pointer', 'hover:text-blue-600');
+            el.classList.remove('opacity-50', 'cursor-not-allowed');
+            el.setAttribute('onclick', `switchDiagStep(${stepNum}, true)`);
+        } else if (isActive) {
+            el.classList.remove('cursor-pointer', 'hover:text-blue-600', 'opacity-50', 'cursor-not-allowed');
+            el.removeAttribute('onclick');
+        } else {
+            el.classList.add('opacity-50', 'cursor-not-allowed');
+            el.classList.remove('cursor-pointer', 'hover:text-blue-600');
+            el.removeAttribute('onclick');
+        }
     });
 }
 
@@ -645,9 +928,6 @@ function updateDiagStepper() {
 //   level 'fix'   -> recommended (pre-ticked when in stock)
 //   level 'watch' -> optional   (unticked)
 // =====================================================================
-
-let reviewNotes = [];           // diagnosis items that need labor/service only (no stock part)
-let autoAssignPrompted = false; // pop the review screen once when the inspection is completed
 
 // ECU / OBD trouble code -> parts
 function partsForDtc(code) {
@@ -758,9 +1038,8 @@ function partsForServiceAndComplaints(odo, complaints) {
 }
 
 // Diagnosis -> suggested parts (merged, de-duplicated)
-function buildDiagnosisSuggestions() {
+function getSuggestedParts(diagnosis = inspectionState) {
     const list = [];
-    reviewNotes = [];
 
     const add = (id, source, reason, level, qty) => {
         const part = mockInventory.find(p => p.id === id);
@@ -788,7 +1067,6 @@ function buildDiagnosisSuggestions() {
             const desc = cells[1]?.textContent.trim() || '';
             const found = partsForDtc(code);
             if (found.length) found.forEach(p => add(p.id, 'ecu', `${code}: ${desc}`, 'fix', p.qty));
-            else reviewNotes.push(`${code}${desc ? ' (' + desc + ')' : ''}: no stock part mapped. Needs mechanic's diagnosis.`);
         });
     }
 
@@ -804,8 +1082,6 @@ function buildDiagnosisSuggestions() {
 
             if (found.length) {
                 found.forEach(p => add(p.id, 'physical', `${item.label} (${statusLabel})${detail ? ': ' + detail : ''}${p.why ? ' · ' + p.why : ''}`, st.status, p.qty));
-            } else if (st.status === 'fix') {
-                reviewNotes.push(`${item.label}${detail ? ' (' + detail + ')' : ''}: labor / service only, no stock part needed.`);
             }
         });
 
@@ -816,375 +1092,248 @@ function buildDiagnosisSuggestions() {
     return list;
 }
 
-// Pops the review screen when the diagnosis produced suggestions
-function offerAutoAssign() {
-    const open = id => !document.getElementById(id)?.classList.contains('hidden');
-    if (!document.getElementById('modal-auto-assign') || open('modal-auto-assign') || open('modal-push-repair')) return;
-    if (buildDiagnosisSuggestions().length > 0) openAutoAssignModal();
-}
-
-// Called after inspection edits: once every item is checked, pop the screen
-function maybeAutoPopAssign() {
-    if (typeof inspectionItems === 'undefined') return;
-    const done = inspectionItems.filter(i => getInspItem(i.id).status).length;
-    if (done < inspectionItems.length) { autoAssignPrompted = false; return; }
-    if (autoAssignPrompted) return;
-    autoAssignPrompted = true;
-    setTimeout(offerAutoAssign, 400);
-}
-
-function openAutoAssignModal() {
-    reviewItems = buildDiagnosisSuggestions();
-
-    // Merge anything already in the plan (keep mechanic's qty / manual items)
-    document.querySelectorAll('#selected-parts-container [id^="selected-part-"]').forEach(chip => {
-        const id = chip.dataset.id;
-        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
-        const existing = reviewItems.find(r => r.id === id);
-        if (existing) {
-            existing.qty = qty; existing.checked = true;
+function syncPlanFromDiagnosis(firstTime = false) {
+    if (firstTime && repairPlanParts.length > 0) return; // Only auto-assign once if first time
+    
+    const complaintsContainer = document.getElementById('step2-complaints-container');
+    if (complaintsContainer) {
+        if (inspectionState.intake.complaints && inspectionState.intake.complaints.length > 0) {
+            complaintsContainer.innerHTML = inspectionState.intake.complaints.map(c => 
+                `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200"><i class="ph-fill ph-warning-circle text-amber-500"></i> ${escHTML(c)}</span>`
+            ).join('');
+            complaintsContainer.parentElement.classList.remove('hidden');
         } else {
-            reviewItems.push({
-                id, qty, checked: true, level: 'manual',
-                sources: (chip.dataset.sources || 'manual').split(','),
-                reasons: chip.dataset.reasons ? chip.dataset.reasons.split(' | ') : []
-            });
+            complaintsContainer.parentElement.classList.add('hidden');
+        }
+    }
+
+    const suggestions = getSuggestedParts();
+    
+    suggestions.forEach(r => {
+        if (r.level === 'fix' || r.level === 'ecu' || r.level === 'watch') {
+            const part = mockInventory.find(p => p.id === r.id);
+            if (part && r.checked) {
+                // Find target
+                let target = 'Other / General';
+                let category = 'Other / General';
+                let isAuto = true;
+                
+                // Match with flagged items
+                if (inspectionState.flaggedItems) {
+                    const flaggedMatch = inspectionState.flaggedItems.find(f => f.suggestedPart && f.suggestedPart.id === r.id);
+                    if (flaggedMatch) {
+                        target = flaggedMatch.name;
+                        category = flaggedMatch.category;
+                    }
+                }
+                
+                if (target === 'Other / General' && r.level === 'ecu') {
+                    target = 'ECU Code';
+                    category = 'Diagnostics';
+                }
+                
+                const existing = repairPlanParts.find(p => p.id === r.id);
+                if (!existing) {
+                    repairPlanParts.push({
+                        id: part.id,
+                        part: part,
+                        qty: r.qty,
+                        target: target,
+                        category: category,
+                        isAuto: true,
+                        stock: part.stock
+                    });
+                } else if (existing.isAuto) {
+                    existing.qty = Math.max(existing.qty, r.qty);
+                }
+            }
         }
     });
-
-    const modalSearch = document.getElementById('modal-manual-search');
-    if (modalSearch) modalSearch.value = '';
-    renderReviewList();
-    toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', true);
+    
+    planReviewed = true;
+    renderRepairPlan();
+    updatePlanTotals();
 }
 
-function renderReviewList() {
-    const wrap = document.getElementById('ra-list');
-    if (!wrap) return;
+function holdRepairPlan() {
+    alert("Repair plan saved as draft. Returning to dashboard...");
+    document.querySelector('.nav-link[data-target="dashboard"]')?.click();
+}
 
-    const groups = [
-        { key: 'rec',    title: 'Recommended replacements',  note: 'Based on ECU codes and items marked Fix', icon: 'ph-seal-check', tone: 'text-red-600',     filter: r => r.level === 'fix' || r.level === 'ecu' },
-        { key: 'watch',  title: 'Optional: flagged Watch',   note: 'Worn but not critical. Tick to include',  icon: 'ph-warning',    tone: 'text-amber-600',   filter: r => r.level === 'watch' },
-        { key: 'manual', title: 'Added by mechanic',         note: 'Manually added or kept from your plan',   icon: 'ph-user',       tone: 'text-emerald-600', filter: r => r.level === 'manual' }
-    ];
+function renderStep3Summary() {
+    const summaryBox = document.getElementById('step3-plan-summary');
+    if (!summaryBox) return;
 
-    const rowHTML = r => {
-        const part = mockInventory.find(p => p.id === r.id);
-        if (!part) return '';
-        const out = part.stock === 0;
-        const low = !out && part.stock <= 3;
-        const stockTxt = out ? '<span class="text-red-600 font-bold">Out of stock · order needed</span>'
-            : `<span class="${low ? 'text-amber-600' : 'text-emerald-600'} font-semibold">In stock: ${part.stock}${low ? ' (low)' : ''}</span>`;
-        return `
-        <div class="flex items-start gap-3 p-3 bg-white rounded-xl border ${r.checked ? 'border-purple-200 ring-1 ring-purple-100' : 'border-slate-200'} shadow-sm ${out ? 'opacity-70' : ''}">
-            <input type="checkbox" data-ra="toggle" data-id="${r.id}" ${r.checked ? 'checked' : ''} ${out ? 'disabled' : ''} class="mt-1 w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer">
-            <div class="flex-1 min-w-0">
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span class="text-sm font-bold text-slate-800">${part.name}</span>
-                    ${sourceBadgesHTML(r.sources)}
-                </div>
-                ${r.reasons.length ? `<div class="text-[11px] text-slate-500 mt-0.5">${r.reasons.map(escHTML).join('<br>')}</div>` : ''}
-                <div class="text-[11px] text-slate-500 mt-1">${fmtPeso(part.price)} each · ${stockTxt}</div>
-            </div>
-            <div class="flex flex-col items-end gap-1.5 shrink-0">
-                <div class="flex items-center bg-slate-50 rounded-md border border-slate-200 shadow-sm ${r.checked && !out ? '' : 'opacity-40 pointer-events-none'}">
-                    <button data-ra="minus" data-id="${r.id}" class="px-2 py-1 text-slate-400 hover:text-purple-600 transition-colors"><i class="ph-bold ph-minus"></i></button>
-                    <span class="w-6 text-center text-xs font-bold text-slate-700">${r.qty}</span>
-                    <button data-ra="plus" data-id="${r.id}" class="px-2 py-1 text-slate-400 hover:text-purple-600 transition-colors"><i class="ph-bold ph-plus"></i></button>
-                </div>
-                <div class="text-xs font-extrabold ${r.checked ? 'text-slate-800' : 'text-slate-300'}">${fmtPeso(part.price * r.qty)}</div>
-                ${r.level === 'manual' ? `<button data-ra="remove" data-id="${r.id}" class="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center gap-1"><i class="ph-bold ph-trash"></i> Remove</button>` : ''}
-            </div>
-        </div>`;
-    };
-
-    let html = groups.map(g => {
-        const rows = reviewItems.filter(g.filter);
-        if (!rows.length) return '';
-        return `<div class="flex flex-col gap-2">
-            <div class="flex items-baseline justify-between gap-2 px-1">
-                <span class="text-[11px] font-bold uppercase tracking-wider ${g.tone} flex items-center gap-1.5"><i class="ph-fill ${g.icon} text-sm"></i> ${g.title} (${rows.length})</span>
-                <span class="text-[10px] text-slate-400 hidden sm:inline">${g.note}</span>
-            </div>
-            ${rows.map(rowHTML).join('')}
-        </div>`;
-    }).join('');
-
-    if (!reviewItems.length) {
-        html = `<div class="border border-dashed border-slate-300 rounded-xl p-6 text-center bg-white">
-            <i class="ph-fill ph-clipboard-text text-3xl text-slate-300 block mb-1"></i>
-            <p class="text-sm font-bold text-slate-500">No parts matched the diagnosis.</p>
-            <p class="text-xs text-slate-400 mt-0.5">Mark items as <b>Fix</b> in the inspection or run an ECU scan, or add parts manually below.</p>
-        </div>`;
-    }
-    if (reviewNotes.length) {
-        html += `<div class="rounded-xl border border-slate-200 bg-white p-3 text-[11px] text-slate-500">
-            <p class="font-bold text-slate-600 uppercase tracking-wider mb-1 flex items-center gap-1.5"><i class="ph-fill ph-info text-slate-400"></i> No stock part needed / mapped</p>
-            <ul class="list-disc pl-4 flex flex-col gap-0.5">${reviewNotes.map(n => `<li>${escHTML(n)}</li>`).join('')}</ul>
-        </div>`;
-    }
-    wrap.innerHTML = html;
-
-    // Basis chips
-    const fixN = reviewItems.filter(r => r.level === 'fix' || r.level === 'ecu').length;
-    const watchN = reviewItems.filter(r => r.level === 'watch').length;
-    const ecuN = reviewItems.filter(r => r.sources.includes('ecu')).length;
-    const basis = document.getElementById('ra-basis');
-    if (basis) {
-        const chip = (cls, txt) => `<span class="px-2 py-1 rounded-full border ${cls}">${txt}</span>`;
-        basis.innerHTML = hasDiagnosisData()
-            ? [chip('bg-blue-50 text-blue-600 border-blue-200', `${ecuN} from ECU/OBD`),
-               chip('bg-red-50 text-red-600 border-red-200', `${fixN} recommended`),
-               chip('bg-amber-50 text-amber-600 border-amber-200', `${watchN} optional`)].join('')
-            : chip('bg-slate-100 text-slate-500 border-slate-200', 'No diagnosis recorded yet. Add parts manually.');
-    }
-
-    // Totals
-    let total = 0, n = 0;
-    reviewItems.forEach(r => {
-        const part = mockInventory.find(p => p.id === r.id);
-        if (part && r.checked) { total += part.price * r.qty; n++; }
+    const findings = (document.getElementById('final-findings')?.value || 'No final findings recorded.').trim();
+    const chips = [...document.querySelectorAll('#selected-parts-container [id^="selected-part-"]')];
+    const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
+    let partsTotal = 0;
+    
+    const rows = chips.map(chip => {
+        const price = parseFloat(chip.dataset.price) || 0;
+        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
+        partsTotal += price * qty;
+        const name = chip.querySelector('.text-sm')?.textContent || '';
+        return `<li class="flex justify-between gap-2 border-b border-slate-50 pb-1 last:border-0 last:pb-0"><span class="truncate text-slate-600">${qty} × ${escHTML(name)}</span><span class="font-semibold shrink-0 text-slate-800">${fmtPeso(price * qty)}</span></li>`;
     });
-    const totalEl = document.getElementById('auto-assign-total');
-    if (totalEl) totalEl.textContent = fmtPeso(total);
-    const countEl = document.getElementById('ra-count');
-    if (countEl) countEl.textContent = n;
+
+    summaryBox.innerHTML = `
+        <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-1">Final Findings</h3>
+            <p class="text-xs text-slate-700 italic">${escHTML(findings)}</p>
+        </div>
+        <div class="mb-3">
+            <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-2">Required Parts & Materials</h3>
+            ${chips.length ? `<ul class="flex flex-col gap-2 text-xs">${rows.join('')}</ul>` : '<p class="text-xs text-slate-500">No parts assigned.</p>'}
+        </div>
+        <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex flex-col gap-1.5">
+            <div class="flex justify-between text-xs font-semibold text-slate-600"><span>Parts Total</span><span>${fmtPeso(partsTotal)}</span></div>
+            <div class="flex justify-between text-xs font-semibold text-slate-600"><span>Estimated Labor</span><span>${fmtPeso(labor)}</span></div>
+            <div class="border-t border-blue-200/60 pt-1.5 mt-1 flex justify-between text-sm font-extrabold text-blue-800"><span>Estimated Total</span><span>${fmtPeso(partsTotal + labor)}</span></div>
+        </div>
+    `;
+    
+    validateStep3();
 }
 
-function closeAutoAssignModal() {
-    toggleModal('modal-auto-assign', 'auto-assign-backdrop', 'auto-assign-content', false);
+function toggleStep3RegistrationMode(checkbox) {
+    const existingSec = document.getElementById('step3-existing-vehicle-section');
+    const newSec = document.getElementById('step3-new-vehicle-section');
+    if (checkbox.checked) {
+        existingSec.classList.add('hidden');
+        newSec.classList.remove('hidden');
+        newSec.classList.add('flex');
+    } else {
+        existingSec.classList.remove('hidden');
+        newSec.classList.add('hidden');
+        newSec.classList.remove('flex');
+    }
+    validateStep3();
 }
 
-// Review modal interactions (single set of delegated listeners)
-document.addEventListener('click', function(e) {
-    const ra = e.target.closest('#ra-list [data-ra]');
-    if (ra && ra.dataset.ra !== 'toggle') {
-        const r = reviewItems.find(x => x.id === ra.dataset.id);
-        const part = r && mockInventory.find(p => p.id === r.id);
-        if (r && part) {
-            if (ra.dataset.ra === 'minus' && r.qty > 1) r.qty--;
-            else if (ra.dataset.ra === 'plus') {
-                if (r.qty < part.stock) r.qty++;
-                else alert(`Only ${part.stock} units available in stock.`);
-            } else if (ra.dataset.ra === 'remove') reviewItems = reviewItems.filter(x => x !== r);
-            renderReviewList();
-        }
+function validateStep3() {
+    const btn = document.getElementById('btn-confirm-push');
+    if (!btn) return;
+
+    const isNew = document.getElementById('step3-toggle-new-reg')?.checked;
+    let isValid = false;
+
+    if (isNew) {
+        const name = document.getElementById('step3-new-cust-name')?.value.trim();
+        const phone = document.getElementById('step3-new-cust-phone')?.value.trim();
+        const model = document.getElementById('step3-new-veh-model')?.value.trim();
+        const plate = document.getElementById('step3-new-veh-plate')?.value.trim();
+        isValid = !!(name && phone && model && plate);
+    } else {
+        const sel = document.getElementById('step3-motorcycle-select');
+        isValid = !!(sel && sel.value !== "");
     }
 
-    // Add part from the modal search
-    const item = e.target.closest('.modal-autocomplete-item');
-    if (item) {
-        const part = mockInventory.find(p => p.id === item.dataset.id);
-        if (part && part.stock > 0) {
-            const existing = reviewItems.find(r => r.id === part.id);
-            if (existing) existing.checked = true;
-            else reviewItems.push({ id: part.id, qty: 1, checked: true, level: 'manual', sources: ['manual'], reasons: [] });
-            renderReviewList();
-        }
-        document.getElementById('modal-manual-search').value = '';
-        document.getElementById('modal-manual-autocomplete').classList.add('hidden');
-    } else if (!e.target.closest('#modal-manual-search')) {
-        document.getElementById('modal-manual-autocomplete')?.classList.add('hidden');
-    }
+    btn.disabled = !isValid;
+}
 
-    // Keep plan totals / stepper fresh after any qty / remove click or typing in the diagnostics view
-    if (e.target.closest('#view-diagnostics') || e.target.closest('#modal-push-repair')) {
-        if (e.target.closest('#selected-parts-container .btn-qty-minus, #selected-parts-container .btn-qty-plus, #selected-parts-container .btn-remove-part') && !planCommitting) planReviewed = false;
-        setTimeout(updatePlanTotals, 0);
+document.addEventListener('input', function(e) {
+    if (e.target.id && (e.target.id.startsWith('step3-new-') || e.target.id === 'step3-motorcycle-select')) {
+        validateStep3();
     }
 });
 
 document.addEventListener('change', function(e) {
-    if (e.target.matches && e.target.matches('#ra-list [data-ra="toggle"]')) {
-        const r = reviewItems.find(x => x.id === e.target.dataset.id);
-        if (r) { r.checked = e.target.checked; renderReviewList(); }
-    }
-    if (e.target.id === 'toggle-ecu' || e.target.id === 'toggle-physical') setTimeout(updatePlanTotals, 0);
-});
-
-document.addEventListener('input', function(e) {
-    if (e.target.id === 'labor-cost-input' || e.target.id === 'final-findings') updatePlanTotals();
-
-    if (e.target.id === 'modal-manual-search') {
-        const query = e.target.value.toLowerCase();
-        const dropdown = document.getElementById('modal-manual-autocomplete');
-        if (!query) { dropdown.classList.add('hidden'); return; }
-
-        const matches = mockInventory.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
-        dropdown.innerHTML = matches.length ? matches.map(part => `
-            <div class="p-2 border-b border-slate-100 hover:bg-slate-50 ${part.stock > 0 ? 'cursor-pointer modal-autocomplete-item' : 'opacity-50'} flex justify-between items-center" data-id="${part.id}">
-                <div>
-                    <div class="text-xs font-bold text-slate-800">${part.name}</div>
-                    <div class="text-[9px] ${part.stock > 0 ? 'text-slate-500' : 'text-red-500 font-bold'}">${part.stock > 0 ? 'Stock: ' + part.stock : 'Out of stock'}</div>
-                </div>
-                <div class="text-xs font-bold text-emerald-600">₱${part.price.toFixed(2)}</div>
-            </div>
-        `).join('') : `<div class="p-3 text-xs text-slate-500 text-center">No parts found.</div>`;
-        dropdown.classList.remove('hidden');
+    if (e.target.id === 'step3-motorcycle-select') {
+        validateStep3();
     }
 });
 
-// Commit the reviewed list into the Repair Plan; optionally continue to registration
-function confirmAutoAssign(event, proceed) {
-    const btn = event.currentTarget;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Saving...`;
-    btn.disabled = true;
-
-    setTimeout(() => {
-        const container = document.getElementById('selected-parts-container');
-        if (container) {
-            planCommitting = true;
-            container.innerHTML = '';
-            reviewItems.filter(r => r.checked).forEach(r => {
-                const part = mockInventory.find(p => p.id === r.id);
-                addPartToPlan(part, { qty: r.qty, sources: r.sources, reasons: r.reasons });
-            });
-            planReviewed = true;
-            planCommitting = false;
-            updatePlanTotals();
-        }
-
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        closeAutoAssignModal();
-        if (proceed) setTimeout(openPushRepairModal, 320);
-    }, 400);
-}
-
-// "Proceed" button: auto-assign from diagnosis -> mechanic edits/finalizes -> registration
-function proceedFromDiagnosis() {
-    if (!hasDiagnosisData() && !confirm('No diagnosis has been recorded yet (no inspection results, ECU codes or findings).\n\nContinue anyway?')) return;
-    openAutoAssignModal();
-}
-
-function renderPushPlanSummary() {
-    const box = document.getElementById('push-plan-summary');
-    if (!box) return;
-    const chips = [...document.querySelectorAll('#selected-parts-container [id^="selected-part-"]')];
-    const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
-    let parts = 0;
-    const rows = chips.map(chip => {
-        const price = parseFloat(chip.dataset.price) || 0;
-        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
-        parts += price * qty;
-        const name = chip.querySelector('.text-sm')?.textContent || '';
-        return `<li class="flex justify-between gap-2"><span class="truncate">${qty} × ${escHTML(name)}</span><span class="font-semibold shrink-0">${fmtPeso(price * qty)}</span></li>`;
-    });
-    box.innerHTML = `
-        <div class="flex items-center justify-between mb-1.5">
-            <span class="font-bold text-blue-700 uppercase text-[11px] tracking-wider flex items-center gap-1.5"><i class="ph-fill ph-wrench"></i> Repair plan</span>
-            <button type="button" onclick="closePushRepairModal(); setTimeout(openAutoAssignModal, 320);" class="text-[10px] font-bold text-blue-600 hover:underline">Edit parts</button>
-        </div>
-        ${chips.length ? `<ul class="flex flex-col gap-1 text-slate-600 mb-2">${rows.join('')}</ul>` : '<p class="text-slate-500 mb-2">No parts assigned (labor / inspection only).</p>'}
-        <div class="border-t border-blue-100 pt-1.5 flex justify-between font-bold text-slate-800"><span>Est. total (parts${labor ? ' + labor' : ''})</span><span>${fmtPeso(parts + labor)}</span></div>`;
-}
-
-window.toggleRejectReason = function(checkbox, reasonId) {
-    const reasonDiv = document.getElementById(reasonId);
-    if(reasonDiv) {
-        if(!checkbox.checked) {
-            reasonDiv.classList.remove('hidden');
-        } else {
-            reasonDiv.classList.add('hidden');
-        }
-    }
-};
-function closePushRepairModal() { 
-    toggleModal('modal-push-repair', 'push-repair-backdrop', 'push-repair-content', false); 
-}
-
-function confirmPushRepair(event) {
-    const btn = event.currentTarget;
+function confirmStep3Push() {
+    const btn = document.getElementById('btn-confirm-push');
     const originalHTML = btn.innerHTML;
     
-    // Show a loading state on the button
     btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Pushing...`;
     btn.disabled = true;
 
-    // Simulate network delay, close the modal, and redirect to the Repairs page
     setTimeout(() => {
         btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        closePushRepairModal();
         
-        alert("Vehicle successfully pushed to the Active Repairs queue!");
+        // Hide form, show success state
+        document.getElementById('step3-vehicle-card')?.classList.add('hidden');
+        const actions = document.getElementById('step3-actions');
+        if(actions) {
+            actions.classList.add('hidden');
+            actions.classList.remove('flex');
+        }
+        
+        const chips = [...document.querySelectorAll('#selected-parts-container [id^="selected-part-"]')];
+        const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
+        let partsTotal = 0;
+        chips.forEach(c => partsTotal += (parseFloat(c.dataset.price) || 0) * (parseInt(c.querySelector('.qty-val')?.textContent) || 1));
+        const total = fmtPeso(partsTotal + labor);
+        
+        const isNew = document.getElementById('step3-toggle-new-reg')?.checked;
+        const vehInput = document.getElementById('step3-motorcycle-select');
+        const vehName = isNew ? document.getElementById('step3-new-veh-model').value : (vehInput ? vehInput.value.split(' - ')[1] || 'Walk-in' : 'Walk-in');
+
+        const successDetails = document.getElementById('step3-success-details');
+        if (successDetails) {
+            successDetails.textContent = `Job #REP-${Math.floor(1000 + Math.random() * 9000)} • ${vehName} • Total: ${total}`;
+        }
+        
+        const successState = document.getElementById('step3-success-state');
+        if (successState) {
+            successState.classList.remove('hidden');
+            successState.classList.add('flex');
+            successState.classList.add('animate-[fadeIn_0.5s_ease-out]');
+        }
+
         clearInspectionDraft();
-        const planBox = document.getElementById('selected-parts-container');
-        if (planBox) planBox.innerHTML = '';
-        const laborInput = document.getElementById('labor-cost-input');
-        if (laborInput) laborInput.value = '';
         planReviewed = false;
-        updatePlanTotals();
         
-        // Auto-navigate user to the active repairs tab
-        const repairsLink = document.querySelector('.nav-link[data-target="repairs"]');
-        if (repairsLink) repairsLink.click();
     }, 800);
 }
 
-function switchPushRepairTab(tabKey) {
-    const tabs = ['existing', 'customer', 'vehicle'];
-    tabs.forEach(key => {
-        const pane = document.getElementById(`pane-push-${key}`);
-        const btn = document.getElementById(`tab-btn-${key}`);
-        if (pane) pane.classList.toggle('hidden', key !== tabKey);
-        if (btn) {
-            if (key === tabKey) {
-                btn.className = 'py-2 rounded-lg transition-all bg-white text-blue-600 shadow-sm font-bold text-center';
-            } else {
-                btn.className = 'py-2 rounded-lg transition-all text-slate-600 hover:text-slate-900 text-center';
-            }
-        }
+function resetDiagnosticsWorkflow() {
+    // Clear step 3 form
+    const sel = document.getElementById('step3-motorcycle-select');
+    if(sel) sel.value = "";
+    
+    const ids = ['step3-new-cust-name', 'step3-new-cust-phone', 'step3-new-veh-model', 'step3-new-veh-plate', 'step3-new-veh-year'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = '';
     });
-}
+    
+    const tog = document.getElementById('step3-toggle-new-reg');
+    if(tog) { tog.checked = false; toggleStep3RegistrationMode(tog); }
 
-function saveQuickCustomer() {
-    const first = document.getElementById('quick-cust-first').value.trim();
-    const last = document.getElementById('quick-cust-last').value.trim();
-    const phone = document.getElementById('quick-cust-phone').value.trim();
-
-    if (!first || !last || !phone) {
-        alert('Please provide the first name, last name, and phone number.');
-        return;
+    // Restore UI for next time
+    document.getElementById('step3-vehicle-card')?.classList.remove('hidden');
+    const actions = document.getElementById('step3-actions');
+    if(actions) {
+        actions.classList.remove('hidden');
+        actions.classList.add('flex');
+    }
+    
+    const successState = document.getElementById('step3-success-state');
+    if(successState) {
+        successState.classList.add('hidden');
+        successState.classList.remove('flex');
     }
 
-    const fullName = `${first} ${last}`;
-    const vehOwnerSelect = document.getElementById('quick-veh-owner');
-    if (vehOwnerSelect) {
-        const opt = new Option(`${fullName} (${phone})`, fullName, true, true);
-        vehOwnerSelect.add(opt);
-    }
+    // Reset step 2
+    const planBox = document.getElementById('selected-parts-container');
+    if (planBox) planBox.innerHTML = '';
+    repairPlanParts = [];
+    const laborInput = document.getElementById('labor-cost-input');
+    if (laborInput) laborInput.value = '';
+    const findings = document.getElementById('final-findings');
+    if (findings) findings.value = '';
+    
+    // Ensure Continue is reset
+    const btnNext2 = document.getElementById('btn-next-step2');
+    if (btnNext2) btnNext2.disabled = true;
 
-    alert(`Customer "${fullName}" added. You can now register their vehicle or proceed.`);
-    switchPushRepairTab('vehicle');
-}
+    if (typeof updatePlanTotals === 'function') updatePlanTotals();
 
-function saveQuickVehicle() {
-    const owner = document.getElementById('quick-veh-owner').value;
-    const brand = document.getElementById('quick-veh-brand').value;
-    const model = document.getElementById('quick-veh-model').value.trim();
-    const plate = document.getElementById('quick-veh-plate').value.trim();
-
-    if (!plate || !model) {
-        alert('Please provide both the model and plate number.');
-        return;
-    }
-
-    const label = `${owner} - ${brand} ${model} (${plate})`;
-    const modalSelect = document.getElementById('modal-motorcycle-select');
-    const mainSelect = document.getElementById('motorcycle-select');
-
-    if (modalSelect) {
-        const opt = new Option(label, `custom-${Date.now()}`, true, true);
-        modalSelect.add(opt);
-    }
-    if (mainSelect) {
-        const opt2 = new Option(label, `custom-${Date.now()}`, true, true);
-        mainSelect.add(opt2);
-    }
-
-    switchPushRepairTab('existing');
+    switchDiagStep(1);
 }
 function openRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop', 'repair-modal-content', true); }
 function closeRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop', 'repair-modal-content', false); }
@@ -3198,7 +3347,42 @@ function loadInspectionState() {
     return emptyInspectionState();
 }
 
+function updateSharedDiagnosis() {
+    const flagged = [];
+    if (typeof inspectionItems === 'undefined' || typeof inspectionSections === 'undefined') return;
+    inspectionItems.forEach(item => {
+        const st = getInspItem(item.id);
+        if (st.status === 'fix' || st.status === 'watch') {
+            const sec = inspectionSections.find(s => s.id === item.section) || {};
+            const category = sec.title || sec.short || 'General';
+            const parts = partsForInspectionItem(item, st);
+            let suggestedPart = null;
+            if (parts.length > 0) {
+                const invPart = mockInventory.find(p => p.id === parts[0].id);
+                if (invPart) {
+                    suggestedPart = {
+                        id: invPart.id,
+                        name: invPart.name,
+                        sku: invPart.sku,
+                        price: invPart.price,
+                        stock: invPart.stock
+                    };
+                }
+            }
+            flagged.push({
+                id: item.id,
+                category: category,
+                name: item.label,
+                status: st.status,
+                suggestedPart: suggestedPart
+            });
+        }
+    });
+    inspectionState.flaggedItems = flagged;
+}
+
 function saveInspectionState() {
+    updateSharedDiagnosis();
     try { localStorage.setItem(INSPECTION_STORAGE_KEY, JSON.stringify(inspectionState)); } catch (err) { /* ignore quota errors */ }
 }
 
@@ -3321,11 +3505,9 @@ function renderInspection() {
 }
 
 function restoreInspectionIntake() {
-    const { odo, fuel, complaints } = inspectionState.intake;
-    const odoInput = document.getElementById('insp-odo');
-    if (odoInput) odoInput.value = odo;
-    document.querySelectorAll('[data-insp="fuel"]').forEach(btn => btn.classList.toggle('is-active', btn.dataset.fuel === fuel));
+    const { complaints } = inspectionState.intake;
     document.querySelectorAll('[data-insp="complaint"]').forEach(btn => btn.classList.toggle('is-active', complaints.includes(btn.dataset.complaint)));
+    validateStep1();
 }
 
 function renderInspectionThumbs(id) {
@@ -3405,8 +3587,12 @@ function refreshInspectionSummary() {
         pills.innerHTML = inspectionSections.map(sec => {
             const done = sec.items.filter(i => getInspItem(i.id).status).length;
             const hasFix = sec.items.some(i => getInspItem(i.id).status === 'fix');
-            return `<button type="button" data-insp="jump" data-section="${sec.id}" class="insp-pill ${done === sec.items.length ? 'is-done' : ''} ${hasFix ? 'has-fix' : ''}">
-                <i class="ph-fill ${sec.icon}"></i> ${sec.short} ${done}/${sec.items.length}</button>`;
+            const isDone = done === sec.items.length;
+            const iconHTML = isDone 
+                ? `<i class="ph-fill ph-check-circle text-emerald-500"></i>` 
+                : `<i class="ph-fill ${sec.icon}"></i>`;
+            return `<button type="button" data-insp="jump" data-section="${sec.id}" class="insp-pill ${isDone ? 'is-done' : ''} ${hasFix ? 'has-fix' : ''}">
+                ${iconHTML} ${sec.short} ${done}/${sec.items.length}</button>`;
         }).join('');
     }
     inspectionSections.forEach(sec => {
@@ -3430,7 +3616,7 @@ function refreshInspectionSummary() {
 
     const fix = inspectionItems.filter(i => getInspItem(i.id).status === 'fix');
     const watch = inspectionItems.filter(i => getInspItem(i.id).status === 'watch');
-    const suggested = buildDiagnosisSuggestions();
+    const suggested = getSuggestedParts();
     const partsOut = suggested.filter(s => s.level !== 'watch').map(s => mockInventory.find(p => p.id === s.id)).filter(p => p && p.stock === 0);
 
     const entry = (item, tone) => {
@@ -3458,16 +3644,34 @@ function refreshInspectionSummary() {
                 ${fix.length ? `<div><p class="text-[11px] font-bold text-red-600 uppercase tracking-wider mb-1.5">Needs repair / replacement (${fix.length})</p><ul class="flex flex-col gap-1.5">${fix.map(i => entry(i, 'fix')).join('')}</ul></div>` : ''}
                 ${watch.length ? `<div><p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1.5">Monitor / advise customer (${watch.length})</p><ul class="flex flex-col gap-1.5">${watch.map(i => entry(i, 'watch')).join('')}</ul></div>` : ''}
                 ${partsOut.length ? `<p class="text-xs font-semibold text-red-600 bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-start gap-2"><i class="ph-fill ph-package text-base shrink-0"></i> Out of stock, order needed: ${partsOut.map(p => p.name).join(', ')}</p>` : ''}
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <div class="grid grid-cols-1 gap-2 pt-1">
                     <button type="button" data-insp="to-findings" class="min-h-[48px] rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
                         <i class="ph-bold ph-note-pencil text-lg"></i> Add to Final Findings
-                    </button>
-                    <button type="button" data-insp="auto-assign" class="min-h-[48px] rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
-                        <i class="ph-bold ph-magic-wand text-lg"></i> Auto-Assign Parts${suggested.length ? ` (${suggested.length})` : ''}
                     </button>
                 </div>
             </div>
         </div>`;
+    
+    validateStep1();
+}
+
+function validateStep1() {
+    const btn = document.getElementById('btn-next-step1');
+    const hint = document.getElementById('hint-next-step1');
+    if (!btn || !hint) return;
+
+    const hasInsp = typeof inspectionItems !== 'undefined' && inspectionItems.some(i => getInspItem(i.id).status);
+
+    let missing = [];
+    if (!hasInsp) missing.push('1 inspection item');
+
+    if (missing.length === 0) {
+        btn.disabled = false;
+        hint.textContent = '';
+    } else {
+        btn.disabled = true;
+        hint.textContent = 'Please check at least ' + missing.join(', ');
+    }
 }
 
 // --- Actions ---
@@ -3482,7 +3686,7 @@ function setInspectionStatus(id, status) {
     }
     saveInspectionState();
     refreshInspectionRow(id);
-    maybeAutoPopAssign();
+
 }
 
 function applyInspectionMeasure(id, raw) {
@@ -3492,7 +3696,7 @@ function applyInspectionMeasure(id, raw) {
     if (!st.manual) st.status = evaluateInspectionMeasure(item.measure, st.value);   // auto-grade unless the mechanic overrode it
     saveInspectionState();
     refreshInspectionRow(id);
-    maybeAutoPopAssign();
+
 }
 
 function stepInspectionMeasure(id, dir) {
@@ -3532,7 +3736,6 @@ function resetInspection(skipConfirm) {
     if (!skipConfirm && !confirm('Clear all physical inspection results for this vehicle?')) return;
     inspectionState = emptyInspectionState();
     inspectionPhotos = {};
-    autoAssignPrompted = false;
     saveInspectionState();
     renderInspection();
 }
@@ -3541,7 +3744,6 @@ function resetInspection(skipConfirm) {
 function clearInspectionDraft() {
     inspectionState = emptyInspectionState();
     inspectionPhotos = {};
-    autoAssignPrompted = false;
     saveInspectionState();
 }
 
@@ -3576,7 +3778,7 @@ document.addEventListener('click', function(e) {
             if (!st.status) { st.status = 'ok'; st.manual = true; refreshInspectionRow(item.id); }
         });
         saveInspectionState();
-        maybeAutoPopAssign();
+    
 
     } else if (action === 'toggle-section') {
         const id = el.dataset.section;
@@ -3591,11 +3793,6 @@ document.addEventListener('click', function(e) {
             section.classList.remove('is-collapsed');
             section.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-
-    } else if (action === 'fuel') {
-        inspectionState.intake.fuel = inspectionState.intake.fuel === el.dataset.fuel ? '' : el.dataset.fuel;
-        saveInspectionState();
-        restoreInspectionIntake();
 
     } else if (action === 'complaint') {
         const list = inspectionState.intake.complaints;
@@ -3644,10 +3841,7 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('input', function(e) {
     const target = e.target;
-    if (target.id === 'insp-odo') {
-        inspectionState.intake.odo = target.value;
-        saveInspectionState();
-    } else if (target.dataset && target.dataset.inspInput === 'measure') {
+    if (target.dataset && target.dataset.inspInput === 'measure') {
         applyInspectionMeasure(target.dataset.item, target.value);
     } else if (target.dataset && target.dataset.inspInput === 'note') {
         getInspItem(target.dataset.item).note = target.value;
