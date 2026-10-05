@@ -124,7 +124,25 @@ document.addEventListener('click', function(e) {
         if (dropdown) dropdown.classList.add('hidden');
     }
 });
+window.switchDiagStep = function(step) {
+    const step1 = document.getElementById('step-1-diagnose');
+    const step2 = document.getElementById('step-2-plan');
+    if (!step1 || !step2) return;
 
+    if (step === 1) {
+        step1.classList.remove('hidden');
+        step1.classList.add('flex');
+        step2.classList.add('hidden');
+        step2.classList.remove('flex');
+    } else if (step === 2) {
+        step1.classList.add('hidden');
+        step1.classList.remove('flex');
+        step2.classList.remove('hidden');
+        step2.classList.add('flex');
+    }
+    // Scroll back to the top of the view smoothly
+    document.getElementById('main-content-area').scrollTo({ top: 0, behavior: 'smooth' });
+};
 // --- Diagnostics View Toggle Handler ---
 document.addEventListener('change', function(e) {
     // Check if the changed element is one of our master toggles

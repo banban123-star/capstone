@@ -1,11 +1,13 @@
 <div id="view-diagnostics" class="view-section active max-w-6xl mx-auto space-y-6">
     <!-- Workflow stepper -->
     <div id="diag-stepper" class="bg-white rounded-xl shadow-sm border border-slate-200 px-4 py-3 flex items-center gap-2 sm:gap-3 text-[11px] sm:text-xs font-bold">
-        <div class="diag-step flex items-center gap-2" data-step="1"><span class="diag-step-dot">1</span><span>Diagnose</span></div><div class="flex-1 h-px bg-slate-200"></div>
-        <div class="diag-step flex items-center gap-2" data-step="2"><span class="diag-step-dot">2</span><span>Parts &amp; Plan</span></div><div class="flex-1 h-px bg-slate-200"></div>
+        <div class="diag-step flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors" data-step="1" onclick="switchDiagStep(1)"><span class="diag-step-dot">1</span><span>Diagnose</span></div><div class="flex-1 h-px bg-slate-200"></div>
+        <div class="diag-step flex items-center gap-2 cursor-pointer hover:text-blue-600 transition-colors" data-step="2" onclick="switchDiagStep(2)"><span class="diag-step-dot">2</span><span>Parts &amp; Plan</span></div><div class="flex-1 h-px bg-slate-200"></div>
         <div class="diag-step flex items-center gap-2" data-step="3"><span class="diag-step-dot">3</span><span>Register &amp; Confirm</span></div>
     </div>
 
+    <!-- ================= STEP 1: DIAGNOSE ================= -->
+    <div id="step-1-diagnose" class="flex flex-col gap-6 animate-[fadeIn_0.3s_ease-out]">
     <!-- 1. Inspection Setup -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 border-b border-slate-100 pb-2">1. Inspection Setup</h2>
@@ -174,11 +176,26 @@
             </div>
         </div>
     </div>
+    
+    <!-- Next Button for Step 1 -->
+    <div class="flex justify-end">
+        <button type="button" onclick="switchDiagStep(2)" class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md flex items-center gap-2 transition-transform active:scale-[0.98]">
+            Next: Parts &amp; Plan <i class="ph-bold ph-arrow-right text-lg"></i>
+        </button>
+    </div>
+    </div> <!-- End step-1-diagnose -->
 
+    <!-- ================= STEP 2: PARTS & PLAN ================= -->
+    <div id="step-2-plan" class="hidden flex-col gap-6 animate-[fadeIn_0.3s_ease-out]">
     <!-- 4. Repair Plan & Handoff -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
         <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-4">
-            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Repair Plan &amp; Handoff</h2>
+            <div class="flex items-center gap-3">
+                <button type="button" onclick="switchDiagStep(1)" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Back to Diagnosis">
+                    <i class="ph-bold ph-arrow-left text-lg"></i>
+                </button>
+                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Repair Plan &amp; Handoff</h2>
+            </div>
             <span id="plan-state-badge" class="text-[10px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500 border border-slate-200">Draft</span>
         </div>
 
@@ -243,10 +260,13 @@
                         <span>Proceed</span>
                     </button>
                 </div>
-                <p class="text-[10px] text-slate-400 leading-snug">Proceed reviews the auto-assigned parts, lets you finalize them, then continues to vehicle registration.</p>
-            </div>
+            <p class="text-[10px] text-slate-400 leading-snug">Proceed reviews the auto-assigned parts, lets you finalize them, then continues to vehicle registration.</p>
         </div>
     </div>
+</div>
+</div> <!-- End step-2-plan -->
+
+<!-- Review Parts & Materials Modal (auto-assigned from diagnosis, editable by the mechanic) -->
 
     <!-- Review Parts & Materials Modal (auto-assigned from diagnosis, editable by the mechanic) -->
     <div id="modal-auto-assign" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-4">
