@@ -1050,21 +1050,12 @@ function updatePlanTotals() {
 
 
 function resetDiagnosticsWorkflow() {
-    // Clear step 3 form
-    const sel = document.getElementById('step3-motorcycle-select');
-    if(sel) sel.value = "";
-    
-    const ids = ['step3-new-cust-name', 'step3-new-cust-phone', 'step3-new-veh-model', 'step3-new-veh-plate', 'step3-new-veh-year'];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.value = '';
-    });
-    
-    const tog = document.getElementById('step3-toggle-new-reg');
-    if(tog) { tog.checked = false; toggleStep3RegistrationMode(tog); }
-
     // Restore UI for next time
-    document.getElementById('step3-vehicle-card')?.classList.remove('hidden');
+    const reviewGrid = document.querySelector('#step-3-register .grid');
+    if(reviewGrid) reviewGrid.classList.remove('hidden');
+    
+    const statusBadge = document.getElementById('step3-job-status');
+    if(statusBadge) statusBadge.classList.remove('hidden');
     const actions = document.getElementById('step3-actions');
     if(actions) {
         actions.classList.remove('hidden');
@@ -1087,9 +1078,7 @@ function resetDiagnosticsWorkflow() {
     if (findings) findings.value = '';
     
     // Ensure Continue is reset
-    const btnNext2 = document.getElementById('btn-next-step2');
-    if (btnNext2) btnNext2.disabled = true;
-
+    
     if (typeof updatePlanTotals === 'function') updatePlanTotals();
 
     switchDiagStep(1);
@@ -4188,22 +4177,7 @@ function refreshInspectionSummary() {
 }
 
 function validateStep1() {
-    const btn = document.getElementById('btn-next-step1');
-    const hint = document.getElementById('hint-next-step1');
-    if (!btn || !hint) return;
-
-    const hasInsp = typeof inspectionItems !== 'undefined' && inspectionItems.some(i => getInspItem(i.id).status);
-
-    let missing = [];
-    if (!hasInsp) missing.push('1 inspection item');
-
-    if (missing.length === 0) {
-        btn.disabled = false;
-        hint.textContent = '';
-    } else {
-        btn.disabled = true;
-        hint.textContent = 'Please check at least ' + missing.join(', ');
-    }
+    // Validation removed for prototype. Button always enabled.
 }
 
 // --- Actions ---
@@ -4765,4 +4739,144 @@ function syncPlanFromDiagnosis(firstTime, restoreRemoved) {
 
 function getSuggestedParts(diag) {
     return window.getSuggestedParts(diag);
+}
+
+function updateDiagStepper() {
+    const steps = document.querySelectorAll('#diag-stepper .diag-step');
+    if (!steps.length) return;
+    
+    steps.forEach((el, i) => {
+        const stepNum = i + 1;
+        const isDone = stepNum < currentDiagStep;
+        const isActive = stepNum === currentDiagStep;
+        
+        el.classList.toggle('is-done', isDone);
+        el.classList.toggle('is-active', isActive);
+        
+        const dot = el.querySelector('.diag-step-dot');
+        if (dot) dot.innerHTML = isDone ? '<i class="ph-bold ph-check"></i>' : stepNum;
+        
+        if (isDone) {
+            el.classList.add('cursor-pointer', 'hover:text-blue-600');
+            el.classList.remove('opacity-50', 'cursor-not-allowed');
+            el.setAttribute('onclick', `switchDiagStep(${stepNum}, true)`);
+        } else if (isActive) {
+            el.classList.remove('cursor-pointer', 'hover:text-blue-600', 'opacity-50', 'cursor-not-allowed');
+            el.removeAttribute('onclick');
+        } else {
+            el.classList.add('opacity-50', 'cursor-not-allowed');
+            el.classList.remove('cursor-pointer', 'hover:text-blue-600');
+            el.removeAttribute('onclick');
+        }
+    });
+}
+
+function renderStep3Summary() {
+    const setText = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+
+    // Job Status Badge
+    let isWaitingForParts = false;
+    let partsTotal = 0;
+    
+    // Calculate total and determine if waiting for parts
+    const partsHtml = repairPlanParts.filter(p => !p.obsolete).map(p => {
+        partsTotal += p.part.price * p.qty;
+        const outOfStock = (p.stock === 0 || p.stock < p.qty) && p.handling === 'order';
+        if (outOfStock) isWaitingForParts = true;
+        
+        return `<li class="flex justify-between py-2 items-start gap-3">
+            <div class="flex flex-col min-w-0">
+                <span class="text-sm text-slate-800 font-semibold truncate">${p.qty} × ${escHTML(p.part.name)}</span>
+                ${outOfStock ? `<span class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-max mt-1 font-bold uppercase">Out of Stock</span>` : ''}
+            </div>
+            <span class="text-sm font-bold text-slate-700 mt-0.5 shrink-0">${fmtPeso(p.part.price * p.qty)}</span>
+        </li>`;
+    }).join('') || '<li class="text-sm text-slate-500 py-2 italic">No parts added</li>';
+
+    setText('step3-parts-list', partsHtml);
+    
+    // Status Badge
+    const badgeEl = document.getElementById('step3-job-status');
+    if (badgeEl) {
+        if (isWaitingForParts) {
+            badgeEl.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm bg-amber-100 text-amber-700 border border-amber-200 inline-flex items-center gap-1.5';
+            badgeEl.innerHTML = '<i class="ph-fill ph-warning-circle text-base"></i> Waiting for Parts';
+        } else {
+            badgeEl.className = 'px-3 py-1.5 rounded-full text-[11px] font-bold shadow-sm bg-emerald-100 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5';
+            badgeEl.innerHTML = '<i class="ph-fill ph-check-circle text-base"></i> Ready';
+        }
+    }
+
+    // Customer Complaints
+    const complaints = inspectionState.intake.complaints;
+    setText('step3-complaints-list', complaints.length 
+        ? complaints.map(c => `<span class="px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-200">${escHTML(c)}</span>`).join('') 
+        : '<span class="text-xs text-slate-400 italic">None recorded</span>'
+    );
+
+    // Inspection Results
+    const flaggedItems = inspectionItems.filter(i => {
+        const status = getInspItem(i.id).status;
+        return status === 'fix' || status === 'watch';
+    });
+    setText('step3-inspection-results', flaggedItems.length
+        ? flaggedItems.map(i => {
+            const st = getInspItem(i.id);
+            const isFix = st.status === 'fix';
+            return `<li class="flex items-start gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <i class="ph-fill ${isFix ? 'ph-wrench text-red-500' : 'ph-warning text-amber-500'} mt-0.5 shrink-0"></i>
+                <div>
+                    <span class="font-semibold text-slate-800 block">${i.label}</span>
+                    ${st.note ? `<span class="text-xs text-slate-500 italic block mt-0.5">"${escHTML(st.note)}"</span>` : ''}
+                </div>
+            </li>`;
+        }).join('')
+        : '<li class="text-xs text-slate-400 italic py-1">No issues flagged.</li>'
+    );
+
+    // Final Findings
+    const findings = (document.getElementById('final-findings')?.value || '').trim();
+    setText('step3-final-findings', findings ? escHTML(findings) : '<span class="italic text-slate-400">No notes provided.</span>');
+
+    // Total
+    const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
+    setText('step3-grand-total', fmtPeso(partsTotal + labor));
+}
+
+function confirmStep3Push() {
+    const btn = document.getElementById('btn-confirm-push');
+    const originalHTML = btn.innerHTML;
+    
+    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Processing...`;
+    btn.disabled = true;
+
+    setTimeout(() => {
+        btn.innerHTML = originalHTML;
+        btn.disabled = false;
+        
+        // Hide review grid and actions, show success state
+        const reviewGrid = document.querySelector('#step-3-register .grid');
+        if (reviewGrid) reviewGrid.classList.add('hidden');
+        
+        const statusBadge = document.getElementById('step3-job-status');
+        if (statusBadge) statusBadge.classList.add('hidden');
+        
+        const actions = document.getElementById('step3-actions');
+        if (actions) {
+            actions.classList.add('hidden');
+            actions.classList.remove('flex');
+        }
+
+        const successState = document.getElementById('step3-success-state');
+        if (successState) {
+            successState.classList.remove('hidden');
+            successState.classList.add('flex');
+            successState.classList.add('animate-[fadeIn_0.3s_ease-out]');
+        }
+        
+        // Mark stepper completely done (step 3 complete)
+        currentDiagStep = 4;
+        if (typeof updateDiagStepper === 'function') updateDiagStepper();
+        
+    }, 800);
 }

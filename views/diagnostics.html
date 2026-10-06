@@ -165,9 +165,8 @@
             </div>
     
     <!-- Next Button for Step 1 -->
-    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 mt-2">
-        <p id="hint-next-step1" class="text-[10px] font-bold text-red-500 text-center sm:text-right"></p>
-        <button type="button" id="btn-next-step1" onclick="switchDiagStep(2)" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+    <div class="flex justify-end mt-2">
+        <button type="button" id="btn-next-step1" onclick="switchDiagStep(2)" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
             Next: Parts &amp; Plan <i class="ph-bold ph-arrow-right text-lg"></i>
         </button>
     </div>
@@ -282,14 +281,9 @@
         <button type="button" onclick="switchDiagStep(1)" class="w-full sm:w-auto px-5 py-3 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
             <i class="ph-bold ph-arrow-left"></i> Back to Diagnose
         </button>
-        <div class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <button type="button" onclick="holdRepairPlan()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-700 text-sm font-bold shadow-sm transition-colors flex items-center justify-center gap-2 border border-orange-200">
-                <i class="ph-bold ph-pause-circle text-lg"></i> Hold Draft
-            </button>
-            <button type="button" id="btn-next-step2" onclick="switchDiagStep(3)" disabled class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
-                Next: Register &amp; Confirm <i class="ph-bold ph-arrow-right text-lg"></i>
-            </button>
-        </div>
+        <button type="button" id="btn-next-step2" onclick="switchDiagStep(3)" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+            Next: Register &amp; Confirm <i class="ph-bold ph-arrow-right text-lg"></i>
+        </button>
     </div>
 </div> <!-- End step-2-plan -->
 
@@ -298,70 +292,49 @@
     <!-- ================= STEP 3: REGISTER & CONFIRM ================= -->
     <div id="step-3-register" class="hidden flex-col gap-6">
         
-        <!-- Repair Plan Summary (Read Only) -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">1. Repair Plan Summary</h2>
-                <button type="button" onclick="switchDiagStep(2)" class="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
-                    <i class="ph-bold ph-pencil-simple"></i> Edit Plan
-                </button>
-            </div>
-            <div id="step3-plan-summary" class="text-sm text-slate-700">
+        <!-- Job Status Badge -->
+        <div class="flex justify-end">
+            <span id="step3-job-status" class="px-3 py-1.5 rounded-full text-xs font-bold shadow-sm">
                 <!-- Javascript will populate this -->
-            </div>
+            </span>
         </div>
 
-        <!-- Vehicle Selection / Registration -->
-        <div id="step3-vehicle-card" class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-3">
-                <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">2. Confirm Vehicle</h2>
-                <label class="flex items-center gap-2 cursor-pointer group">
-                    <span class="text-xs font-bold text-slate-600 group-hover:text-slate-800 transition-colors">Register new customer/vehicle?</span>
-                    <div class="relative inline-flex items-center">
-                        <input type="checkbox" id="step3-toggle-new-reg" class="sr-only peer" onchange="toggleStep3RegistrationMode(this)">
-                        <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                    </div>
-                </label>
-            </div>
+        <!-- Review Cards -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <!-- Left Column: Findings & Notes -->
+            <div class="flex flex-col gap-5">
+                <!-- Customer Complaints -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">Customer Complaints</h2>
+                    <div id="step3-complaints-list" class="flex flex-wrap gap-1.5"></div>
+                </div>
 
-            <!-- Existing Vehicle Dropdown -->
-            <div id="step3-existing-vehicle-section" class="flex flex-col gap-2">
-                <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Registered Motorcycle</label>
-                <div class="relative">
-                    <input type="text" id="step3-motorcycle-select" list="step3-motorcycle-list" placeholder="Search or select a registered motorcycle..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium">
-                    <datalist id="step3-motorcycle-list">
-                        <option value="Juan Dela Cruz - Honda Click 125i (ABC-123)"></option>
-                        <option value="Maria Clara - Yamaha NMAX (XYZ-987)"></option>
-                        <option value="Walk-in / Unregistered Motorcycle"></option>
-                    </datalist>
-                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                <!-- Inspection Results -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">Inspection Results (Flagged)</h2>
+                    <ul id="step3-inspection-results" class="flex flex-col gap-2"></ul>
+                </div>
+
+                <!-- Final Findings -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">Final Findings</h2>
+                    <p id="step3-final-findings" class="text-sm text-slate-700 whitespace-pre-wrap"></p>
                 </div>
             </div>
 
-            <!-- New Vehicle / Customer Fields -->
-            <div id="step3-new-vehicle-section" class="hidden flex-col gap-4">
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Customer Name *</label>
-                        <input type="text" id="step3-new-cust-name" placeholder="e.g. Juan Dela Cruz" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Contact Number *</label>
-                        <input type="tel" id="step3-new-cust-phone" placeholder="09XX-XXX-XXXX" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 font-mono text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
-                    </div>
+            <!-- Right Column: Parts & Cost -->
+            <div class="flex flex-col gap-5">
+                <!-- Parts List -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-2 mb-3">Parts List</h2>
+                    <ul id="step3-parts-list" class="flex flex-col gap-2 divide-y divide-slate-100"></ul>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 pt-4">
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Brand &amp; Model *</label>
-                        <input type="text" id="step3-new-veh-model" placeholder="e.g. Honda Click 125i" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Plate Number *</label>
-                        <input type="text" id="step3-new-veh-plate" placeholder="ABC-1234" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 uppercase font-mono text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Year</label>
-                        <input type="number" id="step3-new-veh-year" placeholder="2023" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
+
+                <!-- Estimated Total -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Estimated Total</h2>
+                        <span id="step3-grand-total" class="text-xl font-extrabold text-blue-700"></span>
                     </div>
                 </div>
             </div>
@@ -372,8 +345,8 @@
             <button type="button" onclick="switchDiagStep(2)" class="w-full sm:w-auto px-5 py-3 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
                 <i class="ph-bold ph-arrow-left"></i> Back to Parts &amp; Plan
             </button>
-            <button type="button" id="btn-confirm-push" onclick="confirmStep3Push()" disabled class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
-                Confirm &amp; Push to Queue <i class="ph-bold ph-check-circle text-lg"></i>
+            <button type="button" id="btn-confirm-push" onclick="confirmStep3Push()" class="w-full sm:w-auto px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md flex items-center justify-center gap-2 transition-transform active:scale-[0.98]">
+                Confirm &amp; Register Job <i class="ph-bold ph-check-circle text-lg"></i>
             </button>
         </div>
 
@@ -382,11 +355,9 @@
             <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
                 <i class="ph-fill ph-check-circle text-4xl"></i>
             </div>
-            <h2 class="text-xl font-extrabold text-emerald-800 mb-2">Vehicle Confirmed for Repair!</h2>
-            <p id="step3-success-details" class="text-sm font-medium text-emerald-700 mb-6">Job #REP-1045 • Total: ₱ 0.00</p>
+            <h2 class="text-xl font-extrabold text-emerald-800 mb-2">Job registered successfully!</h2>
             <div class="flex gap-3">
                 <button type="button" onclick="resetDiagnosticsWorkflow()" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-white text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors shadow-sm">Start New Inspection</button>
-                <button type="button" onclick="document.querySelector('.nav-link[data-target=\'repairs\']')?.click()" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm transition-colors">View Job Queue</button>
             </div>
         </div>
 
