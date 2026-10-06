@@ -221,17 +221,29 @@ let viewLoadToken = 0;
 
 async function loadView(viewName) {
     const loadToken = ++viewLoadToken;
+    let html;
+    let useMobileView = false;
+    
     try {
         // Chief / Sub-Mechanic get the mobile version of a screen once it has been converted
-        const useMobileView = document.body.classList.contains('mobile-app') && mobileViews.includes(viewName);
+        useMobileView = document.body.classList.contains('mobile-app') && mobileViews.includes(viewName);
         const response = await fetch(`views/${useMobileView ? 'mobile/' : ''}${viewName}.html`);
         if (!response.ok) throw new Error('File not found');
-        const html = await response.text();
-        if (loadToken !== viewLoadToken) return; // a newer navigation superseded this one
-        mainContentArea.innerHTML = html;
-        mainContentArea.classList.toggle('m-screen', useMobileView);
-        mainContentArea.scrollTop = 0;
+        html = await response.text();
+    } catch (error) {
+        mainContentArea.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-red-200">
+            <h2 class="text-red-500 font-bold text-lg mb-2">Error loading view: ${viewName}.html</h2>
+            <p class="text-slate-500 text-sm">Please ensure you are opening this project using a Local Server (e.g., Live Server in VS Code) and not just double-clicking the HTML file.</p>
+        </div>`;
+        return;
+    }
 
+    if (loadToken !== viewLoadToken) return; // a newer navigation superseded this one
+    mainContentArea.innerHTML = html;
+    mainContentArea.classList.toggle('m-screen', useMobileView);
+    mainContentArea.scrollTop = 0;
+
+    try {
         if (useMobileView && viewName === 'dashboard') renderMobileHome();
 
         // Initialize Diagnostics view state
@@ -278,9 +290,9 @@ async function loadView(viewName) {
         if (viewName === 'audit') { renderAudit(); }
 
     } catch (error) {
+        console.error(error);
         mainContentArea.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-red-200">
-            <h2 class="text-red-500 font-bold text-lg mb-2">Error loading view: ${viewName}.html</h2>
-            <p class="text-slate-500 text-sm">Please ensure you are opening this project using a Local Server (e.g., Live Server in VS Code) and not just double-clicking the HTML file.</p>
+            <h2 class="text-red-500 font-bold text-lg mb-2">This screen failed to load: ${error.message}</h2>
         </div>`;
     }
 }
@@ -3566,6 +3578,9 @@ function renderRepairs() {
             const pendingBadge = hasPending ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">Parts pending</span>` : '';
             
             let mobilePartsHTML = '';
+            let mobileAnywayBtn = '';
+            let mobileHintHTML = hintHTML ? `<div class="text-[10px] text-amber-600 font-medium text-center w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>` : '';
+
             if (job.repairPlan && job.repairPlan.parts && showPartsList) {
                 const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order');
                 if (pendingParts.length > 0) {
@@ -3599,12 +3614,9 @@ function renderRepairs() {
                         `;
                     }).join('');
 
-                    let mobileAnywayBtn = '';
                     if (job.statusId === 'waiting') {
                         mobileAnywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="w-full py-2 bg-transparent text-amber-700 border border-amber-200 rounded-lg text-xs font-bold active:bg-amber-50 mt-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
                     }
-                    
-                    const mobileHintHTML = hintHTML ? `<div class="text-[10px] text-amber-600 font-medium text-center w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>` : '';
 
                     mobilePartsHTML = `
                         <div class="mt-4 pt-4 border-t border-slate-100">
