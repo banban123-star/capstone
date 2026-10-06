@@ -3,10 +3,9 @@
     body.mobile-app #inv-filter-group { flex-direction: column !important; }
     body.mobile-app #inv-search-wrap { width: 100% !important; max-width: none !important; }
     body.mobile-app #inv-select-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; width: 100% !important; }
-    body.mobile-app #inv-btn-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; width: 100% !important; gap: 0.5rem !important; }
-    body.mobile-app #inv-btn-wrap button { font-size: 0.75rem !important; padding: 0.5rem 0.25rem !important; }
     body.mobile-app #view-inventory { padding-bottom: 80px !important; }
     body.mobile-app #inv-results-count { display: block !important; margin-top: 0.5rem; text-align: left; }
+
 </style>
 <div id="view-inventory" class="view-section active max-w-6xl mx-auto">
     <!-- Top Action Bar & Filters -->
@@ -106,14 +105,16 @@
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Physical Location</label>
                         <input type="text" placeholder="e.g. Shelf A-2" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Cost Price (₱)</label>
-                        <input type="number" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Selling Price (₱)</label>
-                        <input type="number" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-blue-700">
-                    </div>
+                                          <div class="sm:col-span-2 grid grid-cols-2 gap-4">
+                          <div>
+                              <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Cost Price (₱)</label>
+                              <input type="number" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
+                          </div>
+                          <div>
+                              <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Selling Price (₱)</label>
+                              <input type="number" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-blue-700">
+                          </div>
+                      </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Initial Stock Quantity</label>
                         <input type="number" placeholder="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">

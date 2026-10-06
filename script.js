@@ -1354,21 +1354,45 @@ function renderInventory() {
     if (btnWrap) {
         const canAutoAssign = window.can('inventory.autoAssign');
         let html = '';
-        if (canAutoAssign) {
-            html += `<button onclick="openAutoAssignLinks()" class="flex-1 lg:flex-none bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <i class="ph-bold ph-magic-wand"></i> Auto Assign
-            </button>`;
+        
+        if (isMobile) {
+            btnWrap.className = 'w-full shrink-0 flex flex-col gap-2 mt-1';
+            
+            let topButtons = [];
+            if (canAutoAssign) {
+                topButtons.push(`<button onclick="openAutoAssignLinks()" class="flex-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-magic-wand"></i> Auto Assign</button>`);
+            }
+            if (canRestock) {
+                topButtons.push(`<button onclick="openRestockModal()" class="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-arrows-clockwise"></i> Restock Items</button>`);
+            }
+            
+            if (topButtons.length > 0) {
+                html += `<div class="flex gap-2 w-full">${topButtons.join('')}</div>`;
+            }
+            
+            if (canAdd) {
+                html += `<button onclick="openAddPartModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-plus"></i> Add New Part</button>`;
+            }
+            
+        } else {
+            btnWrap.className = 'flex gap-2 w-full lg:w-auto shrink-0';
+            if (canAutoAssign) {
+                html += `<button onclick="openAutoAssignLinks()" class="flex-1 lg:flex-none bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-magic-wand"></i> Auto Assign
+                </button>`;
+            }
+            if (canRestock) {
+                html += `<button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
+                </button>`;
+            }
+            if (canAdd) {
+                html += `<button onclick="openAddPartModal()" class="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-plus"></i> Add New Part
+                </button>`;
+            }
         }
-        if (canRestock) {
-            html += `<button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
-            </button>`;
-        }
-        if (canAdd) {
-            html += `<button onclick="openAddPartModal()" class="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <i class="ph-bold ph-plus"></i> Add New Part
-            </button>`;
-        }
+        
         btnWrap.innerHTML = html;
         btnWrap.classList.toggle('hidden', html === '');
     }
