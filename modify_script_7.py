@@ -129,7 +129,7 @@ function renderRepairPlan() {
         html += '</div></div>';
     });
 
-    container.innerHTML = html.replace(/,/g, '?').replace(/ A /g, ' × ');
+    container.innerHTML = html.replace(/,/g, '?').replace(/ A /g, ' ï¿½ ');
 }
 
 function updatePlanQty(id, delta) {

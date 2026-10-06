@@ -249,12 +249,16 @@ async function loadView(viewName) {
 
         // Initialize Inventory view
         if (viewName === 'inventory') {
+            if (window.expandedInvCards) window.expandedInvCards.clear();
             renderInventory();
         }
 
         if (viewName === 'users') { renderUsers(); }
         if (viewName === 'backup') { renderBackupHistory(); }
-        if (viewName === 'repairs') { renderRepairs(); }
+        if (viewName === 'repairs') { 
+            if (window.expandedRepairCards) window.expandedRepairCards.clear();
+            renderRepairs(); 
+        }
         if (viewName === 'customers') { renderCustomers(); }
 
         // Initialize Transactions view
@@ -349,6 +353,49 @@ const systemUsers = {
 
 let currentRole = 'owner';
 
+const ROLE_PERMISSIONS = {
+    sys: {
+        'inventory.view': true,
+        'inventory.search': true,
+        'inventory.restock': true,
+        'inventory.addPart': true,
+        'inventory.editPart': true,
+        'inventory.walkInSale': true
+    },
+    owner: {
+        'inventory.view': true,
+        'inventory.search': true,
+        'inventory.restock': true,
+        'inventory.addPart': true,
+        'inventory.editPart': true,
+        'inventory.walkInSale': true
+    },
+    chief: {
+        'inventory.view': true,
+        'inventory.search': true,
+        'inventory.restock': false,
+        'inventory.addPart': false,
+        'inventory.editPart': false,
+        'inventory.walkInSale': false
+    },
+    sub: {
+        'inventory.view': true,
+        'inventory.search': true,
+        'inventory.restock': false,
+        'inventory.addPart': false,
+        'inventory.editPart': false,
+        'inventory.walkInSale': false
+    }
+};
+
+window.can = function(role, permission) {
+    if (!permission) {
+        permission = role;
+        role = currentRole;
+    }
+    return !!(ROLE_PERMISSIONS[role] && ROLE_PERMISSIONS[role][permission]);
+};
+
 function switchRole(roleId) {
     const user = systemUsers[roleId];
     currentRole = roleId;
@@ -398,8 +445,8 @@ function switchRole(roleId) {
     // 4. Force redirect to Dashboard if the user is currently on a restricted page
     if (!isCurrentViewAllowed) {
         document.querySelector('.nav-link[data-target="dashboard"]').click();
-    } else if (wasMobile || isMobile) {
-        // Entering/leaving mobile mode (or switching between the two mobile roles): re-render the current screen
+    } else if (wasMobile || isMobile || currentActiveTarget === 'inventory') {
+        // Entering/leaving mobile mode, or viewing inventory: re-render the current screen
         document.querySelector(`.nav-link[data-target="${currentActiveTarget}"]`)?.click();
     }
 }
@@ -628,10 +675,7 @@ window.confirmManualPart = function() {
     
     let qty = parseInt(document.getElementById('manual-part-qty').value);
     if (isNaN(qty) || qty < 1) qty = 1;
-    if (qty > part.stock && part.stock > 0) {
-        alert(`Only ${part.stock} units available in stock.`);
-        return;
-    }
+
     
     const selectValue = document.getElementById('manual-part-target').value;
     let target = '';
@@ -773,23 +817,40 @@ function renderRepairPlan() {
         container.appendChild(groupHeader);
         
         group.items.forEach(p => {
-            const outOfStock = p.stock === 0;
+            let stockStatus = 'in_stock';
+            let stockBadge = '<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-check"></i> In stock</span>';
+            let outOfStock = false;
+            
+            if (p.stock === 0) {
+                stockStatus = 'out_of_stock';
+                outOfStock = true;
+                stockBadge = '<span class="inline-flex items-center gap-1 bg-red-50 text-red-600 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-warning"></i> Out of stock</span>';
+            } else if (p.stock < p.qty) {
+                stockStatus = 'low_stock';
+                outOfStock = true;
+                stockBadge = '<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-warning-circle"></i> Low stock</span>';
+            }
+
+            if (!p.handling) p.handling = 'order';
+            
+            const rowWrapper = document.createElement('div');
+            rowWrapper.className = 'flex flex-col bg-white border border-slate-200 rounded-lg shadow-sm mb-2 col-span-full overflow-hidden';
+            
             const row = document.createElement('div');
-            // Must have this ID for Step 3 to find it, or Step 3 needs updating. Wait, Step 3 uses [id^="selected-part-"]
             row.id = `selected-part-${p.id}`;
             row.dataset.id = p.id;
             row.dataset.price = p.part.price;
             row.dataset.target = p.target;
             row.dataset.category = p.category;
             row.dataset.isAuto = p.isAuto;
-            row.className = 'flex items-center justify-between gap-2 bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm mb-2 col-span-full';
+            row.className = 'flex items-center justify-between gap-2 p-2.5';
             
             row.innerHTML = `
                 <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
-                        <div class="text-sm font-bold ${outOfStock ? 'text-red-500' : 'text-slate-800'} truncate">${escHTML(p.part.name)}</div>
+                        <div class="text-sm font-bold ${stockStatus === 'out_of_stock' ? 'text-red-500' : (stockStatus === 'low_stock' ? 'text-amber-600' : 'text-slate-800')} truncate">${escHTML(p.part.name)}</div>
                         ${p.isAuto ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Auto-assigned</span>` : `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Added by mechanic</span>`}
-                        ${outOfStock ? `<span class="inline-flex items-center gap-1 bg-red-50 text-red-600 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Out of stock</span>` : ''}
+                        ${stockBadge}
                     </div>
                     <div class="text-xs text-slate-500">
                         SKU: ${escHTML(p.part.sku)} · ₱${p.part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700">₱ ${(p.part.price * p.qty).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
@@ -797,9 +858,8 @@ function renderRepairPlan() {
                     <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                         For: 
                         <select class="bg-transparent border border-slate-200 rounded px-1 py-0.5 outline-none hover:border-blue-300 focus:border-blue-500" onchange="changePartTarget(this)">
-                            ${getDropdownOptionsHTML(target)}
+                            ${getDropdownOptionsHTML(p.target)}
                         </select>
-                        ${outOfStock ? ' <span class="text-red-500 ml-1 font-semibold">• Order needed</span>' : ''}
                     </div>
                 </div>
                 <div class="flex items-center gap-2 shrink-0">
@@ -811,10 +871,73 @@ function renderRepairPlan() {
                     <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 transition-colors" title="Remove part" onclick="removePlanPart(this)"><i class="ph-bold ph-x"></i></button>
                 </div>
             `;
-            container.appendChild(row);
+            
+            rowWrapper.appendChild(row);
+            
+            if (outOfStock) {
+                const handlingDiv = document.createElement('div');
+                handlingDiv.className = 'bg-slate-50 p-2.5 border-t border-slate-200 flex flex-col gap-2';
+                handlingDiv.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Handling:</label>
+                        <select class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none focus:border-amber-500" onchange="handlePartWaitAction(this)">
+                            <option value="order" ${p.handling === 'order' ? 'selected' : ''}>Order / wait for part</option>
+                            <option value="replace" ${p.handling === 'replace' ? 'selected' : ''}>Replace with another part</option>
+                            <option value="customer" ${p.handling === 'customer' ? 'selected' : ''}>Customer will bring own part</option>
+                            <option value="remove" ${p.handling === 'remove' ? 'selected' : ''}>Remove from plan</option>
+                        </select>
+                    </div>
+                    ${p.handling === 'order' ? `
+                    <div class="flex flex-wrap items-center gap-2">
+                        <input type="date" class="text-xs border border-slate-300 rounded p-1 outline-none focus:border-amber-500" value="${p.expectedArrival || ''}" onchange="updatePartHandlingData(this, 'arrival')" title="Expected Arrival">
+                        <input type="text" class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none focus:border-amber-500" placeholder="Short note..." value="${p.note || ''}" onchange="updatePartHandlingData(this, 'note')">
+                    </div>
+                    ` : ''}
+                `;
+                rowWrapper.appendChild(handlingDiv);
+            }
+            
+            container.appendChild(rowWrapper);
         });
     }
 }
+
+window.handlePartWaitAction = function(selectEl) {
+    const row = selectEl.closest('.flex-col').querySelector('[id^="selected-part-"]');
+    if (!row) return;
+    const id = row.dataset.id;
+    const target = row.dataset.target;
+    const item = repairPlanParts.find(p => p.id === id && p.target === target);
+    if (!item) return;
+    
+    item.handling = selectEl.value;
+    
+    if (item.handling === 'replace') {
+        document.getElementById('part-search-input')?.focus();
+        item.handling = 'order'; 
+    } else if (item.handling === 'remove') {
+        const idx = repairPlanParts.findIndex(p => p.id === id && p.target === target);
+        if (idx !== -1) {
+            repairPlanParts.splice(idx, 1);
+        }
+    }
+    
+    renderRepairPlan();
+    updatePlanTotals();
+};
+
+window.updatePartHandlingData = function(inputEl, type) {
+    const row = inputEl.closest('.flex-col').querySelector('[id^="selected-part-"]');
+    if (!row) return;
+    const id = row.dataset.id;
+    const target = row.dataset.target;
+    const item = repairPlanParts.find(p => p.id === id && p.target === target);
+    if (!item) return;
+    
+    if (type === 'arrival') item.expectedArrival = inputEl.value;
+    if (type === 'note') item.note = inputEl.value;
+};
+
 
 window.updatePlanQty = function(delta, btnElement) {
     const row = btnElement.closest('[id^="selected-part-"]');
@@ -824,10 +947,7 @@ window.updatePlanQty = function(delta, btnElement) {
     
     const item = repairPlanParts.find(p => p.id === id && p.target === target);
     if (item) {
-        if (delta > 0 && item.qty >= item.stock && item.stock > 0) {
-            alert(`Only ${item.stock} units available in stock.`);
-            return;
-        }
+
         if (item.qty + delta > 0) {
             item.qty += delta;
             renderRepairPlan();
@@ -852,9 +972,14 @@ window.removePlanPart = function(btnElement) {
 
 function updatePlanTotals() {
     let total = 0, count = 0;
+    let pendingCount = 0;
+    
     repairPlanParts.forEach(p => {
         total += p.part.price * p.qty;
         count++;
+        if ((p.stock === 0 || p.stock < p.qty) && p.handling === 'order') {
+            pendingCount++;
+        }
     });
     
     const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
@@ -863,23 +988,42 @@ function updatePlanTotals() {
     set('plan-parts-total', fmtPeso(total));
     set('plan-grand-total', fmtPeso(total + labor));
     
+    const banner = document.getElementById('pending-parts-banner');
+    if (banner) {
+        if (pendingCount > 0) {
+            banner.classList.remove('hidden');
+            document.getElementById('pending-parts-count').textContent = pendingCount;
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+    
+    inspectionState.hasPendingParts = pendingCount > 0;
+    
     const badge = document.getElementById('plan-state-badge');
     if (badge) {
         const done = planReviewed && count > 0;
-        badge.textContent = done ? 'Parts finalized' : (count ? 'Needs review' : 'Draft');
+        badge.textContent = done ? (pendingCount > 0 ? 'Waiting for parts' : 'Parts finalized') : (count ? 'Needs review' : 'Draft');
         badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full border ' + (done
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : count ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-500 border-slate-200');
+            ? (pendingCount > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')
+            : count ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200');
     }
 
     const btnNext2 = document.getElementById('btn-next-step2');
     if (btnNext2) {
         const findings = document.getElementById('final-findings')?.value.trim() || '';
         btnNext2.disabled = findings.length === 0;
+        
+        if (pendingCount > 0) {
+            btnNext2.innerHTML = `Next: Register &amp; Mark as Waiting <i class="ph-bold ph-arrow-right text-lg"></i>`;
+            btnNext2.className = btnNext2.className.replace('bg-blue-600', 'bg-amber-600').replace('hover:bg-blue-700', 'hover:bg-amber-700');
+        } else {
+            btnNext2.innerHTML = `Next: Register &amp; Confirm <i class="ph-bold ph-arrow-right text-lg"></i>`;
+            btnNext2.className = btnNext2.className.replace('bg-amber-600', 'bg-blue-600').replace('hover:bg-amber-700', 'hover:bg-blue-700');
+        }
     }
     updateDiagStepper();
 }
-
 function hasDiagnosisData() {
     let inspected = 0;
     if (typeof inspectionItems !== 'undefined' && typeof getInspItem === 'function') {
@@ -1165,16 +1309,27 @@ function renderStep3Summary() {
     if (!summaryBox) return;
 
     const findings = (document.getElementById('final-findings')?.value || 'No final findings recorded.').trim();
-    const chips = [...document.querySelectorAll('#selected-parts-container [id^="selected-part-"]')];
     const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
     let partsTotal = 0;
     
-    const rows = chips.map(chip => {
-        const price = parseFloat(chip.dataset.price) || 0;
-        const qty = parseInt(chip.querySelector('.qty-val')?.textContent) || 1;
-        partsTotal += price * qty;
-        const name = chip.querySelector('.text-sm')?.textContent || '';
-        return `<li class="flex justify-between gap-2 border-b border-slate-50 pb-1 last:border-0 last:pb-0"><span class="truncate text-slate-600">${qty} × ${escHTML(name)}</span><span class="font-semibold shrink-0 text-slate-800">${fmtPeso(price * qty)}</span></li>`;
+    const rows = repairPlanParts.map(p => {
+        partsTotal += p.part.price * p.qty;
+        
+        let badgeHtml = '';
+        if ((p.stock === 0 || p.stock < p.qty) && p.handling === 'order') {
+            badgeHtml = `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-200 px-1 py-0.5 rounded text-[8px] font-bold uppercase mt-1 w-max">Waiting for parts</span>`;
+            if (p.expectedArrival) {
+                badgeHtml += `<span class="text-[9px] text-amber-600 ml-1.5 font-medium">ETA: ${escHTML(p.expectedArrival)}</span>`;
+            }
+        }
+        
+        return `<li class="flex justify-between gap-2 border-b border-slate-50 pb-1.5 pt-1.5 first:pt-0 last:border-0 last:pb-0">
+            <div class="flex flex-col min-w-0">
+                <span class="truncate text-slate-600">${p.qty} × ${escHTML(p.part.name)}</span>
+                ${badgeHtml ? `<div class="flex items-center">${badgeHtml}</div>` : ''}
+            </div>
+            <span class="font-semibold shrink-0 text-slate-800 mt-0.5">${fmtPeso(p.part.price * p.qty)}</span>
+        </li>`;
     });
 
     summaryBox.innerHTML = `
@@ -1184,7 +1339,7 @@ function renderStep3Summary() {
         </div>
         <div class="mb-3">
             <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-2">Required Parts & Materials</h3>
-            ${chips.length ? `<ul class="flex flex-col gap-2 text-xs">${rows.join('')}</ul>` : '<p class="text-xs text-slate-500">No parts assigned.</p>'}
+            ${repairPlanParts.length ? `<ul class="flex flex-col gap-1 text-xs">${rows.join('')}</ul>` : '<p class="text-xs text-slate-500">No parts assigned.</p>'}
         </div>
         <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex flex-col gap-1.5">
             <div class="flex justify-between text-xs font-semibold text-slate-600"><span>Parts Total</span><span>${fmtPeso(partsTotal)}</span></div>
@@ -1195,7 +1350,6 @@ function renderStep3Summary() {
     
     validateStep3();
 }
-
 function toggleStep3RegistrationMode(checkbox) {
     const existingSec = document.getElementById('step3-existing-vehicle-section');
     const newSec = document.getElementById('step3-new-vehicle-section');
@@ -1262,21 +1416,56 @@ function confirmStep3Push() {
             actions.classList.remove('flex');
         }
         
-        const chips = [...document.querySelectorAll('#selected-parts-container [id^="selected-part-"]')];
         const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
         let partsTotal = 0;
-        chips.forEach(c => partsTotal += (parseFloat(c.dataset.price) || 0) * (parseInt(c.querySelector('.qty-val')?.textContent) || 1));
+        repairPlanParts.forEach(p => partsTotal += p.part.price * p.qty);
         const total = fmtPeso(partsTotal + labor);
         
         const isNew = document.getElementById('step3-toggle-new-reg')?.checked;
         const vehInput = document.getElementById('step3-motorcycle-select');
         const vehName = isNew ? document.getElementById('step3-new-veh-model').value : (vehInput ? vehInput.value.split(' - ')[1] || 'Walk-in' : 'Walk-in');
 
+        const isWaiting = inspectionState.hasPendingParts;
+        const jobId = `JOB #${Math.floor(1000 + Math.random() * 9000)}`;
+        const statusName = isWaiting ? 'Waiting for Parts' : 'In Progress';
+        
         const successDetails = document.getElementById('step3-success-details');
         if (successDetails) {
-            successDetails.textContent = `Job #REP-${Math.floor(1000 + Math.random() * 9000)} • ${vehName} • Total: ${total}`;
+            successDetails.textContent = `${jobId} is now ${statusName} • ${vehName} • Total: ${total}`;
         }
         
+        // --- ADD TO ACTIVE REPAIRS ---
+        const newJob = {
+            id: jobId,
+            plate: isNew ? document.getElementById('step3-new-veh-plate').value.toUpperCase() : (vehInput ? vehInput.value.split(' (')[1]?.replace(')', '') || 'N/A' : 'N/A'),
+            model: vehName,
+            customer: isNew ? document.getElementById('step3-new-cust-name').value : (vehInput ? vehInput.value.split(' - ')[0] || 'Walk-in' : 'Walk-in'),
+            mechanicOptions: ['Mike (Chief Mechanic)', 'Leo (Sub-Mechanic)'],
+            selectedMechIndex: 0,
+            diagnosis: (document.getElementById('final-findings')?.value || 'No diagnosis recorded').trim(),
+            statusId: isWaiting ? 'waiting' : 'progress',
+            statusName: statusName,
+            statusClass: isWaiting ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-blue-50 text-blue-600 border-blue-200',
+            dotClass: isWaiting ? 'bg-orange-500' : 'bg-blue-500 animate-pulse',
+            btnText: 'Manage Repair <i class="ph-bold ph-caret-right"></i>',
+            btnClass: 'bg-slate-800 hover:bg-slate-900 text-white',
+            btnAction: 'openRepairModal()',
+            
+            // Step 3 rules: store full parts list with availability, target, source, labor, total
+            repairPlan: {
+                parts: JSON.parse(JSON.stringify(repairPlanParts)), // Deep copy to store it snapshot style
+                laborCost: labor,
+                estimatedTotal: partsTotal + labor
+            }
+        };
+        
+        if (typeof mockRepairsData !== 'undefined') {
+            mockRepairsData.unshift(newJob); // Add to the top of the list
+            if (typeof renderRepairs === 'function') {
+                renderRepairs(); // Refresh the Active Repairs list in the background
+            }
+        }
+
         const successState = document.getElementById('step3-success-state');
         if (successState) {
             successState.classList.remove('hidden');
@@ -1289,7 +1478,6 @@ function confirmStep3Push() {
         
     }, 800);
 }
-
 function resetDiagnosticsWorkflow() {
     // Clear step 3 form
     const sel = document.getElementById('step3-motorcycle-select');
@@ -1348,11 +1536,25 @@ function completeJob(event) {
     }, 800);
 }
 
-function openAddPartModal() { toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', true); }
+function openAddPartModal() { 
+    if (!window.can('inventory.addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
+    toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', true); 
+}
 function closeAddPartModal() { toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', false); }
-function openRestockModal() { toggleModal('modal-restock', 'restock-backdrop', 'restock-content', true); }
+
+function openRestockModal() { 
+    if (!window.can('inventory.restock')) { closeRestockModal(); showToast("You don't have permission to do this."); return; }
+    toggleModal('modal-restock', 'restock-backdrop', 'restock-content', true); 
+}
 function closeRestockModal() { toggleModal('modal-restock', 'restock-backdrop', 'restock-content', false); }
+
+function openEditPartModal() {
+    if (!window.can('inventory.editPart')) { showToast("You don't have permission to do this."); return; }
+    // Assuming edit modal would be toggled here if it existed
+}
+
 function openWalkInModalInv(itemName, itemPrice) {
+    if (!window.can('inventory.walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     document.getElementById('walkin-inv-item-name').textContent = itemName;
     document.getElementById('walkin-inv-item-price').textContent = "₱" + itemPrice;
     toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', true);
@@ -1373,6 +1575,7 @@ function confirmWalkInSaleInv(event) {
 
 // --- Transactions & Billing Logic ---
 function openWalkInCheckout() { 
+    if (!window.can('inventory.walkInSale')) { closeWalkInCheckout(); showToast("You don't have permission to do this."); return; }
     document.getElementById('walkin-tendered').value = "";
     document.getElementById('walkin-change').textContent = "0.00";
     toggleModal('modal-txn-walkin', 'txn-walkin-backdrop', 'txn-walkin-content', true); 
@@ -1566,6 +1769,54 @@ function renderInventory() {
     const tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
 
+    const isMobile = document.body.classList.contains('mobile-app');
+    
+    // Check Permissions
+    const canRestock = window.can('inventory.restock');
+    const canAdd = window.can('inventory.addPart');
+    const canEdit = window.can('inventory.editPart');
+    const canWalkIn = window.can('inventory.walkInSale');
+    const showActions = canEdit || canWalkIn;
+
+    // Apply Permissions to top bar
+    const btnWrap = document.getElementById('inv-btn-wrap');
+    if (btnWrap) {
+        let html = '';
+        if (canRestock) {
+            html += `<button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
+            </button>`;
+        }
+        if (canAdd) {
+            html += `<button onclick="openAddPartModal()" class="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                <i class="ph-bold ph-plus"></i> Add New Part
+            </button>`;
+        }
+        btnWrap.innerHTML = html;
+        btnWrap.classList.toggle('hidden', html === '');
+    }
+
+    // Adjust table classes on mobile and action header
+    const thead = document.querySelector('#view-inventory thead');
+    const table = document.querySelector('#view-inventory table');
+    if (thead) {
+        if (isMobile) {
+            thead.classList.add('hidden');
+            table?.classList.remove('min-w-[900px]');
+        } else {
+            thead.classList.remove('hidden');
+            table?.classList.add('min-w-[900px]');
+        }
+        
+        const tr = thead.querySelector('tr');
+        if (tr) {
+            const ths = tr.querySelectorAll('th');
+            if (ths.length >= 5) {
+                ths[4].style.display = showActions ? '' : 'none';
+            }
+        }
+    }
+
     // Get filter values
     const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
     const stockFilter = document.getElementById('inv-filter-stock')?.value || '';
@@ -1585,61 +1836,154 @@ function renderInventory() {
         return matchesSearch && matchesStock && matchesCat;
     });
 
+    // Update result count
+    const countEl = document.getElementById('inv-results-count');
+    if (countEl) {
+        if (isMobile) {
+            countEl.textContent = `${filtered.length} part${filtered.length === 1 ? '' : 's'}`;
+        } else {
+            countEl.textContent = '';
+        }
+    }
+
     // Render HTML
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria.</td></tr>`;
+        if (isMobile) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 border-0 text-center text-slate-500 font-medium"><div class="flex flex-col items-center gap-2"><i class="ph-bold ph-magnifying-glass text-3xl text-slate-300"></i> No parts found.</div></td></tr>`;
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria.</td></tr>`;
+        }
         return;
     }
 
     tbody.innerHTML = filtered.map(item => {
-        // Stock Badge Styling
-        let stockBadge = '';
-        let rowClass = 'hover:bg-blue-50/30 transition-colors';
-        let btnStatus = `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"`;
+        if (isMobile) {
+            // MOBILE CARD LAYOUT
+            let stockBadgeMobile = '';
+            let rowOpacity = item.stock === 0 ? 'opacity-75' : '';
 
-        if (item.stock === 0) {
-            stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>`;
-            rowClass += ' opacity-75 bg-slate-50';
-            btnStatus = `disabled class="bg-slate-100 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1"`;
-        } else if (item.stock <= 5) {
-            stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${item.stock} Available</span>`;
-        } else {
-            stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
-        }
+            if (item.stock === 0) {
+                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>`;
+            } else if (item.stock <= 5) {
+                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">${item.stock} Available</span>`;
+            } else {
+                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">${item.stock} Available</span>`;
+            }
 
-        let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
+            if (!window.expandedInvCards) window.expandedInvCards = new Set();
+            const isOpen = window.expandedInvCards.has(item.id);
 
-        return `
-            <tr class="${rowClass}">
-                <td class="p-4">
-                    <div class="flex items-center gap-3">
-                        <img src="${item.img}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-sm">
-                        <div>
-                            <div class="font-bold text-slate-800">${item.name}</div>
-                            <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
-                            ${dtcTag}
+            return `
+                <tr class="block w-full">
+                    <td colspan="5" class="block w-full p-0 border-0">
+                        <div class="bg-white border-b border-slate-100 flex flex-col p-3.5 ${rowOpacity}">
+                            <div class="flex items-center justify-between gap-3 min-h-[50px] cursor-pointer" onclick="toggleInvCard('${item.id}')">
+                                <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                    <img src="${item.img}" class="w-full h-full object-cover">
+                                </div>
+                                <div class="flex-1 min-w-0 flex flex-col justify-center">
+                                    <div class="font-bold text-slate-800 text-sm line-clamp-2 leading-tight">${item.name}</div>
+                                    <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                        <span class="font-bold text-slate-700 text-xs">₱${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                                        ${stockBadgeMobile}
+                                    </div>
+                                </div>
+                                <div id="inv-chevron-${item.id}" class="w-11 h-11 rounded-full text-slate-400 flex items-center justify-center shrink-0 transition-transform duration-200" style="transform: ${isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
+                                    <i class="ph-bold ph-caret-down text-lg"></i>
+                                </div>
+                            </div>
+                            <div id="inv-wrap-${item.id}" style="display: grid; transition: grid-template-rows 200ms ease-out; grid-template-rows: ${isOpen ? '1fr' : '0fr'};">
+                                <div style="overflow: hidden;">
+                                    <div class="pt-3 mt-3 border-t border-slate-100 flex flex-col gap-2 text-sm">
+                                        <div class="grid grid-cols-2 gap-y-2 gap-x-4">
+                                            <div class="text-slate-500 text-xs">SKU</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.sku}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Compatibility</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.comp}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Category</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.category}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Location</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.loc}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Reserved</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.reserved}</div>
+                                        </div>
+                                        
+                                        ${item.dtc ? `
+                                        <div class="mt-1">
+                                            <div class="text-slate-500 text-xs mb-1">Linked DTC</div>
+                                            <div class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> ${item.dtc}</div>
+                                        </div>` : ''}
+                        
+                                        ${showActions ? `
+                                        <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                            ${canEdit ? `<button onclick="openEditPartModal()" class="flex-1 text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors"><i class="ph-bold ph-pencil-simple text-sm"></i> Edit</button>` : ''}
+                                            
+                                            ${canWalkIn ? `<button ${item.stock === 0 ? 'disabled' : `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" `} class="flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors ${item.stock === 0 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white border border-transparent'}"><i class="ph-bold ph-shopping-cart-simple text-sm"></i> Walk-in Sale</button>` : ''}
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </td>
-                <td class="p-4">
-                    <div class="font-medium text-slate-600">${item.category}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
-                </td>
-                <td class="p-4 font-bold text-slate-800">₱${item.price.toFixed(2)}</td>
-                <td class="p-4">
-                    ${stockBadge}
-                    <div class="text-[10px] font-semibold text-slate-400 mt-1.5 ml-1">(${item.reserved} Reserved)</div>
-                </td>
-                <td class="p-4 text-right">
-                    <div class="flex justify-end gap-2">
-                        <button class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i></button>
-                        <button ${btnStatus}>
-                            <i class="ph-bold ph-shopping-cart-simple"></i> Walk-in Sale
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
+                    </td>
+                </tr>
+            `;
+        } else {
+            // DESKTOP TABLE LAYOUT
+            let stockBadge = '';
+            let rowClass = 'hover:bg-blue-50/30 transition-colors';
+            let btnStatus = `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"`;
+
+            if (item.stock === 0) {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>`;
+                rowClass += ' opacity-75 bg-slate-50';
+                btnStatus = `disabled class="bg-slate-100 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1"`;
+            } else if (item.stock <= 5) {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${item.stock} Available</span>`;
+            } else {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
+            }
+
+            let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
+
+            return `
+                <tr class="${rowClass}">
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${item.img}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-sm">
+                            <div>
+                                <div class="font-bold text-slate-800">${item.name}</div>
+                                <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
+                                ${dtcTag}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <div class="font-medium text-slate-600">${item.category}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
+                    </td>
+                    <td class="p-4 font-bold text-slate-800">₱${item.price.toFixed(2)}</td>
+                    <td class="p-4">
+                        ${stockBadge}
+                        <div class="text-[10px] font-semibold text-slate-400 mt-1.5 ml-1">(${item.reserved} Reserved)</div>
+                    </td>
+                    ${showActions ? `
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2">
+                            ${canEdit ? `<button onclick="openEditPartModal()" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i></button>` : ''}
+                            ${canWalkIn ? `<button ${btnStatus}>
+                                <i class="ph-bold ph-shopping-cart-simple"></i> Walk-in Sale
+                            </button>` : ''}
+                        </div>
+                    </td>
+                    ` : ''}
+                </tr>
+            `;
+        }
     }).join('');
 }
 
@@ -2697,13 +3041,34 @@ const mockRepairsData = [
         mechanicOptions: ['Mike (Chief Mechanic)', 'Leo (Sub-Mechanic)'],
         selectedMechIndex: 0,
         diagnosis: 'Coolant temp sensor high (P0118). Brake pads heavily worn. Requires part replacement.',
-        statusId: 'progress',
-        statusName: 'In Progress',
-        statusClass: 'bg-blue-100 text-blue-700 border-blue-200',
-        dotClass: 'bg-blue-500 animate-pulse',
-        btnText: 'Manage Repair <i class="ph-bold ph-caret-right"></i>',
-        btnClass: 'bg-slate-800 hover:bg-slate-900 text-white',
-        btnAction: 'openRepairModal()'
+        statusId: 'waiting',
+        statusName: 'Waiting for Parts',
+        statusClass: 'bg-orange-50 text-orange-600 border-orange-200',
+        dotClass: 'bg-orange-500',
+        repairPlan: {
+            parts: [
+                {
+                    id: 'part-1',
+                    part: { name: 'Coolant Temperature Sensor', price: 850 },
+                    target: 'Coolant temp sensor high (P0118) (Engine)',
+                    qty: 1,
+                    handling: 'order',
+                    expectedArrival: '2026-10-07',
+                    partStatus: 'Waiting'
+                },
+                {
+                    id: 'part-2',
+                    part: { name: 'Front Brake Pads', price: 450 },
+                    target: 'Brake pads heavily worn (Brakes)',
+                    qty: 1,
+                    handling: 'order',
+                    expectedArrival: '2026-10-06',
+                    partStatus: 'Ordered'
+                }
+            ],
+            laborCost: 500,
+            estimatedTotal: 1800
+        }
     },
     {
         id: 'JOB #1041',
@@ -2714,18 +3079,341 @@ const mockRepairsData = [
         selectedMechIndex: 1,
         diagnosis: 'Throttle body cleaning and standard change oil.',
         statusId: 'pending',
-        statusName: 'Pending Post-Scan',
-        statusClass: 'bg-purple-100 text-purple-700 border-purple-200',
+        statusName: 'Pending Post-Scan / Calibration',
+        statusClass: 'bg-purple-50 text-purple-600 border-purple-200',
         dotClass: 'bg-purple-500',
-        btnText: 'View Details',
-        btnClass: 'bg-white border border-slate-300 hover:bg-slate-50 text-slate-700',
-        btnAction: ''
+        repairPlan: {
+            parts: [],
+            laborCost: 800,
+            estimatedTotal: 800
+        }
     }
 ];
+
+function checkJobPartsStatus(jobId) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job || !job.repairPlan || !job.repairPlan.parts) return;
+    
+    const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order' && p.partStatus !== 'Received');
+    
+    if (pendingParts.length === 0 && job.statusId === 'waiting') {
+        job.statusId = 'progress';
+        job.statusName = 'In Progress';
+        job.statusClass = 'bg-blue-50 text-blue-600 border-blue-200';
+        job.dotClass = 'bg-blue-500 animate-pulse';
+        job.startedAnyway = false;
+        
+        showToast(`All parts ready. ${job.id} moved to In Progress.`);
+        renderRepairs();
+    } else {
+        renderRepairs();
+    }
+}
+
+function showToast(msg) {
+    let toast = document.createElement('div');
+    const isMobile = document.body.classList.contains('mobile-app');
+    const bottomClass = isMobile ? 'bottom-24 left-4 right-4 mx-auto w-max max-w-[90%]' : 'bottom-4 right-4';
+    toast.className = `fixed ${bottomClass} bg-slate-800 text-white px-4 py-2 rounded shadow-lg text-sm font-medium z-[9999] transition-opacity duration-300 text-center`;
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+window.markPartStatus = function(jobId, partId, newStatus) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    const part = job.repairPlan.parts.find(p => p.id === partId);
+    if (!part) return;
+    part.partStatus = newStatus;
+    checkJobPartsStatus(jobId);
+};
+
+window.checkStockForJob = function(jobId) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    
+    if (job.repairPlan && job.repairPlan.parts) {
+        job.repairPlan.parts.forEach(p => {
+            if (p.handling === 'order') {
+                p.partStatus = 'Received';
+            }
+        });
+    }
+    checkJobPartsStatus(jobId);
+};
+
+window.startRepairAnyway = function(jobId) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    
+    job.statusId = 'progress';
+    job.statusName = 'In Progress';
+    job.statusClass = 'bg-blue-50 text-blue-600 border-blue-200';
+    job.dotClass = 'bg-blue-500 animate-pulse';
+    job.startedAnyway = true;
+    renderRepairs();
+};
+
+window.markRepairDone = function(jobId) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    
+    // Check if ecu was used (for mock demo, if it has 'sensor' in diagnosis or randomly)
+    const ecuUsed = job.diagnosis.toLowerCase().includes('sensor') || job.diagnosis.toLowerCase().includes('ecu');
+    
+    if (ecuUsed) {
+        job.statusId = 'pending';
+        job.statusName = 'Pending Post-Scan / Calibration';
+        job.statusClass = 'bg-purple-50 text-purple-600 border-purple-200';
+        job.dotClass = 'bg-purple-500';
+    } else {
+        job.statusId = 'ready';
+        job.statusName = 'Ready for Billing';
+        job.statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
+        job.dotClass = 'bg-emerald-500';
+    }
+    job.startedAnyway = false;
+    renderRepairs();
+};
+
+window.completePostScan = function(jobId) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    
+    job.statusId = 'ready';
+    job.statusName = 'Ready for Billing';
+    job.statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
+    job.dotClass = 'bg-emerald-500';
+    renderRepairs();
+};
+
+// Payment logic state
+let currentPaymentJob = null;
+let currentPayMethod = 'Cash';
+
+window.proceedToPayment = function(jobId) {
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    
+    currentPaymentJob = job;
+    
+    // Hide active repairs main, show payment
+    document.getElementById('active-repairs-main').classList.add('hidden');
+    document.getElementById('payment-screen-container').classList.remove('hidden');
+    document.getElementById('payment-form-state').classList.remove('hidden');
+    document.getElementById('payment-success-state').classList.add('hidden');
+    
+    document.getElementById('payment-job-summary').textContent = `${job.customer} - ${job.plate} (${job.model}) • ${job.id}`;
+    
+    // Adjust layout for mobile
+    const isMobile = document.body.classList.contains('mobile-app');
+    const payContainer = document.getElementById('payment-screen-container');
+    const cashSection = document.getElementById('cash-payment-section');
+    const payBtn = document.getElementById('btn-complete-payment');
+    const payMethodWrapper = document.querySelector('.pay-method-btn').parentElement;
+    
+    if (isMobile) {
+        payContainer.className = 'w-full bg-white flex flex-col min-h-screen pb-32 pt-2 relative z-10';
+        if (cashSection) cashSection.className = 'mb-6 flex flex-col gap-4';
+        if (payMethodWrapper) payMethodWrapper.className = 'flex flex-wrap gap-2';
+        if (payBtn) payBtn.className = 'w-[calc(100%-32px)] bg-slate-800 text-white font-bold py-3.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed fixed bottom-20 left-4 right-4 shadow-xl z-20 transition-all';
+        document.getElementById('payment-change')?.classList.add('text-2xl', 'py-4');
+        document.getElementById('payment-amount')?.classList.add('text-2xl', 'py-4');
+    } else {
+        payContainer.className = 'max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-sm border border-slate-200';
+        if (cashSection) cashSection.className = 'mb-6 flex gap-4';
+        if (payMethodWrapper) payMethodWrapper.className = 'flex gap-2';
+        if (payBtn) payBtn.className = 'w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed';
+        document.getElementById('payment-change')?.classList.remove('text-2xl', 'py-4');
+        document.getElementById('payment-amount')?.classList.remove('text-2xl', 'py-4');
+    }
+    
+    let itemsHTML = '';
+    let grandTotal = 0;
+    
+    if (job.repairPlan && job.repairPlan.parts) {
+        job.repairPlan.parts.forEach(p => {
+            const lineTotal = p.part.price * p.qty;
+            grandTotal += lineTotal;
+            itemsHTML += `
+                <div class="flex justify-between text-sm py-1">
+                    <div>
+                        <span class="font-semibold text-slate-700">${p.part.name}</span> <span class="text-xs text-slate-500">x${p.qty}</span>
+                        <div class="text-[10px] text-slate-400">For: ${p.target}</div>
+                    </div>
+                    <span class="font-mono text-slate-700">₱${lineTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                </div>
+            `;
+        });
+        
+        if (job.repairPlan.laborCost) {
+            grandTotal += job.repairPlan.laborCost;
+            itemsHTML += `
+                <div class="flex justify-between text-sm py-2 mt-2 border-t border-slate-100">
+                    <div class="font-semibold text-slate-700">Labor</div>
+                    <span class="font-mono text-slate-700">₱${job.repairPlan.laborCost.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                </div>
+            `;
+        }
+    }
+    
+    document.getElementById('payment-items').innerHTML = itemsHTML || '<div class="text-sm text-slate-500 text-center py-2">No items</div>';
+    document.getElementById('payment-grand-total').textContent = `₱${grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    
+    currentPaymentJob.computedTotal = grandTotal;
+    
+    // reset form
+    document.getElementById('payment-amount').value = '';
+    document.getElementById('payment-change').textContent = '0.00';
+    updatePaymentValidation();
+};
+
+window.closePaymentScreen = function() {
+    document.getElementById('active-repairs-main').classList.remove('hidden');
+    document.getElementById('payment-screen-container').classList.add('hidden');
+    renderRepairs(); // refresh grid
+};
+
+window.completePayment = function() {
+    if (!currentPaymentJob) return;
+    
+    // status paid
+    currentPaymentJob.statusId = 'paid';
+    currentPaymentJob.statusName = 'Paid / Completed';
+    currentPaymentJob.statusClass = 'bg-slate-100 text-slate-600 border-slate-200';
+    currentPaymentJob.dotClass = 'bg-slate-400';
+    
+    // Deduct inventory
+    if (currentPaymentJob.repairPlan && currentPaymentJob.repairPlan.parts) {
+        currentPaymentJob.repairPlan.parts.forEach(p => {
+            if (p.partStatus === 'Received' || !p.partStatus) {
+                const invItem = mockInventory.find(inv => inv.name === p.part.name);
+                if (invItem) {
+                    invItem.stock = Math.max(0, invItem.stock - p.qty);
+                }
+            }
+        });
+    }
+    
+    document.getElementById('payment-form-state').classList.add('hidden');
+    document.getElementById('payment-success-state').classList.remove('hidden');
+    
+    document.getElementById('payment-success-summary').textContent = `${currentPaymentJob.id} for ${currentPaymentJob.plate} has been successfully paid via ${currentPayMethod}.`;
+};
+
+// Add event listeners for payment method chips and amount
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('pay-method-btn')) {
+        document.querySelectorAll('.pay-method-btn').forEach(btn => {
+            btn.className = 'pay-method-btn flex-1 py-2 border border-slate-200 bg-white text-slate-600 rounded font-semibold text-sm hover:bg-slate-50';
+        });
+        e.target.className = 'pay-method-btn flex-1 py-2 border border-blue-500 bg-blue-50 text-blue-700 rounded font-semibold text-sm';
+        currentPayMethod = e.target.getAttribute('data-method');
+        
+        const cashSection = document.getElementById('cash-payment-section');
+        if (cashSection) {
+            if (currentPayMethod === 'Cash') {
+                cashSection.classList.remove('hidden');
+                cashSection.classList.add('flex');
+            } else {
+                cashSection.classList.add('hidden');
+                cashSection.classList.remove('flex');
+            }
+        }
+        updatePaymentValidation();
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'payment-amount' || e.target.id === 'payment-discount') {
+        updatePaymentValidation();
+    }
+});
+
+function updatePaymentValidation() {
+    if (!currentPaymentJob) return;
+    const btn = document.getElementById('btn-complete-payment');
+    if (!btn) return;
+    
+    const discount = parseFloat(document.getElementById('payment-discount')?.value) || 0;
+    const baseTotal = currentPaymentJob.computedTotal || 0;
+    const total = Math.max(0, baseTotal - discount);
+    
+    document.getElementById('payment-grand-total').textContent = `₱${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    
+    if (currentPayMethod === 'Cash') {
+        const amount = parseFloat(document.getElementById('payment-amount').value) || 0;
+        const change = amount - total;
+        
+        document.getElementById('payment-change').textContent = change >= 0 ? change.toLocaleString('en-US', {minimumFractionDigits: 2}) : '0.00';
+        
+        btn.disabled = amount < total;
+    } else {
+        btn.disabled = false;
+        document.getElementById('payment-change').textContent = '0.00';
+    }
+}
+
+window.toggleRepairCard = function(id) {
+    if (!window.expandedRepairCards) window.expandedRepairCards = new Set();
+    const isExpanding = !window.expandedRepairCards.has(id);
+    
+    if (isExpanding) {
+        window.expandedRepairCards.add(id);
+    } else {
+        window.expandedRepairCards.delete(id);
+    }
+    
+    // Animate DOM directly to allow smooth transition without destroying elements
+    const contentDiv = document.getElementById(`repair-expanded-${id}`);
+    const chevron = document.getElementById(`repair-chevron-${id}`);
+    
+    if (contentDiv && chevron) {
+        if (isExpanding) {
+            contentDiv.classList.remove('max-h-0', 'opacity-0');
+            contentDiv.classList.add('max-h-[2000px]', 'opacity-100');
+            chevron.classList.add('rotate-180');
+        } else {
+            contentDiv.classList.remove('max-h-[2000px]', 'opacity-100');
+            contentDiv.classList.add('max-h-0', 'opacity-0');
+            chevron.classList.remove('rotate-180');
+        }
+    } else {
+        renderRepairs();
+    }
+};
 
 function renderRepairs() {
     const grid = document.getElementById('repairs-grid');
     if (!grid) return;
+    
+    const isMobile = document.body.classList.contains('mobile-app');
+    
+    const searchInput = document.getElementById('repair-search');
+    const searchContainer = searchInput?.parentElement;
+    const filterContainer = document.getElementById('repair-filters');
+    
+    if (isMobile) {
+        grid.className = 'flex flex-col gap-3 pb-32';
+        if (searchInput) searchInput.placeholder = "Search plate, customer or job #";
+        if (searchContainer) searchContainer.className = 'relative w-full';
+        if (filterContainer) {
+            filterContainer.style.maskImage = 'linear-gradient(to right, black 85%, transparent 100%)';
+            filterContainer.style.webkitMaskImage = 'linear-gradient(to right, black 85%, transparent 100%)';
+        }
+    } else {
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5';
+        if (searchInput) searchInput.placeholder = "Search by Plate No., Customer Name, or Job ID...";
+        if (searchContainer) searchContainer.className = 'relative w-full sm:max-w-md';
+        if (filterContainer) {
+            filterContainer.style.maskImage = '';
+            filterContainer.style.webkitMaskImage = '';
+        }
+    }
 
     const query = (document.getElementById('repair-search')?.value || '').toLowerCase();
 
@@ -2735,27 +3423,259 @@ function renderRepairs() {
                               job.customer.toLowerCase().includes(query) || 
                               job.id.toLowerCase().includes(query);
                               
-        const matchesStatus = currentRepairFilter === 'all' || job.statusId === currentRepairFilter;
+        const matchesStatus = currentRepairFilter === 'all' ? job.statusId !== 'paid' : job.statusId === currentRepairFilter;
 
         return matchesSearch && matchesStatus;
     });
 
+    // Update Filter Chips Counts
+    const statusCounts = { all: mockRepairsData.filter(j => j.statusId !== 'paid').length };
+    mockRepairsData.forEach(j => {
+        statusCounts[j.statusId] = (statusCounts[j.statusId] || 0) + 1;
+    });
+    
+    document.querySelectorAll('.repair-filter-btn').forEach(btn => {
+        const f = btn.getAttribute('data-filter');
+        const count = statusCounts[f] || 0;
+        if (!btn.hasAttribute('data-original-text')) {
+            btn.setAttribute('data-original-text', btn.textContent.trim());
+        }
+        const origText = btn.getAttribute('data-original-text');
+        
+        if (isMobile) {
+            btn.innerHTML = `${origText} <span class="ml-1 px-1.5 py-0.5 bg-black/10 rounded text-[10px]">${count}</span>`;
+        } else {
+            btn.textContent = origText;
+        }
+    });
+
+    let resultCountHTML = '';
+    if (isMobile && filtered.length > 0) {
+        const countText = filtered.length === 1 ? '1 job' : `${filtered.length} jobs`;
+        resultCountHTML = `<div class="text-sm font-semibold text-slate-500 px-1 mb-1">${countText}</div>`;
+    }
+
     if (filtered.length === 0) {
-        grid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 font-medium bg-white rounded-xl border border-slate-200">No active repairs found matching your criteria.</div>`;
+        grid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-500 font-medium bg-white rounded-xl border border-slate-200 shadow-sm">${isMobile ? 'No jobs found' : 'No active repairs found matching your criteria.'}</div>`;
         return;
     }
 
     // Render HTML Cards
-    grid.innerHTML = filtered.map(job => {
-        const opacityClass = job.statusId !== 'progress' ? 'opacity-80' : '';
+    grid.innerHTML = resultCountHTML + filtered.map(job => {
+        const opacityClass = (job.statusId !== 'progress' && job.statusId !== 'waiting') ? 'opacity-80' : '';
         
         // Build mechanic select options
         const mechOptions = job.mechanicOptions.map((mech, idx) => 
             `<option ${idx === job.selectedMechIndex ? 'selected' : ''}>${mech}</option>`
         ).join('');
 
-        return `
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hover:shadow-md transition-shadow ${opacityClass}">
+        let partsHTML = '';
+        const showPartsList = job.statusId === 'waiting' || (job.statusId === 'progress' && job.startedAnyway);
+        let hasPending = false;
+        
+        if (job.repairPlan && job.repairPlan.parts) {
+            const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order');
+            hasPending = pendingParts.some(p => p.partStatus !== 'Received');
+            
+            if (showPartsList && pendingParts.length > 0) {
+                let partsRows = pendingParts.map(p => {
+                    let actionsHTML = '';
+                    if (p.partStatus !== 'Received') {
+                        if (p.partStatus === 'Waiting' || !p.partStatus) {
+                            actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Ordered')" class="text-[10px] text-blue-600 hover:underline">Mark ordered</button>`;
+                        }
+                        actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Received')" class="text-[10px] text-emerald-600 hover:underline ml-2">Mark received</button>`;
+                    } else {
+                        actionsHTML = `<span class="text-[10px] text-emerald-600 font-bold"><i class="ph-bold ph-check"></i> Ready</span>`;
+                    }
+                    
+                    let statusColor = (!p.partStatus || p.partStatus === 'Waiting') ? 'text-amber-600' : (p.partStatus === 'Ordered' ? 'text-blue-600' : 'text-emerald-600');
+
+                    return `
+                        <div class="flex flex-col py-1.5 border-b border-slate-100 last:border-0">
+                            <div class="flex justify-between items-start mb-0.5">
+                                <span class="text-xs font-semibold text-slate-700">${p.part.name} (x${p.qty})</span>
+                                <span class="text-[10px] font-bold ${statusColor}">${p.partStatus || 'Waiting'}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-[10px] text-slate-500 truncate pr-2">For: ${p.target}</span>
+                                <span class="text-[10px] text-slate-400 whitespace-nowrap">ETA: ${p.expectedArrival || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-end mt-1">${actionsHTML}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                let anywayBtn = '';
+                if (job.statusId === 'waiting') {
+                    anywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="text-[10px] font-semibold text-amber-600 hover:text-amber-700 hover:underline mt-2 inline-flex items-center gap-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
+                }
+
+                let pendingTag = '';
+                if (job.statusId === 'progress' && hasPending) {
+                    pendingTag = `<span class="absolute top-3 right-3 bg-orange-50 text-orange-600 border-orange-200 border text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"><i class="ph-bold ph-warning-circle"></i> Parts pending</span>`;
+                }
+
+                partsHTML = `
+                    <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-2.5 relative">
+                        ${pendingTag}
+                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Parts Needed</span>
+                        ${partsRows}
+                        ${anywayBtn}
+                    </div>
+                `;
+            }
+        }
+
+        // Determine primary button based on rules
+        let btnText = 'View Details';
+        let btnClass = 'bg-slate-800 hover:bg-slate-900 text-white';
+        let btnAction = 'openRepairModal()';
+        let btnDisabled = false;
+        let hintHTML = '';
+        
+        if (job.statusId === 'waiting') {
+            btnText = '<i class="ph-bold ph-arrows-clockwise"></i> Check stock';
+            btnAction = `checkStockForJob('${job.id}')`;
+        } else if (job.statusId === 'progress') {
+            btnText = '<i class="ph-bold ph-check-circle"></i> Mark Repair Done';
+            btnAction = `markRepairDone('${job.id}')`;
+            if (hasPending) {
+                btnDisabled = true;
+                btnClass = 'bg-slate-300 text-slate-500 cursor-not-allowed';
+                hintHTML = `<div class="text-[10px] text-amber-600 font-medium text-right mt-1 w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>`;
+            }
+        } else if (job.statusId === 'pending') {
+            btnText = '<i class="ph-bold ph-check-square"></i> Complete Post-Scan';
+            btnAction = `completePostScan('${job.id}')`;
+        } else if (job.statusId === 'ready') {
+            btnText = 'Proceed to Payment <i class="ph-bold ph-arrow-right"></i>';
+            btnAction = `proceedToPayment('${job.id}')`;
+            btnClass = 'bg-blue-600 hover:bg-blue-700 text-white';
+        } else if (job.statusId === 'paid') {
+            btnText = '<i class="ph-bold ph-receipt"></i> View Receipt';
+            btnAction = ''; // dummy action
+            btnClass = 'bg-white border border-slate-300 hover:bg-slate-50 text-slate-700';
+        }
+
+        if (isMobile) {
+            if (!window.expandedRepairCards) window.expandedRepairCards = new Set();
+            const isExpanded = window.expandedRepairCards.has(job.id);
+            const chevronClass = isExpanded ? 'rotate-180' : '';
+            const expandClasses = isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0';
+            const pendingBadge = hasPending ? `<span class="px-2 py-0.5 rounded text-[10px] font-bold border bg-amber-50 text-amber-700 border-amber-200">Parts pending</span>` : '';
+            
+            let mobilePartsHTML = '';
+            if (job.repairPlan && job.repairPlan.parts && showPartsList) {
+                const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order');
+                if (pendingParts.length > 0) {
+                    let partsRows = pendingParts.map(p => {
+                        let actionsHTML = '';
+                        if (p.partStatus !== 'Received') {
+                            if (p.partStatus === 'Waiting' || !p.partStatus) {
+                                actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Ordered')" class="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded text-xs font-semibold border border-blue-200 active:bg-blue-100">Mark ordered</button>`;
+                            }
+                            actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Received')" class="flex-1 py-1.5 bg-emerald-50 text-emerald-600 rounded text-xs font-semibold border border-emerald-200 active:bg-emerald-100 ml-2">Mark received</button>`;
+                        } else {
+                            actionsHTML = `<div class="w-full text-center py-1.5 bg-emerald-50 text-emerald-700 rounded text-xs font-bold border border-emerald-200"><i class="ph-bold ph-check"></i> Ready</div>`;
+                        }
+                        
+                        let statusColor = (!p.partStatus || p.partStatus === 'Waiting') ? 'text-amber-600' : (p.partStatus === 'Ordered' ? 'text-blue-600' : 'text-emerald-600');
+
+                        return `
+                            <div class="flex flex-col p-2.5 bg-white border border-slate-200 rounded-lg mb-2 last:mb-0 shadow-sm">
+                                <div class="flex justify-between items-start mb-1.5">
+                                    <span class="text-sm font-bold text-slate-700">${p.part.name} <span class="text-xs font-medium text-slate-500 ml-1">x${p.qty}</span></span>
+                                    <span class="text-[10px] font-bold ${statusColor} px-1.5 py-0.5 bg-slate-50 border border-slate-100 rounded uppercase tracking-wider">${p.partStatus || 'Waiting'}</span>
+                                </div>
+                                <div class="flex flex-col gap-0.5 mb-2">
+                                    <span class="text-xs text-slate-500"><span class="font-semibold text-slate-600">For:</span> ${p.target}</span>
+                                    <span class="text-xs text-slate-500"><span class="font-semibold text-slate-600">ETA:</span> ${p.expectedArrival || 'N/A'}</span>
+                                </div>
+                                <div class="flex w-full">
+                                    ${actionsHTML}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    let mobileAnywayBtn = '';
+                    if (job.statusId === 'waiting') {
+                        mobileAnywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="w-full py-2 bg-transparent text-amber-700 border border-amber-200 rounded-lg text-xs font-bold active:bg-amber-50 mt-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
+                    }
+                    
+                    const mobileHintHTML = hintHTML ? `<div class="text-[10px] text-amber-600 font-medium text-center w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>` : '';
+
+                    mobilePartsHTML = `
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <span class="text-xs font-bold text-slate-500 uppercase block mb-3">Parts Needed</span>
+                            <div class="flex flex-col bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                                ${partsRows}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            return `
+            <div class="w-full bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden ${opacityClass}">
+                <div class="p-4 flex items-center justify-between min-h-[44px] gap-3 cursor-pointer" onclick="toggleRepairCard('${job.id}')">
+                    <div class="flex-1 min-w-0 flex flex-col gap-1">
+                        <div class="flex items-center justify-between gap-2">
+                            <div class="flex items-baseline gap-2 min-w-0">
+                                <span class="font-bold text-slate-800 text-lg whitespace-nowrap">${job.plate}</span>
+                                <span class="text-xs text-slate-500 truncate">${job.model}</span>
+                            </div>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">${job.id}</span>
+                        </div>
+                        <span class="text-sm font-semibold text-slate-700 truncate">${job.customer}</span>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1.5 ${job.statusClass}">
+                                ${job.dotClass ? `<span class="w-1.5 h-1.5 rounded-full ${job.dotClass}"></span>` : ''} ${job.statusName}
+                            </span>
+                            ${pendingBadge}
+                        </div>
+                    </div>
+                    <div class="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-slate-50 text-slate-400">
+                        <i id="repair-chevron-${job.id}" class="ph-bold ph-caret-down transition-transform duration-200 ${chevronClass}"></i>
+                    </div>
+                </div>
+                
+                <div id="repair-expanded-${job.id}" class="transition-all duration-200 ease-in-out overflow-hidden ${expandClasses}">
+                    <div class="p-4 pt-0 border-t border-slate-100 bg-white flex flex-col gap-3">
+                        <div class="flex flex-col gap-1 mt-3">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Customer</span>
+                            <span class="text-sm font-semibold text-slate-700 break-words whitespace-normal">${job.customer}</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Mechanic</span>
+                            <select class="w-full text-sm font-medium text-slate-700 border border-slate-200 rounded-md p-2.5 bg-slate-50 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-sm">
+                                ${mechOptions}
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Initial Diagnosis</span>
+                            <p class="text-sm text-slate-600 bg-slate-50 p-3 rounded-md border border-slate-200 leading-relaxed whitespace-normal break-words">
+                                ${job.diagnosis}
+                            </p>
+                        </div>
+                        
+                        ${mobilePartsHTML}
+                        
+                        <div class="mt-2 pt-4 border-t border-slate-100 flex flex-col gap-1.5">
+                            <button onclick="${btnAction}" class="w-full py-3 rounded-lg text-sm font-bold shadow-sm flex items-center justify-center gap-2 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
+                                ${btnText}
+                            </button>
+                            ${mobileHintHTML}
+                            ${mobileAnywayBtn}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        } else {
+            return `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hover:shadow-md transition-shadow relative ${opacityClass}">
                 <div class="bg-slate-50 border-b border-slate-200 p-3.5 flex justify-between items-center">
                     <div>
                         <span class="font-bold text-slate-800 text-sm">${job.plate}</span>
@@ -2779,18 +3699,23 @@ function renderRepairs() {
                         <p class="text-xs text-slate-600 bg-slate-50 p-2.5 rounded border border-slate-100 leading-relaxed">
                             ${job.diagnosis}
                         </p>
+                        ${partsHTML}
                     </div>
                 </div>
-                <div class="p-3.5 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <span class="px-2.5 py-1 rounded text-[10px] font-bold border flex items-center gap-1.5 ${job.statusClass}">
-                        <span class="w-1.5 h-1.5 rounded-full ${job.dotClass}"></span> ${job.statusName}
-                    </span>
-                    <button onclick="${job.btnAction}" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 ${job.btnClass}">
-                        ${job.btnText}
-                    </button>
+                <div class="p-3.5 border-t border-slate-100 bg-slate-50/50 flex flex-col items-end">
+                    <div class="flex items-center justify-between w-full">
+                        <span class="px-2.5 py-1 rounded text-[10px] font-bold border flex items-center gap-1.5 ${job.statusClass}">
+                            ${job.dotClass ? `<span class="w-1.5 h-1.5 rounded-full ${job.dotClass}"></span>` : ''} ${job.statusName}
+                        </span>
+                        <button onclick="${btnAction}" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
+                            ${btnText}
+                        </button>
+                    </div>
+                    ${hintHTML}
                 </div>
             </div>
         `;
+        }
     }).join('');
 }
 
@@ -3852,3 +4777,19 @@ document.addEventListener('input', function(e) {
 document.addEventListener('change', function(e) {
     if (e.target.matches && e.target.matches('[data-insp-file]')) handleInspectionPhoto(e.target);
 });
+
+window.toggleInvCard = function(id) {
+    if (!window.expandedInvCards) window.expandedInvCards = new Set();
+    const wrap = document.getElementById(`inv-wrap-${id}`);
+    const chevron = document.getElementById(`inv-chevron-${id}`);
+    
+    if (window.expandedInvCards.has(id)) {
+        window.expandedInvCards.delete(id);
+        if (wrap) wrap.style.gridTemplateRows = '0fr';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    } else {
+        window.expandedInvCards.add(id);
+        if (wrap) wrap.style.gridTemplateRows = '1fr';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    }
+};
