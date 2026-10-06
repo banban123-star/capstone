@@ -1,3 +1,5 @@
+const MOTORCYCLE_BRANDS = ['Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Kymco', 'SYM', 'Rusi', 'Skygo', 'Other'];
+
 // --- Mock Inventory Data for Diagnostics Autocomplete ---
 const mockInventory = [
     { id: 'p1', name: 'Coolant Temp Sensor (OEM Honda)', sku: '37870-KZR-601', price: 850.00, stock: 24 },
@@ -26,6 +28,100 @@ const mockInventory = [
     { id: 'p25', name: 'Turn Signal Bulb', sku: 'BLB-SIG-10', price: 45.00, stock: 30 }
 ];
 
+// --- Mock Customer Data ---
+const mockCustomers = [
+    { 
+        id: 'c1', 
+        name: 'Juan Dela Cruz', 
+        phone: '09171234567', 
+        email: 'juan.delacruz@email.com', 
+        lastVisit: '2023-10-15',
+        totalVisits: 4,
+        motorcycles: [
+            { brand: 'Honda', model: 'Click 125i', plate: 'ABC 123' },
+            { brand: 'Yamaha', model: 'NMAX', plate: 'XYZ 987' }
+        ]
+    },
+    { 
+        id: 'c2', 
+        name: 'Maria Santos', 
+        phone: '09181112222', 
+        email: 'maria.santos@email.com', 
+        lastVisit: '2023-10-10',
+        totalVisits: 2,
+        motorcycles: [
+            { brand: 'Suzuki', model: 'Raider 150', plate: 'DEF 456' }
+        ]
+    },
+    { 
+        id: 'c3', 
+        name: 'Jose Rizal', 
+        phone: '09192223333', 
+        email: '', 
+        lastVisit: '2023-09-05',
+        totalVisits: 1,
+        motorcycles: [
+            { brand: 'Kawasaki', model: 'Barako', plate: 'GHI 789' }
+        ]
+    },
+    { 
+        id: 'c4', 
+        name: 'Andres Bonifacio', 
+        phone: '09203334444', 
+        email: 'andres.b@email.com', 
+        lastVisit: '2023-08-20',
+        totalVisits: 5,
+        motorcycles: [
+            { brand: 'Yamaha', model: 'Mio Sporty', plate: 'JKL 012' }
+        ]
+    },
+    { 
+        id: 'c5', 
+        name: 'Gabriela Silang', 
+        phone: '09214445555', 
+        email: 'gsilang@email.com', 
+        lastVisit: '2023-10-01',
+        totalVisits: 3,
+        motorcycles: [
+            { brand: 'Honda', model: 'PCX 160', plate: 'MNO 345' }
+        ]
+    },
+    { 
+        id: 'c6', 
+        name: 'Antonio Luna', 
+        phone: '09225556666', 
+        email: '', 
+        lastVisit: '2023-07-15',
+        totalVisits: 1,
+        motorcycles: [
+            { brand: 'Kymco', model: 'Like 150i', plate: 'PQR 678' }
+        ]
+    },
+    { 
+        id: 'c7', 
+        name: 'Apolinario Mabini', 
+        phone: '09236667777', 
+        email: 'amabini@email.com', 
+        lastVisit: '2023-09-25',
+        totalVisits: 6,
+        motorcycles: [
+            { brand: 'SYM', model: 'Bonus 110', plate: 'STU 901' },
+            { brand: 'Honda', model: 'Beat', plate: 'VWX 234' }
+        ]
+    },
+    { 
+        id: 'c8', 
+        name: 'Emilio Aguinaldo', 
+        phone: '09247778888', 
+        email: 'emilio@email.com', 
+        lastVisit: '2023-08-10',
+        totalVisits: 2,
+        motorcycles: [
+            { brand: 'Rusi', model: 'Macho 175', plate: 'YZA 567' }
+        ]
+    }
+];
+
 document.addEventListener('change', function(e) {
     // 1. Walk-in Motorcycle Selector Logic
     if (e.target.id === 'motorcycle-select') {
@@ -41,6 +137,44 @@ document.addEventListener('change', function(e) {
 });
 
 document.addEventListener('input', function(e) {
+    // 1. Customer Autocomplete Search Logic
+    if (e.target.id === 'cust-search-input') {
+        const query = e.target.value.toLowerCase();
+        const dropdown = document.getElementById('cust-autocomplete-dropdown');
+        
+        if (!query) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+        
+        const matches = mockCustomers.filter(c => 
+            c.name.toLowerCase().includes(query) || 
+            c.phone.toLowerCase().includes(query)
+        ).slice(0, 5); // show up to 5 results
+        
+        if (matches.length > 0) {
+            dropdown.innerHTML = matches.map(c => {
+                const motoText = c.motorcycles && c.motorcycles.length > 0 
+                    ? `${c.motorcycles[0].brand} ${c.motorcycles[0].model || ''}`.trim()
+                    : 'No motorcycle registered';
+                return `
+                <div class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer cust-autocomplete-item" data-id="${c.id}">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="text-sm font-bold text-slate-800">${c.name}</div>
+                            <div class="text-xs text-slate-500">${c.phone}</div>
+                            <div class="text-[10px] text-slate-400 mt-1">${motoText}</div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+            dropdown.classList.remove('hidden');
+        } else {
+            dropdown.innerHTML = `<div class="p-3 text-sm text-slate-500 text-center">No customer found. Fill in the details below to register a new one.</div>`;
+            dropdown.classList.remove('hidden');
+        }
+    }
+
     // 2. Parts Autocomplete Search Logic
     if (e.target.id === 'part-search-input') {
         const query = e.target.value.toLowerCase();
@@ -82,6 +216,52 @@ document.addEventListener('input', function(e) {
 });
 
 document.addEventListener('click', function(e) {
+    // 2. Select Customer from Autocomplete
+    const custAutocompleteItem = e.target.closest('.cust-autocomplete-item');
+    if (custAutocompleteItem) {
+        const custId = custAutocompleteItem.getAttribute('data-id');
+        const customer = mockCustomers.find(c => c.id === custId);
+        if (customer) {
+            document.getElementById('cust-name').value = customer.name || '';
+            document.getElementById('cust-phone').value = customer.phone || '';
+            document.getElementById('cust-email').value = customer.email || '';
+            
+            document.getElementById('cust-search-input').value = '';
+            document.getElementById('cust-autocomplete-dropdown').classList.add('hidden');
+            
+            inspectionState.customer.name = customer.name || '';
+            inspectionState.customer.phone = customer.phone || '';
+            inspectionState.customer.email = customer.email || '';
+            inspectionState.customer.selectedCustomerId = customer.id;
+            
+            saveInspectionState();
+            if (typeof restoreCustomerCard === 'function') restoreCustomerCard();
+            if (typeof updateStep3Summaries === 'function') updateStep3Summaries();
+        }
+    }
+
+    // 2.5 Clear Selected Customer
+    const btnClearCust = e.target.closest('#btn-clear-customer');
+    if (btnClearCust) {
+        document.getElementById('cust-name').value = '';
+        document.getElementById('cust-phone').value = '';
+        document.getElementById('cust-email').value = '';
+        
+        inspectionState.customer.name = '';
+        inspectionState.customer.phone = '';
+        inspectionState.customer.email = '';
+        inspectionState.customer.selectedCustomerId = null;
+        
+        const badge = document.getElementById('cust-selected-badge');
+        if (badge) {
+            badge.classList.add('hidden');
+            badge.classList.remove('flex');
+        }
+        
+        saveInspectionState();
+        if (typeof updateStep3Summaries === 'function') updateStep3Summaries();
+    }
+
     // 3. Select Item from Autocomplete
     const autocompleteItem = e.target.closest('.autocomplete-item');
     if (autocompleteItem) {
@@ -127,10 +307,15 @@ document.addEventListener('click', function(e) {
         if (typeof updatePlanTotals === 'function') updatePlanTotals();
     }
     
-    // 5. Hide Autocomplete Dropdown when clicking outside
+    // 5. Hide Autocomplete Dropdowns when clicking outside
     if (!e.target.closest('#part-autocomplete-dropdown') && !e.target.closest('#part-search-input')) {
         const dropdown = document.getElementById('part-autocomplete-dropdown');
         if (dropdown) dropdown.classList.add('hidden');
+    }
+    
+    if (!e.target.closest('#cust-autocomplete-dropdown') && !e.target.closest('#cust-search-input')) {
+        const custDropdown = document.getElementById('cust-autocomplete-dropdown');
+        if (custDropdown) custDropdown.classList.add('hidden');
     }
 });
 let currentDiagStep = 1;
@@ -1080,6 +1265,8 @@ function resetDiagnosticsWorkflow() {
     // Ensure Continue is reset
     
     if (typeof updatePlanTotals === 'function') updatePlanTotals();
+    
+    if (typeof resetInspection === 'function') resetInspection(true);
 
     switchDiagStep(1);
 }
@@ -3852,7 +4039,12 @@ const inspectionItemMap = Object.fromEntries(inspectionItems.map(item => [item.i
 
 // --- State (auto-saved to this device so a refresh / lost signal never wipes the checklist) ---
 function emptyInspectionState() {
-    return { intake: { odo: '', fuel: '', complaints: [] }, items: {} };
+    return { 
+        intake: { odo: '', fuel: '', complaints: [] }, 
+        vehicle: { mode: 'identified', brand: '', model: '', plate: '' },
+        customer: { mode: 'walk-in', name: '', phone: '', email: '', selectedCustomerId: null },
+        items: {} 
+    };
 }
 
 function loadInspectionState() {
@@ -3862,6 +4054,8 @@ function loadInspectionState() {
             const saved = JSON.parse(raw);
             return {
                 intake: { ...emptyInspectionState().intake, ...(saved.intake || {}) },
+                vehicle: { ...emptyInspectionState().vehicle, ...(saved.vehicle || {}) },
+                customer: { ...emptyInspectionState().customer, ...(saved.customer || {}) },
                 items: saved.items || {}
             };
         }
@@ -4028,7 +4222,183 @@ function renderInspection() {
 function restoreInspectionIntake() {
     const { complaints } = inspectionState.intake;
     document.querySelectorAll('[data-insp="complaint"]').forEach(btn => btn.classList.toggle('is-active', complaints.includes(btn.dataset.complaint)));
+    restoreMotorcycleCard();
     validateStep1();
+}
+
+function restoreMotorcycleCard() {
+    const v = inspectionState.vehicle;
+    if (!v) return;
+
+    setMotoMode(v.mode, true);
+
+    const chipsContainer = document.getElementById('moto-brand-chips');
+    if (chipsContainer) {
+        const isOther = v.brand && !MOTORCYCLE_BRANDS.includes(v.brand);
+        chipsContainer.innerHTML = MOTORCYCLE_BRANDS.map(brand => 
+            `<button type="button" onclick="setMotoBrand('${brand}')" class="insp-chip ${v.brand === brand || (isOther && brand === 'Other') ? 'is-active' : ''}">${brand}</button>`
+        ).join('');
+    }
+
+    const otherContainer = document.getElementById('moto-brand-other-container');
+    const otherInput = document.getElementById('moto-brand-other');
+    if (otherContainer && otherInput) {
+        const isCustomBrand = v.brand && !MOTORCYCLE_BRANDS.includes(v.brand);
+        if (isCustomBrand || v.brand === 'Other') {
+            otherContainer.classList.remove('hidden');
+            if (isCustomBrand && otherInput.value !== v.brand) otherInput.value = v.brand;
+            if (v.brand === 'Other') otherInput.value = ''; // clear if just clicked Other
+        } else {
+            otherContainer.classList.add('hidden');
+        }
+    }
+
+    const modelInput = document.getElementById('moto-model');
+    if (modelInput && modelInput.value !== v.model) modelInput.value = v.model || '';
+
+    const plateInput = document.getElementById('moto-plate');
+    if (plateInput && plateInput.value !== v.plate) plateInput.value = v.plate || '';
+}
+
+window.setMotoMode = function(mode, skipSave = false) {
+    if (!skipSave) {
+        inspectionState.vehicle.mode = mode;
+        saveInspectionState();
+    }
+    
+    const btnSelect = document.getElementById('btn-moto-select');
+    const btnWalkin = document.getElementById('btn-moto-walkin');
+    const fieldsIdentified = document.getElementById('moto-fields-identified');
+    const fieldsWalkin = document.getElementById('moto-fields-walkin');
+    if (!btnSelect) return;
+    
+    if (mode === 'walk-in') {
+        btnWalkin.className = 'px-3 py-1 text-[11px] font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all';
+        btnSelect.className = 'px-3 py-1 text-[11px] font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all';
+        fieldsWalkin.classList.remove('hidden');
+        fieldsIdentified.classList.add('hidden');
+    } else {
+        btnSelect.className = 'px-3 py-1 text-[11px] font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all';
+        btnWalkin.className = 'px-3 py-1 text-[11px] font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all';
+        fieldsIdentified.classList.remove('hidden');
+        fieldsWalkin.classList.add('hidden');
+    }
+}
+
+window.setMotoBrand = function(brand) {
+    inspectionState.vehicle.brand = brand;
+    saveInspectionState();
+    restoreMotorcycleCard();
+}
+
+window.updateMotoField = function(field, value) {
+    if (field === 'brandOther') {
+        inspectionState.vehicle.brand = value;
+    } else if (field === 'model') {
+        inspectionState.vehicle.model = value;
+    } else if (field === 'plate') {
+        inspectionState.vehicle.plate = value;
+    }
+    saveInspectionState();
+}
+
+function restoreCustomerCard() {
+    const c = inspectionState.customer;
+    if (!c) return;
+    
+    setCustomerMode(c.mode, true);
+    
+    const nameInput = document.getElementById('cust-name');
+    if (nameInput && nameInput.value !== c.name) nameInput.value = c.name || '';
+    
+    const phoneInput = document.getElementById('cust-phone');
+    if (phoneInput && phoneInput.value !== c.phone) phoneInput.value = c.phone || '';
+    
+    const emailInput = document.getElementById('cust-email');
+    if (emailInput && emailInput.value !== c.email) emailInput.value = c.email || '';
+
+    const badge = document.getElementById('cust-selected-badge');
+    const stats = document.getElementById('cust-selected-stats');
+    if (badge && stats) {
+        if (c.selectedCustomerId) {
+            const customer = mockCustomers.find(mc => mc.id === c.selectedCustomerId);
+            if (customer) {
+                const dateStr = customer.lastVisit || 'First visit';
+                const visitStr = customer.totalVisits ? `${customer.totalVisits} visits` : '0 visits';
+                stats.textContent = `Last visit: ${dateStr} · ${visitStr}`;
+                badge.classList.remove('hidden');
+                badge.classList.add('flex');
+            } else {
+                badge.classList.add('hidden');
+                badge.classList.remove('flex');
+            }
+        } else {
+            badge.classList.add('hidden');
+            badge.classList.remove('flex');
+        }
+    }
+}
+
+window.setCustomerMode = function(mode, skipSave = false) {
+    if (!skipSave) {
+        inspectionState.customer.mode = mode;
+        if (mode === 'walk-in') {
+            inspectionState.customer.selectedCustomerId = null;
+            const badge = document.getElementById('cust-selected-badge');
+            if (badge) {
+                badge.classList.add('hidden');
+                badge.classList.remove('flex');
+            }
+        } else {
+            const searchInput = document.getElementById('cust-search-input');
+            if (searchInput) searchInput.value = '';
+        }
+        saveInspectionState();
+        if (typeof updateStep3Summaries === 'function') updateStep3Summaries();
+    }
+    
+    const btnRegister = document.getElementById('btn-cust-register');
+    const btnWalkin = document.getElementById('btn-cust-walkin');
+    const fieldsRegistered = document.getElementById('cust-fields-registered');
+    const fieldsWalkin = document.getElementById('cust-fields-walkin');
+    if (!btnRegister) return;
+    
+    if (mode === 'walk-in') {
+        btnWalkin.className = 'px-3 py-1 text-[11px] font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all';
+        btnRegister.className = 'px-3 py-1 text-[11px] font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all';
+        fieldsWalkin.classList.remove('hidden');
+        fieldsWalkin.classList.add('block');
+        fieldsRegistered.classList.add('hidden');
+        fieldsRegistered.classList.remove('flex');
+    } else {
+        btnRegister.className = 'px-3 py-1 text-[11px] font-bold rounded-md bg-white text-slate-800 shadow-sm transition-all';
+        btnWalkin.className = 'px-3 py-1 text-[11px] font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all';
+        fieldsRegistered.classList.remove('hidden');
+        fieldsRegistered.classList.add('flex');
+        fieldsWalkin.classList.add('hidden');
+        fieldsWalkin.classList.remove('block');
+    }
+    if (typeof updateStep3Summaries === 'function') updateStep3Summaries();
+}
+
+window.updateCustomerField = function(field, value) {
+    inspectionState.customer.selectedCustomerId = null;
+    if (field === 'name') {
+        inspectionState.customer.name = value;
+    } else if (field === 'phone') {
+        inspectionState.customer.phone = value;
+    } else if (field === 'email') {
+        inspectionState.customer.email = value;
+    }
+    
+    const badge = document.getElementById('cust-selected-badge');
+    if (badge) {
+        badge.classList.add('hidden');
+        badge.classList.remove('flex');
+    }
+    
+    saveInspectionState();
+    if (typeof updateStep3Summaries === 'function') updateStep3Summaries();
 }
 
 function renderInspectionThumbs(id) {
@@ -4771,8 +5141,44 @@ function updateDiagStepper() {
     });
 }
 
+window.updateStep3Summaries = function() {
+    const v = inspectionState.vehicle;
+    const c = inspectionState.customer;
+    
+    const motoSum = document.getElementById('step3-motorcycle-summary');
+    if (motoSum) {
+        if (v && v.mode === 'identified') {
+            const brand = v.brand || 'Not provided';
+            const model = v.model || 'Not provided';
+            const plate = v.plate || 'Not provided';
+            motoSum.innerHTML = `<span class="block"><span class="text-slate-400">Brand:</span> ${escHTML(brand)}</span>
+                                 <span class="block mt-1"><span class="text-slate-400">Model:</span> ${escHTML(model)}</span>
+                                 <span class="block mt-1"><span class="text-slate-400">Plate:</span> ${escHTML(plate)}</span>`;
+        } else {
+            motoSum.innerHTML = `<span class="italic">Unidentified / Walk-in</span>`;
+        }
+    }
+    
+    const custSum = document.getElementById('step3-customer-summary');
+    if (custSum) {
+        if (c && c.mode === 'registered') {
+            const name = c.name || 'Not provided';
+            const phone = c.phone || 'Not provided';
+            const email = c.email || 'Not provided';
+            custSum.innerHTML = `<span class="block"><span class="text-slate-400">Name:</span> ${escHTML(name)}</span>
+                                 <span class="block mt-1"><span class="text-slate-400">Phone:</span> ${escHTML(phone)}</span>
+                                 <span class="block mt-1"><span class="text-slate-400">Email:</span> ${escHTML(email)}</span>`;
+        } else {
+            custSum.innerHTML = `<span class="font-bold text-slate-800">Walk-in Customer</span>`;
+        }
+    }
+}
+
 function renderStep3Summary() {
     const setText = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    
+    restoreCustomerCard();
+    updateStep3Summaries();
 
     // Job Status Badge
     let isWaitingForParts = false;
@@ -4872,6 +5278,26 @@ function confirmStep3Push() {
             successState.classList.remove('hidden');
             successState.classList.add('flex');
             successState.classList.add('animate-[fadeIn_0.3s_ease-out]');
+        }
+        
+        const successDetails = document.getElementById('step3-success-details');
+        if (successDetails) {
+            const v = inspectionState.vehicle;
+            const c = inspectionState.customer;
+            
+            let custLabel = 'Walk-in Customer';
+            if (c && c.mode === 'registered' && c.name) {
+                custLabel = c.name;
+            } else if (c && c.mode === 'registered') {
+                custLabel = 'Registered Customer';
+            }
+            
+            let motoLabel = 'Walk-in';
+            if (v && v.mode === 'identified') {
+                motoLabel = v.brand || 'Unidentified';
+            }
+            
+            successDetails.innerHTML = `For ${escHTML(custLabel)} &bull; ${escHTML(motoLabel)}`;
         }
         
         // Mark stepper completely done (step 3 complete)
