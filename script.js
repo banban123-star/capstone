@@ -1,14 +1,14 @@
 // --- Mock Inventory Data for Diagnostics Autocomplete ---
 const mockInventory = [
     { id: 'p1', name: 'Coolant Temp Sensor (OEM Honda)', sku: '37870-KZR-601', price: 850.00, stock: 24 },
-    { id: 'p2', name: 'Front Disc Brake Pads', sku: '06455-K59-A71', price: 450.00, stock: 3 },
+    { id: 'p2', name: 'Front Disc Brake Pads', sku: '06455-K59-A71', price: 450.00, stock: 3, linkedInspectionItems: [{ itemId: 'pad_f', qty: 1 }] },
     { id: 'p3', name: 'Yamaha V-Belt', sku: '2DP-E7641-00', price: 1200.00, stock: 0 },
     { id: 'p4', name: 'Yamalube Standard Engine Oil', sku: 'YAM-OIL-STD', price: 400.00, stock: 45 },
     { id: 'p5', name: 'Spark Plug (NGK CPR8EA-9)', sku: 'NGK-CPR8EA', price: 250.00, stock: 12 },
     { id: 'p6', name: 'Air Filter Element', sku: 'AF-17210-KZR', price: 320.00, stock: 9 },
     { id: 'p7', name: 'Brake Fluid DOT 3 (250ml)', sku: 'BF-DOT3-250', price: 180.00, stock: 14 },
-    { id: 'p8', name: 'Front Tire 80/90-14 Tubeless', sku: 'TR-8090-14F', price: 1650.00, stock: 2 },
-    { id: 'p9', name: 'Rear Tire 90/90-14 Tubeless', sku: 'TR-9090-14R', price: 1850.00, stock: 0 },
+    { id: 'p8', name: 'Front Tire 80/90-14 Tubeless', sku: 'TR-8090-14F', price: 1650.00, stock: 2, linkedInspectionItems: [{ itemId: 'tire_f', qty: 1 }] },
+    { id: 'p9', name: 'Rear Tire 90/90-14 Tubeless', sku: 'TR-9090-14R', price: 1850.00, stock: 0, linkedInspectionItems: [{ itemId: 'tire_r', qty: 1 }] },
     { id: 'p10', name: 'Motorcycle Battery 12V 5Ah', sku: 'BAT-12V5AH', price: 1450.00, stock: 5 },
     { id: 'p11', name: 'Headlight Bulb (H4)', sku: 'BLB-H4-35', price: 140.00, stock: 18 },
     { id: 'p12', name: 'Brake / Tail Light Bulb', sku: 'BLB-BRK-21', price: 60.00, stock: 25 },
@@ -372,7 +372,8 @@ const ROLE_PERMISSIONS = {
         'inventory.restock': true,
         'inventory.addPart': true,
         'inventory.editPart': true,
-        'inventory.walkInSale': true
+        'inventory.walkInSale': true,
+        'inventory.autoAssign': true
     },
     owner: {
         'inventory.view': true,
@@ -380,7 +381,8 @@ const ROLE_PERMISSIONS = {
         'inventory.restock': true,
         'inventory.addPart': true,
         'inventory.editPart': true,
-        'inventory.walkInSale': true
+        'inventory.walkInSale': true,
+        'inventory.autoAssign': true
     },
     chief: {
         'inventory.view': true,
@@ -388,7 +390,8 @@ const ROLE_PERMISSIONS = {
         'inventory.restock': false,
         'inventory.addPart': false,
         'inventory.editPart': false,
-        'inventory.walkInSale': false
+        'inventory.walkInSale': false,
+        'inventory.autoAssign': false
     },
     sub: {
         'inventory.view': true,
@@ -396,7 +399,8 @@ const ROLE_PERMISSIONS = {
         'inventory.restock': false,
         'inventory.addPart': false,
         'inventory.editPart': false,
-        'inventory.walkInSale': false
+        'inventory.walkInSale': false,
+        'inventory.autoAssign': false
     }
 };
 
@@ -804,115 +808,144 @@ function addPartToPlan(part, opts = {}) {
 
 function renderRepairPlan() {
     const container = document.getElementById('selected-parts-container');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (repairPlanParts.length === 0) {
-        document.getElementById('plan-empty')?.classList.remove('hidden');
-        return;
-    }
-    
-    document.getElementById('plan-empty')?.classList.add('hidden');
-    
-    // Group by target
-    const groups = {};
+    const emptyState = document.getElementById('plan-empty');
+    if (!container || !emptyState) return;
+
+    // Group parts by target
+    const groupedParts = {};
     repairPlanParts.forEach(p => {
-        if (!groups[p.target]) groups[p.target] = { category: p.category, items: [] };
-        groups[p.target].items.push(p);
+        const t = p.target || 'Other / General';
+        if (!groupedParts[t]) groupedParts[t] = [];
+        groupedParts[t].push(p);
     });
     
-    for (const [target, group] of Object.entries(groups)) {
-        const groupHeader = document.createElement('div');
-        groupHeader.className = 'col-span-full mt-4 first:mt-0 mb-2 border-b border-slate-200 pb-1';
-        groupHeader.innerHTML = `<h4 class="text-xs font-bold text-slate-700 uppercase">${escHTML(target)} <span class="text-[10px] font-normal text-slate-400 ml-1">(${escHTML(group.category)})</span></h4>`;
-        container.appendChild(groupHeader);
+    if (repairPlanParts.length === 0 && (!window.unlinkedFixesList || window.unlinkedFixesList.length === 0)) {
+        container.innerHTML = '';
+        emptyState.classList.remove('hidden');
+    } else {
+        emptyState.classList.add('hidden');
+        let html = '';
         
-        group.items.forEach(p => {
-            let stockStatus = 'in_stock';
-            let stockBadge = '<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-600 border-emerald-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-check"></i> In stock</span>';
-            let outOfStock = false;
-            
-            if (p.stock === 0) {
-                stockStatus = 'out_of_stock';
-                outOfStock = true;
-                stockBadge = '<span class="inline-flex items-center gap-1 bg-red-50 text-red-600 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-warning"></i> Out of stock</span>';
-            } else if (p.stock < p.qty) {
-                stockStatus = 'low_stock';
-                outOfStock = true;
-                stockBadge = '<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-warning-circle"></i> Low stock</span>';
-            }
-
-            if (!p.handling) p.handling = 'order';
-            
-            const rowWrapper = document.createElement('div');
-            rowWrapper.className = 'flex flex-col bg-white border border-slate-200 rounded-lg shadow-sm mb-2 col-span-full overflow-hidden';
-            
-            const row = document.createElement('div');
-            row.id = `selected-part-${p.id}`;
-            row.dataset.id = p.id;
-            row.dataset.price = p.part.price;
-            row.dataset.target = p.target;
-            row.dataset.category = p.category;
-            row.dataset.isAuto = p.isAuto;
-            row.className = 'flex items-center justify-between gap-2 p-2.5';
-            
-            row.innerHTML = `
-                <div class="flex-1 min-w-0">
-                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
-                        <div class="text-sm font-bold ${stockStatus === 'out_of_stock' ? 'text-red-500' : (stockStatus === 'low_stock' ? 'text-amber-600' : 'text-slate-800')} truncate">${escHTML(p.part.name)}</div>
-                        ${p.isAuto ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Auto-assigned</span>` : `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Added by mechanic</span>`}
-                        ${stockBadge}
+        // Show unlinked note if any
+        if (window.unlinkedFixesList && window.unlinkedFixesList.length > 0) {
+            html += `
+                <div class="bg-blue-50 border border-blue-200 text-blue-800 text-[11px] p-2 rounded-lg mb-2 shadow-sm flex items-start gap-1.5">
+                    <i class="ph-fill ph-info text-sm mt-0.5 shrink-0"></i>
+                    <div>
+                        <span class="font-bold">No part linked for:</span> ${window.unlinkedFixesList.join(', ')}.<br>
+                        Add them manually or ask the owner to link them in Inventory.
                     </div>
-                    <div class="text-xs text-slate-500">
-                        SKU: ${escHTML(p.part.sku)} · ₱${p.part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700">₱ ${(p.part.price * p.qty).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                        For: 
-                        <select class="bg-transparent border border-slate-200 rounded px-1 py-0.5 outline-none hover:border-blue-300 focus:border-blue-500" onchange="changePartTarget(this)">
-                            ${getDropdownOptionsHTML(p.target)}
-                        </select>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2 shrink-0">
-                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
-                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 transition-colors" onclick="updatePlanQty(-1, this)"><i class="ph-bold ph-minus"></i></button>
-                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${p.qty}</span>
-                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 transition-colors" onclick="updatePlanQty(1, this)"><i class="ph-bold ph-plus"></i></button>
-                    </div>
-                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 transition-colors" title="Remove part" onclick="removePlanPart(this)"><i class="ph-bold ph-x"></i></button>
                 </div>
             `;
+        }
+        
+        // Show Restore button if there are removed suggestions
+        if (window.removedAutoSuggestions && window.removedAutoSuggestions.size > 0) {
+            html += `
+                <div class="flex justify-end mb-2">
+                    <button type="button" onclick="syncPlanFromDiagnosis(false, true)" class="text-[10px] font-bold text-slate-500 hover:text-slate-700 underline decoration-slate-300">Restore removed suggestions</button>
+                </div>
+            `;
+        }
+
+        let outOfStockCount = 0;
+        
+        Object.keys(groupedParts).forEach(targetName => {
+            html += `
+                <div class="mb-3 last:mb-0">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase mb-1.5 border-b border-slate-200 pb-1">${targetName}</h3>
+                    <div class="flex flex-col gap-2">
+            `;
             
-            rowWrapper.appendChild(row);
-            
-            if (outOfStock) {
-                const handlingDiv = document.createElement('div');
-                handlingDiv.className = 'bg-slate-50 p-2.5 border-t border-slate-200 flex flex-col gap-2';
-                handlingDiv.innerHTML = `
-                    <div class="flex flex-wrap items-center gap-2">
-                        <label class="text-[10px] font-bold text-slate-500 uppercase">Handling:</label>
-                        <select class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none focus:border-amber-500" onchange="handlePartWaitAction(this)">
-                            <option value="order" ${p.handling === 'order' ? 'selected' : ''}>Order / wait for part</option>
-                            <option value="replace" ${p.handling === 'replace' ? 'selected' : ''}>Replace with another part</option>
-                            <option value="customer" ${p.handling === 'customer' ? 'selected' : ''}>Customer will bring own part</option>
-                            <option value="remove" ${p.handling === 'remove' ? 'selected' : ''}>Remove from plan</option>
-                        </select>
+            groupedParts[targetName].forEach(p => {
+                let outOfStock = false;
+                let stockStatus = 'in_stock';
+                let stockBadge = '';
+
+                if (p.stock === 0) {
+                    stockStatus = 'out_of_stock';
+                    outOfStock = true;
+                    stockBadge = '<span class="inline-flex items-center gap-1 bg-red-50 text-red-600 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-warning-circle"></i> Out of stock</span>';
+                } else if (p.stock < p.qty) {
+                    stockStatus = 'low_stock';
+                    outOfStock = true;
+                    stockBadge = '<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border-amber-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider"><i class="ph-bold ph-warning-circle"></i> Low stock</span>';
+                }
+
+                if (!p.handling) p.handling = 'order';
+                
+                const isObsolete = p.obsolete;
+                
+                if (outOfStock && !isObsolete) outOfStockCount++;
+                
+                html += `
+                    <div id="selected-part-${p.id}" data-id="${p.id}" data-price="${p.part.price}" data-target="${p.target}" data-category="${p.category}" data-is-auto="${p.isAuto}" class="flex flex-col bg-white border ${isObsolete ? 'border-red-200 bg-red-50/20' : 'border-slate-200'} rounded-lg shadow-sm overflow-hidden transition-all duration-200 hover:border-slate-300">
+                        <div class="flex items-center justify-between gap-2 p-2.5">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
+                                    <div class="text-sm font-bold ${stockStatus === 'out_of_stock' ? 'text-red-500' : (stockStatus === 'low_stock' ? 'text-amber-600' : 'text-slate-800')} truncate ${isObsolete ? 'line-through text-slate-400' : ''}">${escHTML(p.part.name)}</div>
+                                    ${p.isAuto ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Auto-assigned</span>` : `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Added by mechanic</span>`}
+                                    ${isObsolete ? `<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">No longer needed</span>` : stockBadge}
+                                </div>
+                                <div class="text-xs text-slate-500">
+                                    SKU: ${escHTML(p.part.sku)} · ₱${p.part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700 ${isObsolete ? 'line-through text-slate-400' : ''}">₱ ${(p.part.price * p.qty).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                    For: ${escHTML(p.target)} ${p.category ? `(${escHTML(p.category)})` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 shrink-0">
+                                ${isObsolete ? `
+                                    <button class="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded text-xs font-bold transition-colors" onclick="removePlanPart(this)">Remove</button>
+                                ` : `
+                                    <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
+                                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 transition-colors" onclick="updatePlanQty(-1, this)"><i class="ph-bold ph-minus"></i></button>
+                                        <span class="w-6 text-center text-xs font-bold text-slate-700 qty-val">${p.qty}</span>
+                                        <button class="px-2.5 py-1 text-slate-400 hover:text-blue-600 transition-colors" onclick="updatePlanQty(1, this)"><i class="ph-bold ph-plus"></i></button>
+                                    </div>
+                                    <button class="text-slate-400 hover:bg-red-50 hover:text-red-500 rounded p-1.5 transition-colors" title="Remove part" onclick="removePlanPart(this)"><i class="ph-bold ph-x"></i></button>
+                                `}
+                            </div>
+                        </div>
+                        ${outOfStock && !isObsolete ? `
+                            <div class="bg-slate-50 p-2.5 border-t border-slate-200 flex flex-col gap-2">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase">Handling:</label>
+                                    <select class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none focus:border-amber-500" onchange="handlePartWaitAction(this)">
+                                        <option value="order" ${p.handling === 'order' ? 'selected' : ''}>Order / wait for part</option>
+                                        <option value="replace" ${p.handling === 'replace' ? 'selected' : ''}>Replace with another part</option>
+                                        <option value="customer" ${p.handling === 'customer' ? 'selected' : ''}>Customer will bring own part</option>
+                                        <option value="remove" ${p.handling === 'remove' ? 'selected' : ''}>Remove from plan</option>
+                                    </select>
+                                </div>
+                                ${p.handling === 'order' ? `
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <input type="date" class="text-xs border border-slate-300 rounded p-1 outline-none focus:border-amber-500" value="${p.expectedArrival || ''}" onchange="updatePartHandlingData(this, 'arrival')" title="Expected Arrival">
+                                    <input type="text" class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none focus:border-amber-500" placeholder="Short note..." value="${p.note || ''}" onchange="updatePartHandlingData(this, 'note')">
+                                </div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
                     </div>
-                    ${p.handling === 'order' ? `
-                    <div class="flex flex-wrap items-center gap-2">
-                        <input type="date" class="text-xs border border-slate-300 rounded p-1 outline-none focus:border-amber-500" value="${p.expectedArrival || ''}" onchange="updatePartHandlingData(this, 'arrival')" title="Expected Arrival">
-                        <input type="text" class="text-xs border border-slate-300 rounded p-1 flex-1 outline-none focus:border-amber-500" placeholder="Short note..." value="${p.note || ''}" onchange="updatePartHandlingData(this, 'note')">
-                    </div>
-                    ` : ''}
                 `;
-                rowWrapper.appendChild(handlingDiv);
-            }
-            
-            container.appendChild(rowWrapper);
+            });
+            html += `</div></div>`;
         });
+        
+        container.innerHTML = html;
+        
+        const pendingBanner = document.getElementById('pending-parts-banner');
+        if (pendingBanner) {
+            if (outOfStockCount > 0) {
+                document.getElementById('pending-parts-count').textContent = outOfStockCount;
+                pendingBanner.classList.remove('hidden');
+            } else {
+                pendingBanner.classList.add('hidden');
+            }
+        }
     }
 }
+
 
 window.handlePartWaitAction = function(selectEl) {
     const row = selectEl.closest('.flex-col').querySelector('[id^="selected-part-"]');
@@ -930,6 +963,7 @@ window.handlePartWaitAction = function(selectEl) {
     } else if (item.handling === 'remove') {
         const idx = repairPlanParts.findIndex(p => p.id === id && p.target === target);
         if (idx !== -1) {
+            if (item.isAuto) window.removedAutoSuggestions.add(id + '|' + target);
             repairPlanParts.splice(idx, 1);
         }
     }
@@ -959,7 +993,6 @@ window.updatePlanQty = function(delta, btnElement) {
     
     const item = repairPlanParts.find(p => p.id === id && p.target === target);
     if (item) {
-
         if (item.qty + delta > 0) {
             item.qty += delta;
             renderRepairPlan();
@@ -973,9 +1006,11 @@ window.removePlanPart = function(btnElement) {
     if (!row) return;
     const id = row.dataset.id;
     const target = row.dataset.target;
+    const isAuto = row.dataset.isAuto === 'true';
     
     const idx = repairPlanParts.findIndex(p => p.id === id && p.target === target);
     if (idx !== -1) {
+        if (isAuto) window.removedAutoSuggestions.add(id + '|' + target);
         repairPlanParts.splice(idx, 1);
         renderRepairPlan();
         updatePlanTotals();
@@ -987,6 +1022,7 @@ function updatePlanTotals() {
     let pendingCount = 0;
     
     repairPlanParts.forEach(p => {
+        if (p.obsolete) return; // Ignore obsolete parts in totals
         total += p.part.price * p.qty;
         count++;
         if ((p.stock === 0 || p.stock < p.qty) && p.handling === 'order') {
@@ -1009,487 +1045,10 @@ function updatePlanTotals() {
             banner.classList.add('hidden');
         }
     }
-    
     inspectionState.hasPendingParts = pendingCount > 0;
-    
-    const badge = document.getElementById('plan-state-badge');
-    if (badge) {
-        const done = planReviewed && count > 0;
-        badge.textContent = done ? (pendingCount > 0 ? 'Waiting for parts' : 'Parts finalized') : (count ? 'Needs review' : 'Draft');
-        badge.className = 'text-[10px] font-bold px-2 py-1 rounded-full border ' + (done
-            ? (pendingCount > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200')
-            : count ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-100 text-slate-500 border-slate-200');
-    }
-
-    const btnNext2 = document.getElementById('btn-next-step2');
-    if (btnNext2) {
-        const findings = document.getElementById('final-findings')?.value.trim() || '';
-        btnNext2.disabled = findings.length === 0;
-        
-        if (pendingCount > 0) {
-            btnNext2.innerHTML = `Next: Register &amp; Mark as Waiting <i class="ph-bold ph-arrow-right text-lg"></i>`;
-            btnNext2.className = btnNext2.className.replace('bg-blue-600', 'bg-amber-600').replace('hover:bg-blue-700', 'hover:bg-amber-700');
-        } else {
-            btnNext2.innerHTML = `Next: Register &amp; Confirm <i class="ph-bold ph-arrow-right text-lg"></i>`;
-            btnNext2.className = btnNext2.className.replace('bg-amber-600', 'bg-blue-600').replace('hover:bg-amber-700', 'hover:bg-blue-700');
-        }
-    }
-    updateDiagStepper();
-}
-function hasDiagnosisData() {
-    let inspected = 0;
-    if (typeof inspectionItems !== 'undefined' && typeof getInspItem === 'function') {
-        inspected = inspectionItems.filter(i => getInspItem(i.id).status).length;
-    }
-    const dtcVisible = document.getElementById('toggle-ecu')?.checked && !document.getElementById('dtc-results-container')?.classList.contains('hidden');
-    const findings = (document.getElementById('final-findings')?.value || '').trim();
-    return inspected > 0 || !!dtcVisible || !!findings;
 }
 
-function updateDiagStepper() {
-    const steps = document.querySelectorAll('#diag-stepper .diag-step');
-    if (!steps.length) return;
-    
-    steps.forEach((el, i) => {
-        const stepNum = i + 1;
-        const isDone = stepNum < currentDiagStep;
-        const isActive = stepNum === currentDiagStep;
-        
-        el.classList.toggle('is-done', isDone);
-        el.classList.toggle('is-active', isActive);
-        
-        const dot = el.querySelector('.diag-step-dot');
-        if (dot) dot.innerHTML = isDone ? '<i class="ph-bold ph-check"></i>' : stepNum;
-        
-        if (isDone) {
-            el.classList.add('cursor-pointer', 'hover:text-blue-600');
-            el.classList.remove('opacity-50', 'cursor-not-allowed');
-            el.setAttribute('onclick', `switchDiagStep(${stepNum}, true)`);
-        } else if (isActive) {
-            el.classList.remove('cursor-pointer', 'hover:text-blue-600', 'opacity-50', 'cursor-not-allowed');
-            el.removeAttribute('onclick');
-        } else {
-            el.classList.add('opacity-50', 'cursor-not-allowed');
-            el.classList.remove('cursor-pointer', 'hover:text-blue-600');
-            el.removeAttribute('onclick');
-        }
-    });
-}
 
-// =====================================================================
-// AUTO-ASSIGN RULE ENGINE (if / else)
-// Reads the diagnosis (ECU codes, inspection results, odometer, complaints)
-// and decides which inventory parts to assign. The mechanic edits the result
-// in the Review screen before finalizing.
-//   level 'fix'   -> recommended (pre-ticked when in stock)
-//   level 'watch' -> optional   (unticked)
-// =====================================================================
-
-// ECU / OBD trouble code -> parts
-function partsForDtc(code) {
-    const c = String(code || '').toUpperCase();
-    const out = [];
-    if (c === 'P0117' || c === 'P0118' || c === 'P0119') {
-        out.push({ id: 'p1', qty: 1 });                       // coolant temp sensor circuit
-    } else if (/^P030[0-6]$/.test(c)) {
-        out.push({ id: 'p5', qty: 1 });                       // misfire -> spark plug
-    } else if (c === 'P0562' || c === 'P0563') {
-        out.push({ id: 'p10', qty: 1 });                      // system voltage -> battery
-    } else if (c === 'P0171' || c === 'P0172') {
-        out.push({ id: 'p6', qty: 1 });                       // fuel trim -> air filter
-        out.push({ id: 'p5', qty: 1 });
-    } else if (c === 'P0217') {
-        out.push({ id: 'p16', qty: 1 });                      // overtemp -> coolant
-    }
-    return out;
-}
-
-// One inspection item (status Fix / Watch) -> parts
-function partsForInspectionItem(item, st) {
-    const out = [];
-    const has = (...tags) => tags.some(t => st.tags.includes(t));
-    const isFix = st.status === 'fix';
-    const push = (id, qty, why) => out.push({ id, qty: qty || 1, why });
-
-    if (item.id === 'tire_f' || item.id === 'tire_r') {
-        const front = item.id === 'tire_f';
-        if (has('Puncture / nail') && !has('Cracked sidewall', 'Bulge', 'Worn tread')) {
-            push('p22', 1, 'Puncture repair only');           // patch / sealant kit, tire still usable
-        } else {
-            push(front ? 'p8' : 'p9', 1);                     // replace the tire
-        }
-    } else if (item.id === 'psi_f' || item.id === 'psi_r') {
-        if (has('Slow leak')) push('p22', 1, 'Slow leak');
-    } else if (item.id === 'pad_f') {
-        push('p2', 1);
-    } else if (item.id === 'pad_r') {
-        push('p20', 1);
-    } else if (item.id === 'brake_fluid') {
-        push('p7', 1);
-    } else if (item.id === 'brake_feel') {
-        if (has('Spongy', 'Too soft')) push('p7', 1, 'Bleed brake line');
-    } else if (item.id === 'brake_disc') {
-        if (has('Warped', 'Scored', 'Below min thickness')) push('p21', 1);
-    } else if (item.id === 'oil') {
-        push('p4', 1);
-        if (isFix && has('Black / dirty', 'Milky', 'Overdue change')) push('p15', 1, 'Change filter with oil');
-    } else if (item.id === 'coolant') {
-        push('p16', 1);
-    } else if (item.id === 'air_filter') {
-        push('p6', 1);
-    } else if (item.id === 'spark') {
-        push('p5', 1);
-    } else if (item.id === 'leaks') {
-        if (has('Engine oil')) push('p4', 1, 'Top up after leak repair');
-        else if (has('Coolant')) push('p16', 1, 'Top up after leak repair');
-    } else if (item.id === 'chain') {
-        if (has('Cracked belt')) push('p3', 1);                          // CVT drive belt
-        else if (has('Dry / rusty') && !isFix) push('p23', 1);           // just lube it
-        else if (isFix || has('Stretched', 'Too loose', 'Too tight')) push('p13', 1);  // chain + sprocket set
-    } else if (item.id === 'sprocket') {
-        if (has('Worn rollers', 'Flat spots')) push('p14', 1);           // CVT rollers
-        else push('p13', 1);
-    } else if (item.id === 'clutch') {
-        if (has('Cable frayed')) push('p17', 1);
-    } else if (item.id === 'battery') {
-        const onlyTerminals = has('Corroded terminals') && !has('Weak', 'Swollen', 'Old (2+ years)');
-        if (!onlyTerminals || isFix) push('p10', 1);                     // terminal cleaning alone needs no part
-    } else if (item.id === 'charging') {
-        if (has('Bad regulator', 'Overcharging')) push('p18', 1);
-    } else if (item.id === 'lights') {
-        if (has('Headlight out')) push('p11', 1);
-        if (has('Brake light out')) push('p12', 1);
-        if (has('Signal out')) push('p25', 1);
-    } else if (item.id === 'fork') {
-        if (has('Leaking seals')) push('p19', 1);
-    }
-    // everything else (wheels, shocks, steering, frame, horn, starter...) = labor / service, no stock part
-    return out;
-}
-
-// Odometer + complaints -> maintenance parts (always optional)
-function partsForServiceAndComplaints(odo, complaints) {
-    const out = [];
-    const km = parseInt(odo, 10);
-
-    if (complaints.includes('Regular maintenance')) {
-        if (isNaN(km)) {
-            out.push({ id: 'p4', qty: 1, why: 'Regular maintenance (enter odometer for full interval)' });
-        } else {
-            if (km >= 3000)  out.push({ id: 'p4',  qty: 1, why: `Oil change interval (${km.toLocaleString()} km)` });
-            if (km >= 6000)  out.push({ id: 'p15', qty: 1, why: 'Oil filter interval (6,000 km)' });
-            if (km >= 10000) out.push({ id: 'p5',  qty: 1, why: 'Spark plug interval (10,000 km)' });
-            if (km >= 12000) out.push({ id: 'p6',  qty: 1, why: 'Air filter interval (12,000 km)' });
-            if (km >= 20000) out.push({ id: 'p3',  qty: 1, why: 'Drive belt interval (20,000 km)' });
-        }
-    }
-    complaints.forEach(c => {
-        if (c === 'Overheating') out.push({ id: 'p16', qty: 1, why: 'Complaint: Overheating' });
-        else if (c === 'Hard to start') out.push({ id: 'p5', qty: 1, why: 'Complaint: Hard to start' });
-        else if (c === 'Poor acceleration') out.push({ id: 'p6', qty: 1, why: 'Complaint: Poor acceleration' });
-        else if (c === 'Brake problem') out.push({ id: 'p7', qty: 1, why: 'Complaint: Brake problem' });
-        else if (c === 'Oil leak') out.push({ id: 'p4', qty: 1, why: 'Complaint: Oil leak (top up)' });
-    });
-    return out;
-}
-
-// Diagnosis -> suggested parts (merged, de-duplicated)
-function getSuggestedParts(diagnosis = inspectionState) {
-    const list = [];
-
-    const add = (id, source, reason, level, qty) => {
-        const part = mockInventory.find(p => p.id === id);
-        if (!part) return;
-        const q = Math.max(1, Math.min(qty || 1, part.stock || 1));
-        let s = list.find(x => x.id === id);
-        if (!s) {
-            s = { id, qty: q, sources: [], reasons: [], level, checked: level !== 'watch' && part.stock > 0 };
-            list.push(s);
-        } else {
-            s.qty = Math.max(s.qty, q);
-        }
-        if (!s.sources.includes(source)) s.sources.push(source);
-        if (reason && !s.reasons.includes(reason)) s.reasons.push(reason);
-        if (level !== 'watch' && s.level === 'watch') { s.level = level; s.checked = part.stock > 0; }
-    };
-
-    // 1. ECU / OBD codes currently shown in the results table
-    const dtcVisible = document.getElementById('toggle-ecu')?.checked && !document.getElementById('dtc-results-container')?.classList.contains('hidden');
-    if (dtcVisible) {
-        document.querySelectorAll('#dtc-results-container tbody tr').forEach(tr => {
-            const cells = tr.querySelectorAll('td');
-            const code = cells[0]?.textContent.trim();
-            if (!code) return;
-            const desc = cells[1]?.textContent.trim() || '';
-            const found = partsForDtc(code);
-            if (found.length) found.forEach(p => add(p.id, 'ecu', `${code}: ${desc}`, 'fix', p.qty));
-        });
-    }
-
-    // 2. Physical inspection: Fix -> recommended, Watch -> optional
-    const physicalOn = document.getElementById('toggle-physical')?.checked !== false;
-    if (physicalOn && typeof inspectionItems !== 'undefined' && typeof getInspItem === 'function') {
-        inspectionItems.forEach(item => {
-            const st = getInspItem(item.id);
-            if (st.status !== 'fix' && st.status !== 'watch') return;
-            const statusLabel = st.status === 'fix' ? 'Fix' : 'Watch';
-            const detail = [...st.tags, st.value !== '' && item.measure ? `${st.value} ${item.measure.unit}` : ''].filter(Boolean).join(', ');
-            const found = partsForInspectionItem(item, st);
-
-            if (found.length) {
-                found.forEach(p => add(p.id, 'physical', `${item.label} (${statusLabel})${detail ? ': ' + detail : ''}${p.why ? ' · ' + p.why : ''}`, st.status, p.qty));
-            }
-        });
-
-        // 3. Odometer service intervals + customer complaints (optional suggestions)
-        const { odo, complaints } = inspectionState.intake;
-        partsForServiceAndComplaints(odo, complaints).forEach(p => add(p.id, 'physical', p.why, 'watch', p.qty));
-    }
-    return list;
-}
-
-function syncPlanFromDiagnosis(firstTime = false) {
-    if (firstTime && repairPlanParts.length > 0) return; // Only auto-assign once if first time
-    
-    const complaintsContainer = document.getElementById('step2-complaints-container');
-    if (complaintsContainer) {
-        if (inspectionState.intake.complaints && inspectionState.intake.complaints.length > 0) {
-            complaintsContainer.innerHTML = inspectionState.intake.complaints.map(c => 
-                `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200"><i class="ph-fill ph-warning-circle text-amber-500"></i> ${escHTML(c)}</span>`
-            ).join('');
-            complaintsContainer.parentElement.classList.remove('hidden');
-        } else {
-            complaintsContainer.parentElement.classList.add('hidden');
-        }
-    }
-
-    const suggestions = getSuggestedParts();
-    
-    suggestions.forEach(r => {
-        if (r.level === 'fix' || r.level === 'ecu' || r.level === 'watch') {
-            const part = mockInventory.find(p => p.id === r.id);
-            if (part && r.checked) {
-                // Find target
-                let target = 'Other / General';
-                let category = 'Other / General';
-                let isAuto = true;
-                
-                // Match with flagged items
-                if (inspectionState.flaggedItems) {
-                    const flaggedMatch = inspectionState.flaggedItems.find(f => f.suggestedPart && f.suggestedPart.id === r.id);
-                    if (flaggedMatch) {
-                        target = flaggedMatch.name;
-                        category = flaggedMatch.category;
-                    }
-                }
-                
-                if (target === 'Other / General' && r.level === 'ecu') {
-                    target = 'ECU Code';
-                    category = 'Diagnostics';
-                }
-                
-                const existing = repairPlanParts.find(p => p.id === r.id);
-                if (!existing) {
-                    repairPlanParts.push({
-                        id: part.id,
-                        part: part,
-                        qty: r.qty,
-                        target: target,
-                        category: category,
-                        isAuto: true,
-                        stock: part.stock
-                    });
-                } else if (existing.isAuto) {
-                    existing.qty = Math.max(existing.qty, r.qty);
-                }
-            }
-        }
-    });
-    
-    planReviewed = true;
-    renderRepairPlan();
-    updatePlanTotals();
-}
-
-function holdRepairPlan() {
-    alert("Repair plan saved as draft. Returning to dashboard...");
-    document.querySelector('.nav-link[data-target="dashboard"]')?.click();
-}
-
-function renderStep3Summary() {
-    const summaryBox = document.getElementById('step3-plan-summary');
-    if (!summaryBox) return;
-
-    const findings = (document.getElementById('final-findings')?.value || 'No final findings recorded.').trim();
-    const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
-    let partsTotal = 0;
-    
-    const rows = repairPlanParts.map(p => {
-        partsTotal += p.part.price * p.qty;
-        
-        let badgeHtml = '';
-        if ((p.stock === 0 || p.stock < p.qty) && p.handling === 'order') {
-            badgeHtml = `<span class="inline-flex items-center gap-1 bg-amber-50 text-amber-600 border border-amber-200 px-1 py-0.5 rounded text-[8px] font-bold uppercase mt-1 w-max">Waiting for parts</span>`;
-            if (p.expectedArrival) {
-                badgeHtml += `<span class="text-[9px] text-amber-600 ml-1.5 font-medium">ETA: ${escHTML(p.expectedArrival)}</span>`;
-            }
-        }
-        
-        return `<li class="flex justify-between gap-2 border-b border-slate-50 pb-1.5 pt-1.5 first:pt-0 last:border-0 last:pb-0">
-            <div class="flex flex-col min-w-0">
-                <span class="truncate text-slate-600">${p.qty} × ${escHTML(p.part.name)}</span>
-                ${badgeHtml ? `<div class="flex items-center">${badgeHtml}</div>` : ''}
-            </div>
-            <span class="font-semibold shrink-0 text-slate-800 mt-0.5">${fmtPeso(p.part.price * p.qty)}</span>
-        </li>`;
-    });
-
-    summaryBox.innerHTML = `
-        <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200">
-            <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-1">Final Findings</h3>
-            <p class="text-xs text-slate-700 italic">${escHTML(findings)}</p>
-        </div>
-        <div class="mb-3">
-            <h3 class="text-[11px] font-bold text-slate-500 uppercase mb-2">Required Parts & Materials</h3>
-            ${repairPlanParts.length ? `<ul class="flex flex-col gap-1 text-xs">${rows.join('')}</ul>` : '<p class="text-xs text-slate-500">No parts assigned.</p>'}
-        </div>
-        <div class="bg-blue-50/50 p-3 rounded-lg border border-blue-100 flex flex-col gap-1.5">
-            <div class="flex justify-between text-xs font-semibold text-slate-600"><span>Parts Total</span><span>${fmtPeso(partsTotal)}</span></div>
-            <div class="flex justify-between text-xs font-semibold text-slate-600"><span>Estimated Labor</span><span>${fmtPeso(labor)}</span></div>
-            <div class="border-t border-blue-200/60 pt-1.5 mt-1 flex justify-between text-sm font-extrabold text-blue-800"><span>Estimated Total</span><span>${fmtPeso(partsTotal + labor)}</span></div>
-        </div>
-    `;
-    
-    validateStep3();
-}
-function toggleStep3RegistrationMode(checkbox) {
-    const existingSec = document.getElementById('step3-existing-vehicle-section');
-    const newSec = document.getElementById('step3-new-vehicle-section');
-    if (checkbox.checked) {
-        existingSec.classList.add('hidden');
-        newSec.classList.remove('hidden');
-        newSec.classList.add('flex');
-    } else {
-        existingSec.classList.remove('hidden');
-        newSec.classList.add('hidden');
-        newSec.classList.remove('flex');
-    }
-    validateStep3();
-}
-
-function validateStep3() {
-    const btn = document.getElementById('btn-confirm-push');
-    if (!btn) return;
-
-    const isNew = document.getElementById('step3-toggle-new-reg')?.checked;
-    let isValid = false;
-
-    if (isNew) {
-        const name = document.getElementById('step3-new-cust-name')?.value.trim();
-        const phone = document.getElementById('step3-new-cust-phone')?.value.trim();
-        const model = document.getElementById('step3-new-veh-model')?.value.trim();
-        const plate = document.getElementById('step3-new-veh-plate')?.value.trim();
-        isValid = !!(name && phone && model && plate);
-    } else {
-        const sel = document.getElementById('step3-motorcycle-select');
-        isValid = !!(sel && sel.value !== "");
-    }
-
-    btn.disabled = !isValid;
-}
-
-document.addEventListener('input', function(e) {
-    if (e.target.id && (e.target.id.startsWith('step3-new-') || e.target.id === 'step3-motorcycle-select')) {
-        validateStep3();
-    }
-});
-
-document.addEventListener('change', function(e) {
-    if (e.target.id === 'step3-motorcycle-select') {
-        validateStep3();
-    }
-});
-
-function confirmStep3Push() {
-    const btn = document.getElementById('btn-confirm-push');
-    const originalHTML = btn.innerHTML;
-    
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Pushing...`;
-    btn.disabled = true;
-
-    setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        
-        // Hide form, show success state
-        document.getElementById('step3-vehicle-card')?.classList.add('hidden');
-        const actions = document.getElementById('step3-actions');
-        if(actions) {
-            actions.classList.add('hidden');
-            actions.classList.remove('flex');
-        }
-        
-        const labor = parseFloat(document.getElementById('labor-cost-input')?.value) || 0;
-        let partsTotal = 0;
-        repairPlanParts.forEach(p => partsTotal += p.part.price * p.qty);
-        const total = fmtPeso(partsTotal + labor);
-        
-        const isNew = document.getElementById('step3-toggle-new-reg')?.checked;
-        const vehInput = document.getElementById('step3-motorcycle-select');
-        const vehName = isNew ? document.getElementById('step3-new-veh-model').value : (vehInput ? vehInput.value.split(' - ')[1] || 'Walk-in' : 'Walk-in');
-
-        const isWaiting = inspectionState.hasPendingParts;
-        const jobId = `JOB #${Math.floor(1000 + Math.random() * 9000)}`;
-        const statusName = isWaiting ? 'Waiting for Parts' : 'In Progress';
-        
-        const successDetails = document.getElementById('step3-success-details');
-        if (successDetails) {
-            successDetails.textContent = `${jobId} is now ${statusName} • ${vehName} • Total: ${total}`;
-        }
-        
-        // --- ADD TO ACTIVE REPAIRS ---
-        const newJob = {
-            id: jobId,
-            plate: isNew ? document.getElementById('step3-new-veh-plate').value.toUpperCase() : (vehInput ? vehInput.value.split(' (')[1]?.replace(')', '') || 'N/A' : 'N/A'),
-            model: vehName,
-            customer: isNew ? document.getElementById('step3-new-cust-name').value : (vehInput ? vehInput.value.split(' - ')[0] || 'Walk-in' : 'Walk-in'),
-            mechanicOptions: ['Mike (Chief Mechanic)', 'Leo (Sub-Mechanic)'],
-            selectedMechIndex: 0,
-            diagnosis: (document.getElementById('final-findings')?.value || 'No diagnosis recorded').trim(),
-            statusId: isWaiting ? 'waiting' : 'progress',
-            statusName: statusName,
-            statusClass: isWaiting ? 'bg-orange-50 text-orange-600 border-orange-200' : 'bg-blue-50 text-blue-600 border-blue-200',
-            dotClass: isWaiting ? 'bg-orange-500' : 'bg-blue-500 animate-pulse',
-            btnText: 'Manage Repair <i class="ph-bold ph-caret-right"></i>',
-            btnClass: 'bg-slate-800 hover:bg-slate-900 text-white',
-            btnAction: 'openRepairModal()',
-            
-            // Step 3 rules: store full parts list with availability, target, source, labor, total
-            repairPlan: {
-                parts: JSON.parse(JSON.stringify(repairPlanParts)), // Deep copy to store it snapshot style
-                laborCost: labor,
-                estimatedTotal: partsTotal + labor
-            }
-        };
-        
-        if (typeof mockRepairsData !== 'undefined') {
-            mockRepairsData.unshift(newJob); // Add to the top of the list
-            if (typeof renderRepairs === 'function') {
-                renderRepairs(); // Refresh the Active Repairs list in the background
-            }
-        }
-
-        const successState = document.getElementById('step3-success-state');
-        if (successState) {
-            successState.classList.remove('hidden');
-            successState.classList.add('flex');
-            successState.classList.add('animate-[fadeIn_0.5s_ease-out]');
-        }
-
-        clearInspectionDraft();
-        planReviewed = false;
-        
-    }, 800);
-}
 function resetDiagnosticsWorkflow() {
     // Clear step 3 form
     const sel = document.getElementById('step3-motorcycle-select');
@@ -1793,7 +1352,13 @@ function renderInventory() {
     // Apply Permissions to top bar
     const btnWrap = document.getElementById('inv-btn-wrap');
     if (btnWrap) {
+        const canAutoAssign = window.can('inventory.autoAssign');
         let html = '';
+        if (canAutoAssign) {
+            html += `<button onclick="openAutoAssignLinks()" class="flex-1 lg:flex-none bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                <i class="ph-bold ph-magic-wand"></i> Auto Assign
+            </button>`;
+        }
         if (canRestock) {
             html += `<button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
@@ -1929,6 +1494,12 @@ function renderInventory() {
                                             <div class="text-slate-500 text-xs mb-1">Linked DTC</div>
                                             <div class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> ${item.dtc}</div>
                                         </div>` : ''}
+                                        
+                                        ${item.linkedInspectionItems && item.linkedInspectionItems.length > 0 ? `
+                                        <div class="mt-2">
+                                            <div class="text-slate-500 text-xs mb-1">Auto Assign</div>
+                                            <div class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200"><i class="ph-bold ph-magic-wand"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</div>
+                                        </div>` : ''}
                         
                                         ${showActions ? `
                                         <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
@@ -1961,6 +1532,7 @@ function renderInventory() {
             }
 
             let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
+            let autoLinksTag = (item.linkedInspectionItems && item.linkedInspectionItems.length > 0) ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200 ml-1"><i class="ph-bold ph-magic-wand text-purple-500"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</span>` : '';
 
             return `
                 <tr class="${rowClass}">
@@ -1970,7 +1542,7 @@ function renderInventory() {
                             <div>
                                 <div class="font-bold text-slate-800">${item.name}</div>
                                 <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
-                                ${dtcTag}
+                                <div>${dtcTag}${autoLinksTag}</div>
                             </div>
                         </div>
                     </td>
@@ -4292,19 +3864,18 @@ function updateSharedDiagnosis() {
         if (st.status === 'fix' || st.status === 'watch') {
             const sec = inspectionSections.find(s => s.id === item.section) || {};
             const category = sec.title || sec.short || 'General';
-            const parts = partsForInspectionItem(item, st);
             let suggestedPart = null;
-            if (parts.length > 0) {
-                const invPart = mockInventory.find(p => p.id === parts[0].id);
-                if (invPart) {
-                    suggestedPart = {
-                        id: invPart.id,
-                        name: invPart.name,
-                        sku: invPart.sku,
-                        price: invPart.price,
-                        stock: invPart.stock
-                    };
-                }
+            
+            // Find the first linked part in mockInventory
+            const invPart = mockInventory.find(p => p.linkedInspectionItems && p.linkedInspectionItems.some(l => l.itemId === item.id));
+            if (invPart) {
+                suggestedPart = {
+                    id: invPart.id,
+                    name: invPart.name,
+                    sku: invPart.sku,
+                    price: invPart.price,
+                    stock: invPart.stock
+                };
             }
             flagged.push({
                 id: item.id,
@@ -4805,3 +4376,369 @@ window.toggleInvCard = function(id) {
         if (chevron) chevron.style.transform = 'rotate(180deg)';
     }
 };
+
+// AUTO-ASSIGN LINKS SCREEN LOGIC
+window.openAutoAssignLinks = function() {
+    document.getElementById('view-inventory').classList.add('hidden');
+    document.getElementById('view-autoassign').classList.remove('hidden');
+    window.autoAssignOpenGroups = window.autoAssignOpenGroups || new Set();
+    if (window.innerWidth >= 768) {
+        inspectionSections.forEach(sec => window.autoAssignOpenGroups.add(sec.id));
+    }
+    renderAutoAssignLinks();
+};
+
+window.closeAutoAssignLinks = function() {
+    document.getElementById('view-autoassign').classList.add('hidden');
+    document.getElementById('view-inventory').classList.remove('hidden');
+    renderInventory();
+};
+
+window.toggleAutoAssignGroup = function(groupId) {
+    if (window.autoAssignOpenGroups.has(groupId)) {
+        window.autoAssignOpenGroups.delete(groupId);
+    } else {
+        window.autoAssignOpenGroups.add(groupId);
+    }
+    renderAutoAssignLinks();
+};
+
+window.activeAASearch = null;
+
+window.showAutoAssignSearch = function(itemId) {
+    window.activeAASearch = itemId;
+    renderAutoAssignLinks();
+    setTimeout(() => {
+        const input = document.getElementById('aa-search-' + itemId);
+        if (input) input.focus();
+    }, 50);
+};
+
+window.closeAutoAssignSearch = function() {
+    window.activeAASearch = null;
+    renderAutoAssignLinks();
+};
+
+window.performAutoAssignSearch = function(itemId, query) {
+    const resultsContainer = document.getElementById('aa-search-results-' + itemId);
+    if (!query.trim()) {
+        resultsContainer.innerHTML = '';
+        return;
+    }
+    const lowerQuery = query.toLowerCase();
+    const results = mockInventory.filter(p => p.name.toLowerCase().includes(lowerQuery) || p.sku.toLowerCase().includes(lowerQuery));
+    if (results.length === 0) {
+        resultsContainer.innerHTML = '<div class="p-2 text-sm text-gray-500">No parts found</div>';
+        return;
+    }
+    
+    let html = '';
+    results.forEach(p => {
+        html += `
+            <div class="flex items-center justify-between p-2 hover:bg-gray-50 border-b last:border-0">
+                <div class="flex-1 min-w-0 pr-2">
+                    <div class="text-sm font-medium text-gray-900 truncate">${p.name}</div>
+                    <div class="text-xs text-gray-500">${p.sku} | ₱${p.price.toLocaleString()}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="number" id="aa-qty-${itemId}-${p.id}" value="1" min="1" class="w-16 px-2 py-1 text-sm border rounded focus:ring-purple-500 focus:border-purple-500">
+                    <button onclick="addAutoAssignLink('${itemId}', '${p.id}', document.getElementById('aa-qty-${itemId}-${p.id}').value)" class="px-3 py-1 bg-purple-600 text-white text-sm font-medium rounded hover:bg-purple-700">Add</button>
+                </div>
+            </div>
+        `;
+    });
+    resultsContainer.innerHTML = html;
+};
+
+window.addAutoAssignLink = function(itemId, partId, qtyStr) {
+    const qty = parseInt(qtyStr, 10) || 1;
+    const part = mockInventory.find(p => p.id === partId);
+    if (!part) return;
+    
+    if (!part.linkedInspectionItems) {
+        part.linkedInspectionItems = [];
+    }
+    
+    const existing = part.linkedInspectionItems.find(l => l.itemId === itemId);
+    if (existing) {
+        existing.qty = qty;
+    } else {
+        part.linkedInspectionItems.push({ itemId, qty });
+    }
+    
+    window.activeAASearch = null;
+    renderAutoAssignLinks();
+};
+
+window.removeAutoAssignLink = function(itemId, partId) {
+    const part = mockInventory.find(p => p.id === partId);
+    if (part && part.linkedInspectionItems) {
+        part.linkedInspectionItems = part.linkedInspectionItems.filter(l => l.itemId !== itemId);
+    }
+    renderAutoAssignLinks();
+};
+
+window.renderAutoAssignLinks = function() {
+    const container = document.getElementById('autoassign-groups');
+    if (!container) return;
+    
+    if (typeof inspectionSections === 'undefined') {
+        container.innerHTML = '<div class="text-red-500">Error: inspection data not found.</div>';
+        return;
+    }
+
+    let html = '';
+    let totalLinks = 0;
+    
+    inspectionSections.forEach(sec => {
+        const isOpen = window.autoAssignOpenGroups.has(sec.id);
+        const chevClass = isOpen ? 'rotate-180' : '';
+        
+        let secLinksCount = 0;
+        sec.items.forEach(item => {
+            const linkedParts = mockInventory.filter(p => p.linkedInspectionItems && p.linkedInspectionItems.some(l => l.itemId === item.id));
+            secLinksCount += linkedParts.length;
+            totalLinks += linkedParts.length;
+        });
+        
+        html += `
+        <div class="bg-white border rounded-lg overflow-hidden">
+            <button onclick="toggleAutoAssignGroup('${sec.id}')" class="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div class="flex items-center gap-3">
+                    <h3 class="font-bold text-gray-900">${sec.title}</h3>
+                    ${secLinksCount > 0 ? `<span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full">${secLinksCount} links</span>` : ''}
+                </div>
+                <svg class="w-5 h-5 text-gray-500 transform transition-transform ${chevClass}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7-7-7-7"></path></svg>
+            </button>
+            <div class="divide-y ${isOpen ? '' : 'hidden'}">
+        `;
+        
+        sec.items.forEach(item => {
+            const linkedParts = mockInventory.filter(p => p.linkedInspectionItems && p.linkedInspectionItems.some(l => l.itemId === item.id));
+            
+            html += `<div class="p-4">`;
+            html += `
+                <div class="flex items-center justify-between mb-2">
+                    <div class="font-medium text-gray-800">${item.label}</div>
+                    ${window.activeAASearch !== item.id ? `
+                        <button onclick="showAutoAssignSearch('${item.id}')" class="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                            Add Part
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            
+            // Search Box
+            if (window.activeAASearch === item.id) {
+                html += `
+                    <div class="mb-3 p-3 bg-gray-50 border rounded-lg">
+                        <div class="flex items-center gap-2 mb-2">
+                            <div class="relative flex-1">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                                </div>
+                                <input type="text" id="aa-search-${item.id}" oninput="performAutoAssignSearch('${item.id}', this.value)" placeholder="Search inventory by name or SKU..." class="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-purple-500 focus:border-purple-500 text-sm">
+                            </div>
+                            <button onclick="closeAutoAssignSearch()" class="p-2 text-gray-500 hover:text-gray-700 bg-white border rounded-lg">Cancel</button>
+                        </div>
+                        <div id="aa-search-results-${item.id}" class="bg-white border rounded shadow-sm max-h-48 overflow-y-auto"></div>
+                    </div>
+                `;
+            }
+            
+            // Linked Parts List
+            if (linkedParts.length > 0) {
+                html += `<div class="space-y-2">`;
+                linkedParts.forEach(p => {
+                    const link = p.linkedInspectionItems.find(l => l.itemId === item.id);
+                    html += `
+                        <div class="flex items-center justify-between p-2 bg-purple-50 border border-purple-100 rounded text-sm">
+                            <div>
+                                <span class="font-medium text-purple-900">${p.name}</span>
+                                <span class="text-purple-600 ml-2">Qty: ${link.qty}</span>
+                            </div>
+                            <button onclick="removeAutoAssignLink('${item.id}', '${p.id}')" class="text-red-500 hover:text-red-700 p-1" title="Remove link">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                    `;
+                });
+                html += `</div>`;
+            } else {
+                html += `<div class="text-sm text-gray-400 italic">No parts linked</div>`;
+            }
+            
+            html += `</div>`;
+        });
+        html += `</div></div>`;
+    });
+    
+    container.innerHTML = html;
+    
+    const countEl = document.getElementById('autoassign-count');
+    if (countEl) {
+        countEl.textContent = totalLinks === 1 ? '1 link mapped' : `${totalLinks} links mapped`;
+    }
+};
+
+
+function partsForDtc(code) {
+    const c = String(code || '').toUpperCase();
+    const out = [];
+    if (c === 'P0117' || c === 'P0118' || c === 'P0119') {
+        out.push({ id: 'p1', qty: 1 });                       // coolant temp sensor circuit
+    } else if (/^P030[0-6]$/.test(c)) {
+        out.push({ id: 'p5', qty: 1 });                       // misfire -> spark plug
+    } else if (c === 'P0562' || c === 'P0563') {
+        out.push({ id: 'p10', qty: 1 });                      // system voltage -> battery
+    } else if (c === 'P0171' || c === 'P0172') {
+        out.push({ id: 'p6', qty: 1 });                       // fuel trim -> air filter
+        out.push({ id: 'p5', qty: 1 });
+    } else if (c === 'P0217') {
+        out.push({ id: 'p16', qty: 1 });                      // overtemp -> coolant
+    }
+    return out;
+}
+
+window.getSuggestedParts = function(diagnosis = inspectionState) {
+    const list = [];
+    const add = (id, target, category, level, qty) => {
+        const part = mockInventory.find(p => p.id === id);
+        if (!part) return;
+        const q = Math.max(1, qty || 1);
+        let s = list.find(x => x.id === id && x.target === target);
+        if (!s) {
+            s = { id, qty: q, target, category, level, checked: level !== 'watch' };
+            list.push(s);
+        } else {
+            s.qty = Math.max(s.qty, q);
+        }
+    };
+
+    // 1. ECU / OBD codes
+    const dtcVisible = document.getElementById('toggle-ecu')?.checked !== false && !document.getElementById('ecu-scan-card')?.classList.contains('hidden');
+    if (dtcVisible) {
+        document.querySelectorAll('#dtc-results-container tbody tr').forEach(tr => {
+            const cells = tr.querySelectorAll('td');
+            const code = cells[0]?.textContent.trim();
+            if (!code) return;
+            
+            // from linkedDTCs in mockInventory
+            mockInventory.forEach(p => {
+                if (p.linkedDTCs && p.linkedDTCs.includes(code)) {
+                    add(p.id, `DTC ${code}`, 'ECU / OBD', 'fix', 1);
+                }
+            });
+            // from partsForDtc
+            if (typeof partsForDtc === 'function') {
+                const found = partsForDtc(code);
+                found.forEach(f => add(f.id, `DTC ${code}`, 'ECU / OBD', 'fix', f.qty));
+            }
+        });
+    }
+
+    // 2. Physical inspection items mapped via Auto-Assign
+    if (typeof inspectionSections !== 'undefined' && typeof getInspItem === 'function') {
+        inspectionSections.forEach(sec => {
+            sec.items.forEach(item => {
+                const st = getInspItem(item.id);
+                if (st.status === 'fix' || st.status === 'watch') {
+                    const linkedParts = mockInventory.filter(p => p.linkedInspectionItems && p.linkedInspectionItems.some(l => l.itemId === item.id));
+                    linkedParts.forEach(p => {
+                        const link = p.linkedInspectionItems.find(l => l.itemId === item.id);
+                        add(p.id, item.label, sec.title, st.status, link.qty);
+                    });
+                }
+            });
+        });
+    }
+
+    return list;
+};
+
+window.removedAutoSuggestions = window.removedAutoSuggestions || new Set();
+
+window.syncPlanFromDiagnosis = function(firstTime = false, restoreRemoved = false) {
+    if (firstTime && repairPlanParts.length > 0) return; // Only auto-assign once if first time
+    
+    if (restoreRemoved) {
+        window.removedAutoSuggestions.clear();
+    }
+    
+    const complaintsContainer = document.getElementById('step2-complaints-container');
+    if (complaintsContainer) {
+        if (inspectionState.intake.complaints && inspectionState.intake.complaints.length > 0) {
+            complaintsContainer.innerHTML = inspectionState.intake.complaints.map(c => 
+                `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200"><i class="ph-fill ph-warning-circle text-amber-500"></i> ${escHTML(c)}</span>`
+            ).join('');
+            complaintsContainer.parentElement.classList.remove('hidden');
+        } else {
+            complaintsContainer.parentElement.classList.add('hidden');
+        }
+    }
+
+    const suggestions = window.getSuggestedParts();
+    
+    // 1. Identify unlinked fixes
+    const unlinkedFixes = [];
+    if (typeof inspectionSections !== 'undefined' && typeof getInspItem === 'function') {
+        inspectionSections.forEach(sec => {
+            sec.items.forEach(item => {
+                const st = getInspItem(item.id);
+                if (st.status === 'fix') {
+                    const hasLink = mockInventory.some(p => p.linkedInspectionItems && p.linkedInspectionItems.some(l => l.itemId === item.id));
+                    if (!hasLink) unlinkedFixes.push(item.label);
+                }
+            });
+        });
+    }
+    window.unlinkedFixesList = unlinkedFixes;
+    
+    // 2. Add suggestions
+    suggestions.forEach(r => {
+        if (r.level === 'fix' || r.level === 'ecu' || r.level === 'watch') {
+            const part = mockInventory.find(p => p.id === r.id);
+            if (part && r.checked) {
+                let target = r.target || 'Other / General';
+                let category = r.category || 'Other / General';
+                
+                if (window.removedAutoSuggestions.has(part.id + '|' + target)) return; // Skipped intentionally removed
+                
+                const existing = repairPlanParts.find(p => p.id === r.id && p.target === target);
+                if (!existing) {
+                    repairPlanParts.push({
+                        id: part.id,
+                        part: part,
+                        qty: r.qty,
+                        target: target,
+                        category: category,
+                        isAuto: true,
+                        stock: part.stock
+                    });
+                }
+            }
+        }
+    });
+    
+    // 3. Mark obsolete auto-assigned parts (No longer needed)
+    repairPlanParts.forEach(p => {
+        if (p.isAuto) {
+            const stillNeeded = suggestions.some(s => s.id === p.id && s.target === p.target && s.checked);
+            p.obsolete = !stillNeeded;
+        }
+    });
+    
+    planReviewed = true;
+    renderRepairPlan();
+    updatePlanTotals();
+}
+
+// Ensure function syncPlanFromDiagnosis delegates to window.syncPlanFromDiagnosis
+function syncPlanFromDiagnosis(firstTime, restoreRemoved) {
+    window.syncPlanFromDiagnosis(firstTime, restoreRemoved);
+}
+
+function getSuggestedParts(diag) {
+    return window.getSuggestedParts(diag);
+}
