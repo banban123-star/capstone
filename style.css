@@ -62,7 +62,7 @@ body {
    ========================================================= */
 
 /* Mobile-only shell pieces are hidden unless mobile-app is active */
-#m-more-backdrop, #m-more-sheet, #m-toast { display: none; }
+#m-toast { display: none; }
 
 body.mobile-app {
     justify-content: center;
@@ -107,10 +107,39 @@ body.mobile-app #m-header-actions { display: flex; }
 /* Scrolling content */
 body.mobile-app #main-content-area {
     padding: 1rem;
+    padding-bottom: 6rem; /* Ensures content does not hide behind the bottom nav */
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
+    overflow-x: hidden; /* Prevents horizontal page scrolling */
 }
-body.mobile-app #main-content-area.m-screen { padding: 0; }
+body.mobile-app #main-content-area.m-screen { 
+    padding: 0; 
+    padding-bottom: 0;
+}
+
+/* Fixes for desktop templates displayed in mobile mode */
+body.mobile-app .view-section:not(#m-home):not(#m-more-view) .flex.justify-between.mb-4,
+body.mobile-app .view-section:not(#m-home):not(#m-more-view) .flex.justify-between.mb-6,
+body.mobile-app .view-section:not(#m-home):not(#m-more-view) .flex.justify-between.border-b {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* Fix tables in desktop views */
+body.mobile-app .view-section:not(#m-home):not(#m-more-view) .overflow-hidden:has(table) {
+    overflow-x: auto !important;
+}
+
+body.mobile-app .view-section:not(#m-home):not(#m-more-view) table {
+    min-width: 600px;
+}
+
+/* Allow buttons to wrap text instead of being cut off */
+body.mobile-app .view-section:not(#m-home):not(#m-more-view) button {
+    white-space: normal !important;
+    height: auto !important;
+    min-height: 44px;
+}
 
 /* Bottom tab bar */
 body.mobile-app #mobile-bottom-nav {
@@ -147,15 +176,10 @@ body.mobile-app #mobile-bottom-nav {
 }
 .m-tab-fab.is-active .m-fab { background: linear-gradient(135deg, #2563eb, #4f46e5); }
 
-/* "More" bottom sheet */
-body.mobile-app #m-more-backdrop,
-body.mobile-app #m-more-sheet,
+/* "More" bottom sheet (removed) */
 body.mobile-app #m-toast { display: block; }
 
-#m-more-backdrop { opacity: 0; pointer-events: none; transition: opacity .25s; }
-#m-more-backdrop.is-open { opacity: 1; pointer-events: auto; }
-#m-more-sheet { transform: translateY(100%); transition: transform .3s cubic-bezier(.32, .72, 0, 1); }
-#m-more-sheet.is-open { transform: translateY(0); }
+
 .m-sheet-row {
     display: flex;
     align-items: center;

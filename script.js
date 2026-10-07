@@ -429,6 +429,24 @@ async function loadView(viewName) {
     mainContentArea.innerHTML = html;
     mainContentArea.classList.toggle('m-screen', useMobileView);
     mainContentArea.scrollTop = 0;
+    
+    // Inject mobile sticky header for screens opened from More menu
+    const isMobileMode = document.body.classList.contains('mobile-app');
+    const primaryMobileViews = ['dashboard', 'repairs', 'diagnostics', 'inventory', 'more'];
+    
+    if (isMobileMode && !primaryMobileViews.includes(viewName)) {
+        const navBtn = document.querySelector(`.nav-link[data-target="${viewName}"]`);
+        const titleText = navBtn ? navBtn.textContent.trim() : viewName;
+        const headerHTML = `
+            <div class="sticky top-0 -mt-4 sm:-mt-6 -mx-4 sm:-mx-6 mb-4 px-4 sm:px-6 py-3 bg-white border-b border-slate-200 z-50 flex items-center justify-between shadow-sm">
+                <div class="font-bold text-slate-800 text-lg">${titleText}</div>
+                <button onclick="mNav('more')" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+        `;
+        mainContentArea.insertAdjacentHTML('afterbegin', headerHTML);
+    }
 
     try {
         if (useMobileView && viewName === 'dashboard') renderMobileHome();
@@ -480,6 +498,32 @@ async function loadView(viewName) {
             renderReports('today');
         }
         if (viewName === 'audit') { renderAudit(); }
+
+        // Initialize Mobile More view
+        if (useMobileView && viewName === 'more') {
+            const moreView = document.getElementById('m-more-view');
+            if (moreView) {
+                moreView.querySelectorAll('button[data-mtab]').forEach(el => {
+                    const target = el.getAttribute('data-mtab');
+                    if (target) {
+                        const allowed = rolePermissions[currentRole] && rolePermissions[currentRole].includes(target);
+                        el.style.display = allowed ? '' : 'none';
+                    }
+                });
+                
+                // Hide parent sections if all children are hidden
+                moreView.querySelectorAll('div.bg-white.rounded-2xl').forEach(parentDiv => {
+                    const anyVisible = Array.from(parentDiv.querySelectorAll('button[data-mtab]')).some(b => b.style.display !== 'none');
+                    const sectionContainer = parentDiv.parentElement;
+                    if (sectionContainer) sectionContainer.style.display = anyVisible ? '' : 'none';
+                });
+            }
+            
+            const deskToggle = document.getElementById('m-more-desktop-toggle');
+            if (deskToggle) {
+                deskToggle.style.display = currentRole === 'owner' ? '' : 'none';
+            }
+        }
 
     } catch (error) {
         console.error(error);
@@ -556,6 +600,13 @@ const systemUsers = {
 
 let currentRole = 'owner';
 
+const rolePermissions = {
+    superadmin: ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings', 'backup'],
+    owner:      ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings', 'backup'],
+    chief:      ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'history', 'settings'],
+    sub:        ['dashboard', 'diagnostics', 'repairs', 'inventory', 'settings']
+};
+
 const ROLE_PERMISSIONS = {
     sys: {
         'inventory.view': true,
@@ -619,17 +670,18 @@ function switchRole(roleId) {
     avatar.textContent = user.initials;
     avatar.className = `w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-inner ${user.color}`;
 
-    // 2. Hide/Show Nav Links based on data-roles attribute
-    const allNavLinks = document.querySelectorAll('.nav-link[data-roles]');
+    // 2. Hide/Show Nav Links based on rolePermissions map
+    const allNavLinks = document.querySelectorAll('.nav-link[data-target]');
     let isCurrentViewAllowed = false;
     const currentActiveTarget = document.querySelector('.nav-link.active')?.getAttribute('data-target');
 
     allNavLinks.forEach(link => {
-        const allowedRoles = link.getAttribute('data-roles').split(',');
+        const target = link.getAttribute('data-target');
+        const allowed = rolePermissions[roleId] && rolePermissions[roleId].includes(target);
         
-        if (allowedRoles.includes(roleId)) {
+        if (allowed) {
             link.style.display = 'flex'; // Show link
-            if (link.getAttribute('data-target') === currentActiveTarget) {
+            if (target === currentActiveTarget) {
                 isCurrentViewAllowed = true;
             }
         } else {
@@ -640,13 +692,16 @@ function switchRole(roleId) {
     // 3. Hide/Show Header Sections (Admin & Settings are Owner Only)
     const adminHeader = document.getElementById('nav-header-admin');
     const settingsHeader = document.getElementById('nav-header-settings');
+    const desktopMobileToggle = document.getElementById('desktop-mobile-toggle');
     
     if (roleId === 'owner') {
         if(adminHeader) adminHeader.style.display = 'block';
         if(settingsHeader) settingsHeader.style.display = 'block';
+        if(desktopMobileToggle) desktopMobileToggle.style.display = 'flex';
     } else {
         if(adminHeader) adminHeader.style.display = 'none';
         if(settingsHeader) settingsHeader.style.display = 'none';
+        if(desktopMobileToggle) desktopMobileToggle.style.display = 'none';
     }
 
     // 4. Force redirect to Dashboard if the user is currently on a restricted page
@@ -658,11 +713,24 @@ function switchRole(roleId) {
     }
 }
 
-// Trigger initial setup to make sure Dashboard is shown and Owner is logged in
+// Trigger initial setup
 document.addEventListener('DOMContentLoaded', () => {
-    switchRole('owner');
-    // Simulate clicking the dashboard to load it initially
-    document.querySelector('.nav-link[data-target="dashboard"]').click();
+    const activeRole = localStorage.getItem('activeRole');
+    if (activeRole && systemUsers[activeRole]) {
+        switchRole(activeRole);
+        const loginScreen = document.getElementById('login-screen');
+        if (loginScreen) {
+            loginScreen.classList.add('hidden');
+            loginScreen.classList.remove('flex');
+        }
+        document.querySelector('.nav-link[data-target="dashboard"]')?.click();
+    } else {
+        const loginScreen = document.getElementById('login-screen');
+        if (loginScreen) {
+            loginScreen.classList.remove('hidden');
+            loginScreen.classList.add('flex');
+        }
+    }
 });
 
 
@@ -3581,6 +3649,8 @@ function renderCustomers() {
 
     if (filtered.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No customers or vehicles match the current filters.</td></tr>`;
+        const mobileContainer = document.getElementById('customers-mobile-cards');
+        if (mobileContainer) mobileContainer.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-500 font-medium">No customers or vehicles match the current filters.</div>`;
         return;
     }
 
@@ -3647,6 +3717,68 @@ function renderCustomers() {
             </tr>
         `;
     }).join('');
+
+    const mobileContainer = document.getElementById('customers-mobile-cards');
+    if (mobileContainer) {
+        mobileContainer.innerHTML = filtered.map(customer => {
+            const vehicleList = customer.vehicles.map(vehicle => `
+                <div class="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="pr-2">
+                            <div class="font-bold text-slate-800 text-sm leading-tight">${vehicle.make}</div>
+                            <div class="text-[10px] text-slate-500 font-mono mt-1">Plate: ${vehicle.plate} <br> Engine: ${vehicle.engine}</div>
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider shrink-0 ${vehicle.statusClass}">${vehicle.status}</span>
+                    </div>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="viewVehicleHistory('${vehicle.plate}')" class="flex-1 bg-white border border-slate-300 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px]">
+                            <i class="ph-bold ph-eye text-base"></i> History
+                        </button>
+                        <button onclick="createRepairTicket('${vehicle.make}', '${vehicle.plate}')" class="flex-1 bg-blue-600 text-white font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px] shadow-sm">
+                            <i class="ph-bold ph-wrench text-base"></i> Ticket
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            return `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <button onclick="toggleMobileCustomerCard('${customer.id}')" class="w-full p-4 flex items-center justify-between text-left active:bg-slate-50 transition-colors">
+                        <div class="flex-1 pr-4">
+                            <div class="font-bold text-slate-800 text-base leading-tight">${customer.name}</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5 mb-2 font-medium">Joined: ${customer.joined}</div>
+                            <div class="flex flex-wrap items-center gap-1.5">
+                                <span class="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded text-[10px] border border-slate-200">${customer.vehicles.length} Vehicle${customer.vehicles.length > 1 ? 's' : ''}</span>
+                                ${customer.statusHtml}
+                            </div>
+                        </div>
+                        <div class="shrink-0 w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center transition-colors">
+                            <i id="m-cust-icon-${customer.id}" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                        </div>
+                    </button>
+                    
+                    <div id="m-cust-body-${customer.id}" class="hidden border-t border-slate-100 p-4 bg-white flex flex-col">
+                        <div class="flex items-center justify-between gap-2 mb-5 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                                    <i class="ph-fill ph-phone text-lg"></i>
+                                </div>
+                                <span class="font-mono text-sm font-bold text-slate-700">${customer.phone}</span>
+                            </div>
+                            <button class="text-blue-600 bg-blue-50 hover:bg-blue-100 font-bold text-xs px-3 py-1.5 rounded-md transition-colors border border-blue-200 min-h-[44px]" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)">
+                                Edit Profile
+                            </button>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1">Registered Vehicles</h4>
+                            ${vehicleList}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 // 1. Edit Profile Logic (Pre-fills existing modal)
@@ -3712,6 +3844,28 @@ window.toggleCustomerRow = function(rowId) {
     }
 };
 
+window.toggleMobileCustomerCard = function(custId) {
+    const clickedBody = document.getElementById(`m-cust-body-${custId}`);
+    const clickedIcon = document.getElementById(`m-cust-icon-${custId}`);
+    
+    if (!clickedBody) return;
+    const isCurrentlyHidden = clickedBody.classList.contains('hidden');
+    
+    // Close all first
+    mockCustomersData.forEach(c => {
+        const b = document.getElementById(`m-cust-body-${c.id}`);
+        const i = document.getElementById(`m-cust-icon-${c.id}`);
+        if (b) b.classList.add('hidden');
+        if (i) i.classList.remove('rotate-180', 'text-blue-500');
+    });
+    
+    // Open the clicked one if it was hidden
+    if (isCurrentlyHidden) {
+        clickedBody.classList.remove('hidden');
+        if (clickedIcon) clickedIcon.classList.add('rotate-180', 'text-blue-500');
+    }
+};
+
 // Attach Listeners
 document.addEventListener('input', function(e) {
     if (e.target.id === 'cust-search') renderCustomers();
@@ -3729,15 +3883,16 @@ document.addEventListener('change', function(e) {
 // =====================================================================
 
 const MOBILE_ROLES = ['chief', 'sub'];
-let forceOwnerMobile = false; // Tracks if owner manually toggled mobile UI
+let forceOwnerMobile = localStorage.getItem('forceOwnerMobile') === 'true'; // Tracks if owner manually toggled mobile UI
 
 window.toggleOwnerMobileMode = function() {
     forceOwnerMobile = !forceOwnerMobile;
+    localStorage.setItem('forceOwnerMobile', forceOwnerMobile);
     switchRole(currentRole); // Re-trigger UI setup
 };
 
 // Screens that already have a mobile version (views/mobile/<name>.html)
-const mobileViews = ['dashboard'];
+const mobileViews = ['dashboard', 'more'];
 
 // Short app-bar titles (the sidebar labels are too long for a phone)
 // Mock jobs for the mobile Home screen (mechanic names match systemUsers)
@@ -3760,39 +3915,48 @@ function getMobileJobs(roleId) {
     return mockMobileJobs.filter(job => job.mechanic === systemUsers[roleId].name);
 }
 
-// Toggles mobile mode + fills the shell (app bar avatar, More sheet, tab badge). Returns true if mobile.
+// Toggles mobile mode + fills the shell (app bar avatar, tab badge). Returns true if mobile.
 function applyMobileMode(roleId) {
     const isMobile = MOBILE_ROLES.includes(roleId) || (roleId === 'owner' && forceOwnerMobile);
     document.body.classList.toggle('mobile-app', isMobile);
 
     if (!isMobile) {
-        mToggleMore(false);
         mainContentArea.classList.remove('m-screen');
         return false;
     }
 
     const user = systemUsers[roleId];
-    ['m-header-avatar', 'm-sheet-avatar'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.textContent = user.initials;
-        el.classList.remove('bg-blue-600', 'bg-purple-600', 'bg-slate-600', 'bg-slate-800', 'bg-emerald-600');
-        el.classList.add(user.color);
-    });
-    document.getElementById('m-sheet-name').textContent = user.name;
-    document.getElementById('m-sheet-role').textContent = user.role;
-    document.getElementById('m-jobs-badge').textContent = getMobileJobs(roleId).length;
+    const headerAvatar = document.getElementById('m-header-avatar');
+    if (headerAvatar) {
+        headerAvatar.textContent = user.initials;
+        headerAvatar.classList.remove('bg-blue-600', 'bg-purple-600', 'bg-slate-600', 'bg-slate-800', 'bg-emerald-600');
+        headerAvatar.classList.add(user.color);
+    }
+    
+    const jobsBadge = document.getElementById('m-jobs-badge');
+    if (jobsBadge) {
+        jobsBadge.textContent = getMobileJobs(roleId).length;
+    }
 
-    // Role-gated pieces of the mobile shell (e.g. Chief-only sheet rows)
-    document.querySelectorAll('#m-more-sheet [data-mroles]').forEach(el => {
-        el.style.display = el.dataset.mroles.split(',').includes(roleId) ? '' : 'none';
+    // Role-gated pieces of the mobile shell using rolePermissions
+    document.querySelectorAll('.m-tab[data-mtab]').forEach(el => {
+        const target = el.getAttribute('data-mtab');
+        if (target && target !== 'more') {
+            const allowed = rolePermissions[roleId] && rolePermissions[roleId].includes(target);
+            el.style.display = allowed ? '' : 'none';
+        }
     });
+
     return true;
 }
 
 // Bottom tab bar -> reuses the (hidden) sidebar links so all routing stays in one place
 function mNav(target) {
-    mToggleMore(false);
+    if (target === 'more') {
+        syncMobileNav('more');
+        loadView('more');
+        return;
+    }
     document.querySelector(`.nav-link[data-target="${target}"]`)?.click();
 }
 
@@ -3803,11 +3967,6 @@ function syncMobileNav(target) {
     document.querySelectorAll('.m-tab[data-mtab]').forEach(tab => {
         tab.classList.toggle('is-active', tab.dataset.mtab === activeTab);
     });
-}
-
-function mToggleMore(show) {
-    document.getElementById('m-more-backdrop')?.classList.toggle('is-open', show);
-    document.getElementById('m-more-sheet')?.classList.toggle('is-open', show);
 }
 
 let mToastTimer = null;
@@ -5401,6 +5560,9 @@ window.submitLogin = function() {
             loginScreen.classList.remove('flex');
         }
         
+        localStorage.setItem('activeRole', roleId);
+        sessionStorage.setItem('currentUserRole', roleId);
+        
         switchRole(roleId);
         
         const dashLink = document.querySelector('.nav-link[data-target="dashboard"]');
@@ -5424,6 +5586,7 @@ window.handleLogout = function() {
         signedOut.classList.remove('flex');
     }
     sessionStorage.removeItem('currentUserRole');
+    localStorage.removeItem('activeRole');
     
     const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
     const roleInput = document.getElementById('login-selected-role');
