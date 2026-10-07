@@ -68,6 +68,9 @@
             <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="users" data-roles="superadmin,owner">
                 <i class="ph ph-user-gear text-lg w-6"></i> User Management
             </button>
+            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="settings" data-roles="superadmin,owner,chief,sub">
+                <i class="ph ph-gear text-lg w-6"></i> Settings
+            </button>
 
             <!-- System Settings -->
             <div id="nav-header-settings" class="px-3 py-2 mt-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
@@ -177,6 +180,10 @@
                     <span class="m-sheet-icon bg-emerald-100 text-emerald-600"><i class="ph-fill ph-clock-counter-clockwise"></i></span> Service History
                     <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
                 </button>
+                <button data-mroles="superadmin,owner,chief,sub" onclick="mNav('settings'); mToggleMore(false)" class="m-sheet-row">
+                    <span class="m-sheet-icon bg-slate-100 text-slate-600"><i class="ph-fill ph-gear"></i></span> Settings
+                    <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
+                </button>
                 <!-- Mobile to Desktop Toggle (Owner) -->
             <button data-mroles="owner" onclick="toggleOwnerMobileMode()" class="m-sheet-row mt-1">
                 <span class="m-sheet-icon bg-blue-100 text-blue-600"><i class="ph-fill ph-desktop"></i></span> Switch to Desktop UI
@@ -206,112 +213,64 @@
 
 
     <!-- Login Screen Overlay -->
-    <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-slate-900/95 flex-col items-center justify-center p-4 backdrop-blur-md">
-        
-        <!-- Profile Selection View -->
-        <div id="login-profile-view" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 sm:p-8 flex flex-col gap-6 text-center transform transition-all relative">
-            
-            <!-- NEW: Close Button -->
-            <button onclick="closeLoginScreen()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 p-2 rounded-lg transition-colors bg-slate-50 hover:bg-slate-100">
-                <i class="ph-bold ph-x text-xl"></i>
-            </button>
-
-            <div class="flex items-center justify-center text-blue-600 font-bold text-3xl mb-2">
-                <i class="ph-fill ph-motorcycle mr-2 text-4xl"></i> MotoCare
-            </div>
+        <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-slate-900/95 flex-col items-center justify-center p-4 backdrop-blur-md">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col gap-6 text-center transform transition-all relative">
+            <!-- Login Form View -->
+            <div id="login-form-view" class="flex flex-col gap-6 w-full">
+                <button onclick="showSignedOutView()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors z-10" title="Close">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
             <div>
-                <h2 class="text-xl font-bold text-slate-800">Welcome Back</h2>
-                <p class="text-sm text-slate-500 mt-1">Select your profile to sign in.</p>
-            </div>
-            
-            <!-- 2x2 Scalable Grid Layout -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                <!-- Super Admin -->
-            <button onclick="promptPin('superadmin', 'System Admin', 'SA', 'bg-slate-800')" class="w-full p-4 bg-slate-50 hover:bg-slate-200 border border-slate-200 hover:border-slate-400 rounded-xl text-left flex items-center gap-4 transition-all group sm:col-span-2 md:col-span-1">
-                <div class="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">SA</div>
-                <div>
-                    <div class="text-base font-bold text-slate-800 group-hover:text-slate-900">System Admin</div>
-                    <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Super Admin</div>
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <i class="ph-fill ph-wrench text-3xl"></i>
                 </div>
-            </button>
-                <!-- Shop Owner -->
-                <button onclick="promptPin('owner', 'Ivan', 'IG', 'bg-blue-600')" class="w-full p-4 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-left flex items-center gap-4 transition-all group">
-                    <div class="w-12 h-12 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">IG</div>
-                    <div>
-                        <div class="text-base font-bold text-slate-800 group-hover:text-blue-700">Ivan</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Shop Owner</div>
-                    </div>
-                </button>
-                <!-- Chief Mechanic -->
-                <button onclick="promptPin('chief', 'Larpus', 'JB', 'bg-purple-600')" class="w-full p-4 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-xl text-left flex items-center gap-4 transition-all group">
-                    <div class="w-12 h-12 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">JB</div>
-                    <div>
-                        <div class="text-base font-bold text-slate-800 group-hover:text-purple-700">Larpus</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Chief Mechanic</div>
-                    </div>
-                </button>
-                <!-- Sub-Mechanic -->
-                <button onclick="promptPin('sub', 'Hiyo', 'F', 'bg-slate-600')" class="w-full p-4 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-400 rounded-xl text-left flex items-center gap-4 transition-all group">
-                    <div class="w-12 h-12 rounded-full bg-slate-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-inner">F</div>
-                    <div>
-                        <div class="text-base font-bold text-slate-800 group-hover:text-slate-700">Hiyo</div>
-                        <div class="text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5">Sub-Mechanic</div>
-                    </div>
-                </button>
-            
-            
-            
-            <!-- System Status Footer -->
-            <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400 font-medium">
-                <span>MotoCare OS v1.2.4</span>
-                <span class="flex items-center gap-1.5 text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Database Online</span>
+                <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">MotoCare OS</h2>
+                <p class="text-sm text-slate-500 mt-1">Sign in to your account</p>
             </div>
-        </div>
-
-        <!-- PIN Pad View (Hidden by default) -->
-        <div id="login-pin-view" class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col gap-6 text-center transform transition-all hidden relative">
-            <button onclick="backToProfiles()" class="absolute top-4 left-4 text-slate-400 hover:text-slate-700 p-2 rounded-lg transition-colors bg-slate-50 hover:bg-slate-100"><i class="ph-bold ph-arrow-left text-xl"></i></button>
             
-            <div class="flex flex-col items-center gap-2 mt-4">
-                <div id="pin-avatar" class="w-16 h-16 rounded-full text-white flex items-center justify-center font-bold text-2xl shadow-inner"></div>
+            <div class="flex flex-col gap-4 text-left">
                 <div>
-                    <h2 id="pin-name" class="text-xl font-bold text-slate-800">Name</h2>
-                    <p class="text-sm text-slate-500 mt-0.5">Enter your 4-digit PIN</p>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Sign In As</label>
+                    <div class="flex flex-wrap gap-2" id="role-selector">
+                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="owner" onclick="selectLoginRole('owner', this)">Owner</button>
+                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="chief" onclick="selectLoginRole('chief', this)">Mechanic</button>
+                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="sub" onclick="selectLoginRole('sub', this)">Sub-Mechanic</button>
+                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="superadmin" onclick="selectLoginRole('superadmin', this)">Admin</button>
+                    </div>
+                    <input type="hidden" id="login-selected-role" value="">
+                    <p id="login-role-error" class="text-xs text-red-600 font-bold hidden mt-1">Please select a role.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD (optional)</label>
+                    <input type="password" id="login-password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Not required for prototype" onkeydown="if(event.key === 'Enter') submitLogin()">
                 </div>
             </div>
 
-            <!-- PIN Display -->
-            <div class="flex justify-center gap-4 my-2">
-                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
-                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
-                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
-                <div class="w-4 h-4 rounded-full border-2 border-slate-300 pin-dot transition-colors"></div>
-            </div>
-
-            <!-- Numpad -->
-            <div class="grid grid-cols-3 gap-3">
-                <button onclick="addPin('1')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">1</button>
-                <button onclick="addPin('2')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">2</button>
-                <button onclick="addPin('3')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">3</button>
-                <button onclick="addPin('4')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">4</button>
-                <button onclick="addPin('5')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">5</button>
-                <button onclick="addPin('6')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">6</button>
-                <button onclick="addPin('7')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">7</button>
-                <button onclick="addPin('8')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">8</button>
-                <button onclick="addPin('9')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">9</button>
-                <button onclick="clearPin()" class="p-4 text-xl font-bold text-slate-400 bg-transparent rounded-xl hover:text-red-500 transition-colors"><i class="ph-bold ph-x"></i></button>
-                <button onclick="addPin('0')" class="p-4 text-xl font-bold text-slate-700 bg-slate-50 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-colors">0</button>
-                <button onclick="removePin()" class="p-4 text-xl font-bold text-slate-400 bg-transparent rounded-xl hover:text-slate-700 transition-colors"><i class="ph-bold ph-backspace"></i></button>
-            </div>
-
-            <button id="btn-login-submit" onclick="submitLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-500/30 flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" disabled>
+            <button onclick="submitLogin()" id="btn-login-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-500/30 flex items-center justify-center gap-2">
                 Sign In
             </button>
             
-            <button onclick="alert('Admin Override Triggered. Please enter Master PIN or check email for recovery link.')" class="text-[10px] font-bold text-slate-400 hover:text-blue-600 uppercase tracking-wider mt-1 transition-colors underline underline-offset-2">Forgot PIN? / Admin Override</button>
+            <div class="mt-2 pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium text-center">
+                Prototype mode: select a role to continue.
+            </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
-
 
 <template id="view-audit">
 <div id="view-audit" class="view-section active max-w-6xl mx-auto">
@@ -346,6 +305,22 @@
                     <i class="ph-bold ph-export"></i> Export CSV
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
     
@@ -448,6 +423,22 @@
                     <span>WARNING: Restoring a backup will overwrite all current system data. Any transactions made after the backup date will be permanently lost.</span>
                 </div>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -500,6 +491,22 @@
                 <button onclick="closeRestorePasswordModal()" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
                 <button onclick="confirmSystemRestore(event)" class="px-4 py-2 rounded-lg text-sm font-bold bg-red-600 text-white hover:bg-red-700 shadow-md transition-colors">Authorize & Restore</button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -594,6 +601,22 @@
                     <i class="ph-bold ph-floppy-disk"></i> Save Customer
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -660,6 +683,22 @@
                     <i class="ph-bold ph-floppy-disk"></i> Register Vehicle
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -713,6 +752,22 @@
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Today's Services</p>
                 <p class="text-xl font-bold text-slate-800 leading-none">3 <span class="text-xs font-medium text-slate-500 ml-1">Jobs Finished</span></p>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -801,6 +856,22 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -1123,6 +1194,22 @@
                     <div id="selected-parts-container" class="flex flex-col gap-2 empty:hidden"></div>
                 </div>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -1494,6 +1581,22 @@
                 </div>
 
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -1638,6 +1741,22 @@
                     <i class="ph-bold ph-export"></i> Export List
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -1787,6 +1906,22 @@
                     </div>
                 </section>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -1846,6 +1981,22 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -1994,6 +2145,22 @@
                     <i class="ph-bold ph-floppy-disk"></i> Save Part
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2048,6 +2215,22 @@
                 <button onclick="closeRestockModal()" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
                 <button onclick="closeRestockModal()" class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-colors">Confirm Restock</button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2074,6 +2257,22 @@
                     <i class="ph-bold ph-check-circle text-lg"></i> Confirm Payment
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -2404,6 +2603,22 @@
                 <div class="flex flex-col"><span class="text-slate-400">Issues Found</span><span class="font-bold text-purple-600" id="kpi-scan-issue">8</span></div>
                 <div class="flex flex-col text-right"><span class="text-slate-400">Clear</span><span class="font-bold text-emerald-600" id="kpi-scan-clear">7</span></div>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2614,6 +2829,22 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -2731,6 +2962,22 @@
                     <i class="ph-bold ph-receipt"></i> Confirm & Print Receipt
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2819,6 +3066,22 @@
                     <i class="ph-bold ph-check-circle text-lg"></i> Confirm Payment & Complete
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2861,6 +3124,22 @@
                     <i class="ph-bold ph-floppy-disk"></i> Record Advance
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -2908,6 +3187,22 @@
                     <i class="ph-bold ph-printer text-lg"></i> Print Receipt
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -2971,6 +3266,22 @@
                     </tbody>
                 </table>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -3039,6 +3350,22 @@
                     </tbody>
                 </table>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
     </div>
 
@@ -3123,7 +3450,85 @@
                     <i class="ph-bold ph-floppy-disk"></i> Save Account Details
                 </button>
             </div>
+            </div>
+
+            <!-- Signed Out View -->
+            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
+                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                    <i class="ph-fill ph-user-minus text-4xl"></i>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
+                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
+                </div>
+                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                    Sign In
+                </button>
+            </div>
+
         </div>
+    </div>
+</div>
+</template>
+
+<template id="view-settings">
+<div id="view-settings" class="view-section active max-w-2xl mx-auto py-4 px-2 sm:p-6">
+    
+    <div class="mb-6 px-2">
+        <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Settings</h1>
+        <p class="text-sm text-slate-500 mt-1">Manage your profile, password, and preferences.</p>
+    </div>
+
+    <div class="flex flex-col gap-6">
+        
+        <!-- Current Session Card -->
+        <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3 mb-4 flex items-center gap-2"><i class="ph-bold ph-identification-card text-blue-500 text-xl"></i> Current Session</h2>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div id="acc-avatar" class="w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-xl shadow-inner bg-slate-400">?</div>
+                    <div>
+                        <h3 id="acc-name" class="text-lg font-bold text-slate-800">User Name</h3>
+                        <p id="acc-role" class="text-sm font-semibold text-slate-500">Role</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Change Password Card -->
+        <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3 mb-4 flex items-center gap-2"><i class="ph-bold ph-password text-orange-500 text-xl"></i> Change Password</h2>
+            
+            <div class="flex flex-col gap-4 max-w-sm">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Current Password</label>
+                    <input type="password" id="acc-pwd-current" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Enter current password">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">New Password</label>
+                    <input type="password" id="acc-pwd-new" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Enter new password">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Confirm New Password</label>
+                    <input type="password" id="acc-pwd-confirm" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Confirm new password">
+                </div>
+                <p id="acc-pwd-msg" class="text-xs font-bold hidden p-2.5 rounded-md border text-center"></p>
+                <button onclick="changePassword()" class="mt-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 px-5 rounded-lg transition-colors shadow-sm self-start">Update Password</button>
+            </div>
+        </div>
+
+        <!-- Session Controls Card -->
+        <div class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3 mb-4 flex items-center gap-2"><i class="ph-bold ph-clock text-purple-500 text-xl"></i> Session Controls</h2>
+            
+            <div>
+                <button onclick="handleLogout()" class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold py-2.5 px-6 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto active:scale-[0.98]">
+                    <i class="ph-bold ph-sign-out text-lg"></i> Log Out Now
+                </button>
+            </div>
+        </div>
+        
     </div>
 </div>
 </template>

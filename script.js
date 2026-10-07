@@ -453,6 +453,10 @@ async function loadView(viewName) {
             renderInventory();
         }
 
+        if (viewName === 'settings') {
+            if (typeof initSettingsView === 'function') initSettingsView();
+        }
+
         if (viewName === 'users') { renderUsers(); }
         if (viewName === 'backup') { renderBackupHistory(); }
         if (viewName === 'repairs') { 
@@ -2783,17 +2787,25 @@ function updatePinDisplay() {
 }
 
 window.submitLogin = function() {
-    if (enteredPin.length !== 4) return;
+    const roleId = document.getElementById('login-selected-role').value;
+    const roleErrorMsg = document.getElementById('login-role-error');
+    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    
+    if (!roleId) {
+        if (roleErrorMsg) roleErrorMsg.classList.remove('hidden');
+        return;
+    }
+    
+    const user = systemUsers[roleId];
+    if (!user) {
+        return;
+    }
     
     const btn = document.getElementById('btn-login-submit');
     const originalContent = btn.innerHTML;
     
-    btn.innerHTML = `
-        <i class="ph-bold ph-spinner animate-spin text-xl"></i>
-        Authenticating...
-    `;
+    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Authenticating...';
     
-    // Simulate network validation delay
     setTimeout(() => {
         btn.innerHTML = originalContent; 
         
@@ -5323,3 +5335,213 @@ window.toggleStep3RegistrationMode = function(checkbox) {
     // Dummy handler for legacy template (diagnostics_temp)
     console.log('toggleStep3RegistrationMode called', checkbox.checked);
 };
+// --- Login Toggles ---
+window.showSignedOutView = function() {
+    const loginForm = document.getElementById('login-form-view');
+    const signedOut = document.getElementById('signed-out-view');
+    if (loginForm) {
+        loginForm.classList.add('hidden');
+        loginForm.classList.remove('flex');
+    }
+    if (signedOut) {
+        signedOut.classList.remove('hidden');
+        signedOut.classList.add('flex');
+    }
+};
+
+window.showLoginForm = function() {
+    const loginForm = document.getElementById('login-form-view');
+    const signedOut = document.getElementById('signed-out-view');
+    if (signedOut) {
+        signedOut.classList.add('hidden');
+        signedOut.classList.remove('flex');
+    }
+    if (loginForm) {
+        loginForm.classList.remove('hidden');
+        loginForm.classList.add('flex');
+    }
+    
+    const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
+    const roleInput = document.getElementById('login-selected-role');
+    if (roleInput) roleInput.value = '';
+    const roleErrorMsg = document.getElementById('login-role-error');
+    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    document.querySelectorAll('#role-selector .role-chip').forEach(c => {
+        c.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors';
+    });
+};
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const loginScreen = document.getElementById('login-screen');
+        const loginForm = document.getElementById('login-form-view');
+        if (loginScreen && !loginScreen.classList.contains('hidden') && loginForm && !loginForm.classList.contains('hidden')) {
+            showSignedOutView();
+        }
+    }
+});
+
+// --- Overridden Login Logic ---
+window.submitLogin = function() {
+    const roleId = document.getElementById('login-selected-role').value;
+    const roleErrorMsg = document.getElementById('login-role-error');
+    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    
+    if (!roleId) {
+        if (roleErrorMsg) roleErrorMsg.classList.remove('hidden');
+        return;
+    }
+    
+    const user = systemUsers[roleId];
+    if (!user) {
+        return;
+    }
+    
+    const btn = document.getElementById('btn-login-submit');
+    const originalContent = btn.innerHTML;
+    
+    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Authenticating...';
+    
+    setTimeout(() => {
+        btn.innerHTML = originalContent; 
+        
+        const loginScreen = document.getElementById('login-screen');
+        if (loginScreen) {
+            loginScreen.classList.add('hidden');
+            loginScreen.classList.remove('flex');
+        }
+        
+        switchRole(roleId);
+        
+        const dashLink = document.querySelector('.nav-link[data-target="dashboard"]');
+        if (dashLink) dashLink.click();
+        
+    }, 600);
+};
+
+window.handleLogout = function() {
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen) {
+        loginScreen.classList.remove('hidden');
+        loginScreen.classList.add('flex');
+    }
+    const loginForm = document.getElementById('login-form-view');
+    const signedOut = document.getElementById('signed-out-view');
+    if (loginForm && signedOut) {
+        loginForm.classList.remove('hidden');
+        loginForm.classList.add('flex');
+        signedOut.classList.add('hidden');
+        signedOut.classList.remove('flex');
+    }
+    sessionStorage.removeItem('currentUserRole');
+    
+    const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
+    const roleInput = document.getElementById('login-selected-role');
+    if (roleInput) roleInput.value = '';
+    const roleErrorMsg = document.getElementById('login-role-error');
+    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    document.querySelectorAll('#role-selector .role-chip').forEach(c => {
+        c.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors';
+    });
+};
+
+// --- Settings Logic ---
+window.initSettingsView = function() {
+    const roleId = sessionStorage.getItem('currentUserRole') || 'owner';
+    const user = systemUsers[roleId];
+    
+    const accName = document.getElementById('acc-name');
+    const accRole = document.getElementById('acc-role');
+    if (accName) accName.textContent = user.name;
+    if (accRole) accRole.textContent = user.role;
+    
+    const avatar = document.getElementById('acc-avatar');
+    if (avatar) {
+        avatar.textContent = user.initials;
+        avatar.className = "w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-xl shadow-inner shrink-0 " + user.color;
+    }
+    
+    const currPw = document.getElementById('acc-pwd-current');
+    const newPw = document.getElementById('acc-pwd-new');
+    const confPw = document.getElementById('acc-pwd-confirm');
+    if (currPw) currPw.value = '';
+    if (newPw) newPw.value = '';
+    if (confPw) confPw.value = '';
+    
+    const msg = document.getElementById('acc-pwd-msg');
+    if (msg) msg.classList.add('hidden');
+    
+};
+
+window.changePassword = function() {
+    const current = document.getElementById('acc-pwd-current').value;
+    const newPwd = document.getElementById('acc-pwd-new').value;
+    const confirm = document.getElementById('acc-pwd-confirm').value;
+    const msg = document.getElementById('acc-pwd-msg');
+    
+    const roleId = sessionStorage.getItem('currentUserRole') || 'owner';
+    const user = systemUsers[roleId];
+    
+    msg.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-600', 'border-emerald-200', 'bg-red-50', 'text-red-600', 'border-red-200');
+    
+    const savedPwdsCheck = JSON.parse(sessionStorage.getItem('mockUserPasswords') || '{}');
+    const expectedPw = savedPwdsCheck[roleId] || user.password;
+    if (current !== expectedPw) {
+        msg.textContent = 'Incorrect current password.';
+        msg.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        return;
+    }
+    if (newPwd.length < 4) {
+        msg.textContent = 'New password must be at least 4 characters.';
+        msg.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        return;
+    }
+    if (newPwd !== confirm) {
+        msg.textContent = 'Passwords do not match.';
+        msg.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
+        return;
+    }
+    
+    user.password = newPwd;
+    const savedPwds = JSON.parse(sessionStorage.getItem('mockUserPasswords') || '{}');
+    savedPwds[roleId] = newPwd;
+    sessionStorage.setItem('mockUserPasswords', JSON.stringify(savedPwds));
+    
+    msg.textContent = 'Password updated successfully.';
+    msg.classList.add('bg-emerald-50', 'text-emerald-600', 'border-emerald-200');
+    
+    document.getElementById('acc-pwd-current').value = '';
+    document.getElementById('acc-pwd-new').value = '';
+    document.getElementById('acc-pwd-confirm').value = '';
+};
+
+
+
+window.toggleDiagnosticSections = function() {
+    const isPhysicalOn = document.getElementById('toggle-physical')?.checked;
+    const isEcuOn = document.getElementById('toggle-ecu')?.checked;
+    if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
+    if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
+    if (typeof updateSectionNumbering === 'function') updateSectionNumbering();
+};
+
+window.selectLoginRole = function(roleId, btn) {
+    const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
+    const roleInput = document.getElementById('login-selected-role');
+    if (roleInput) roleInput.value = roleId;
+    const roleErrorMsg = document.getElementById('login-role-error');
+    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    
+    document.querySelectorAll('#role-selector .role-chip').forEach(c => {
+        c.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors';
+    });
+    if (btn) {
+        btn.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 transition-colors';
+    }
+};
+
+systemUsers.owner.password = 'owner123';
+systemUsers.chief.password = 'mech123';
+systemUsers.sub.password = 'sub123';
+systemUsers.superadmin.password = 'admin123';
+
