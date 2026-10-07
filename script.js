@@ -410,15 +410,18 @@ async function loadView(viewName) {
     let useMobileView = false;
     
     try {
-        // Chief / Sub-Mechanic get the mobile version of a screen once it has been converted
         useMobileView = document.body.classList.contains('mobile-app') && mobileViews.includes(viewName);
-        const response = await fetch(`views/${useMobileView ? 'mobile/' : ''}${viewName}.html`);
-        if (!response.ok) throw new Error('File not found');
-        html = await response.text();
+        const templateId = `view-${useMobileView ? 'mobile-' : ''}${viewName}`;
+        const template = document.getElementById(templateId);
+        
+        if (!template) {
+            throw new Error('Template not found: ' + templateId);
+        }
+        html = template.innerHTML;
     } catch (error) {
         mainContentArea.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-red-200">
-            <h2 class="text-red-500 font-bold text-lg mb-2">Error loading view: ${viewName}.html</h2>
-            <p class="text-slate-500 text-sm">Please ensure you are opening this project using a Local Server (e.g., Live Server in VS Code) and not just double-clicking the HTML file.</p>
+            <h2 class="text-red-500 font-bold text-lg mb-2">Error loading view: ${viewName}</h2>
+            <p class="text-slate-500 text-sm">Could not find the embedded template.</p>
         </div>`;
         return;
     }
@@ -5306,3 +5309,17 @@ function confirmStep3Push() {
         
     }, 800);
 }
+
+// Added handlers for index.html inline calls
+window.toggleDiagnosticSections = function() {
+    const isPhysicalOn = document.getElementById('toggle-physical')?.checked;
+    const isEcuOn = document.getElementById('toggle-ecu')?.checked;
+    if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
+    if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
+    if (typeof updateSectionNumbering === 'function') updateSectionNumbering();
+};
+
+window.toggleStep3RegistrationMode = function(checkbox) {
+    // Dummy handler for legacy template (diagnostics_temp)
+    console.log('toggleStep3RegistrationMode called', checkbox.checked);
+};
