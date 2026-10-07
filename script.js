@@ -444,6 +444,7 @@ async function loadView(viewName) {
             planReviewed = false;
             currentDiagStep = 1;
             updatePlanTotals();
+            if (typeof updateDiagStepper === 'function') updateDiagStepper();
         }
 
         // Initialize Inventory view
