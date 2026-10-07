@@ -400,7 +400,6 @@ document.addEventListener('change', function(e) {
 
 // --- Dynamic Loading Logic (SPA) ---
 const mainContentArea = document.getElementById('main-content-area');
-const headerTitle = document.getElementById('header-title');
 
 let viewLoadToken = 0;
 
@@ -538,8 +537,7 @@ navLinks.forEach(link => {
         }
 
         const isMobileMode = document.body.classList.contains('mobile-app');
-        headerTitle.textContent = (isMobileMode && mobileTitles[targetId]) ? mobileTitles[targetId] : this.textContent.trim();
-        if (isMobileMode) syncMobileNav(targetId);
+                if (isMobileMode) syncMobileNav(targetId);
         loadView(targetId); // FETCH THE HTML FILE
 
         if(window.innerWidth < 1024) toggleSidebar(false);
@@ -3741,15 +3739,6 @@ window.toggleOwnerMobileMode = function() {
 const mobileViews = ['dashboard'];
 
 // Short app-bar titles (the sidebar labels are too long for a phone)
-const mobileTitles = {
-    dashboard: 'Home',
-    repairs: 'Active Repairs',
-    diagnostics: 'Diagnostics',
-    inventory: 'Parts & Inventory',
-    customers: 'Customers',
-    history: 'Service History'
-};
-
 // Mock jobs for the mobile Home screen (mechanic names match systemUsers)
 const mockMobileJobs = [
     { id: 'JOB #1042', plate: 'ABC-1234', model: 'Honda Click 125i', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus', progress: 45 },

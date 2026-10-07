@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MotoCare - Shop Management System</title>
+    <link rel="icon" href="a_photo/logo.jpg">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Phosphor Icons -->
@@ -21,10 +22,11 @@
 
     <aside id="sidebar" class="fixed lg:relative z-50 h-full bg-slate-900 text-slate-300 flex flex-col w-72 -translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none flex-shrink-0">
         <div class="h-16 flex items-center justify-between px-5 shrink-0 border-b border-slate-800 bg-slate-950">
-            <div class="flex items-center text-blue-500 font-bold text-xl">
-                <i class="ph-fill ph-motorcycle text-2xl mr-2"></i>
-                <span class="text-white">MotoCare</span>
-            </div>
+            <a href="#" onclick="document.querySelector('.nav-link[data-target=''dashboard'']').click(); return false;" class="flex items-center">
+                <div class="bg-white p-[6px] rounded-[10px] flex items-center justify-center">
+                    <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-9 w-auto object-contain">
+                </div>
+            </a>
             <button id="mobile-close-btn" class="lg:hidden p-2 rounded-lg hover:bg-slate-800 text-slate-400">
                 <i class="ph ph-x text-xl"></i>
             </button>
@@ -117,11 +119,11 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-screen min-w-0 bg-slate-100 relative">
-        <header id="app-header" class="h-16 flex items-center px-4 sm:px-6 bg-white border-b border-slate-200 shrink-0 shadow-sm z-10">
+        <header id="app-header" class="h-16 flex items-center px-4 sm:px-6 bg-white border-b border-slate-200 shrink-0 shadow-sm z-10 lg:hidden">
             <button id="sidebar-toggle" class="p-2 -ml-2 mr-3 rounded-lg hover:bg-slate-100 text-slate-600 lg:hidden">
                 <i class="ph ph-list text-2xl"></i>
             </button>
-            <h1 id="header-title" class="text-lg font-bold text-slate-800">Dashboard / Home</h1>
+            <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-8 w-auto object-contain">
 
             <!-- Mobile app bar actions (Chief / Sub-Mechanic only) -->
             <div id="m-header-actions" class="hidden ml-auto items-center gap-3">
@@ -221,9 +223,7 @@
                     <i class="ph ph-x text-lg"></i>
                 </button>
             <div>
-                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-inner">
-                    <i class="ph-fill ph-wrench text-3xl"></i>
-                </div>
+                <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-[72px] w-auto object-contain mx-auto mb-4">
                 <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">MotoCare OS</h2>
                 <p class="text-sm text-slate-500 mt-1">Sign in to your account</p>
             </div>
