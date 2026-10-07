@@ -22,7 +22,7 @@
 
     <aside id="sidebar" class="fixed lg:relative z-50 h-full bg-slate-900 text-slate-300 flex flex-col w-72 -translate-x-full lg:translate-x-0 shadow-2xl lg:shadow-none flex-shrink-0">
         <div class="h-16 flex items-center justify-between px-5 shrink-0 border-b border-slate-800 bg-slate-950">
-            <a href="#" onclick="document.querySelector('.nav-link[data-target=''dashboard'']').click(); return false;" class="flex items-center">
+            <a href="#" onclick="document.querySelector('.nav-link[data-target=&quot;dashboard&quot;]').click(); return false;" class="flex items-center">
                 <div class="bg-white p-[6px] rounded-[10px] flex items-center justify-center">
                     <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-9 w-auto object-contain">
                 </div>
@@ -630,7 +630,7 @@
             <div class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-package"></i></div>
             <div>
                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Inventory Alerts</p>
-                <p class="text-xl font-bold text-slate-800 leading-none">5 <span class="text-xs font-medium text-slate-500 ml-1">Low Stock Items</span></p>
+                <p class="text-xl font-bold text-slate-800 leading-none"><span id="dashboard-inventory-alerts-count">5</span> <span class="text-xs font-medium text-slate-500 ml-1">Low Stock Items</span></p>
             </div>
         </div>
         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -709,7 +709,7 @@
                     <i class="ph-fill ph-warning-circle text-red-500 text-xl shrink-0 mt-0.5"></i>
                     <div>
                         <p class="text-sm font-bold text-red-800 mb-0.5">Restock Warning</p>
-                        <p class="text-xs text-red-600 leading-relaxed">Yamaha V-Belt (NMAX) is out of stock! Front Disc Brake Pads are low (3 left).</p>
+                        <p class="text-xs text-red-600 leading-relaxed" id="dashboard-restock-alert-text"></p>
                     </div>
                 </div>
                 <!-- Maintenance Alert -->
@@ -1677,7 +1677,7 @@
                                     <td class="p-3 text-right">300.00</td>
                                 </tr>
                                 <tr>
-                                    <td class="p-3 font-semibold">Yamalube Standard Engine Oil</td>
+                                    <td class="p-3 font-semibold">Chain (Global 428h/120l)</td>
                                     <td class="p-3 text-center text-slate-500">1</td>
                                     <td class="p-3 text-right">400.00</td>
                                 </tr>
@@ -1789,13 +1789,23 @@
 
 <template id="view-inventory">
 <style>
+    /* Responsive Top Bar Stack for all roles on phone width */
+    @media (max-width: 639px) {
+        #inv-top-bar { flex-direction: column !important; gap: 1rem !important; }
+        #inv-filter-group { flex-direction: column !important; }
+        #inv-search-wrap { width: 100% !important; max-width: none !important; }
+        #inv-select-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; width: 100% !important; }
+        #view-inventory { padding-bottom: 80px !important; }
+        #inv-results-count { display: block !important; margin-top: 0.5rem; text-align: left; }
+    }
     body.mobile-app #inv-top-bar { flex-direction: column !important; gap: 1rem !important; }
     body.mobile-app #inv-filter-group { flex-direction: column !important; }
     body.mobile-app #inv-search-wrap { width: 100% !important; max-width: none !important; }
     body.mobile-app #inv-select-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; width: 100% !important; }
     body.mobile-app #view-inventory { padding-bottom: 80px !important; }
     body.mobile-app #inv-results-count { display: block !important; margin-top: 0.5rem; text-align: left; }
-
+    body.mobile-app #inv-chip-wrap { display: flex !important; }
+    #inv-chip-wrap::-webkit-scrollbar { display: none; }
 </style>
 <div id="view-inventory" class="view-section active max-w-6xl mx-auto">
     <!-- Top Action Bar & Filters -->
@@ -1805,6 +1815,7 @@
                 <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input type="text" id="inv-search" autocomplete="off" placeholder="Search part, SKU or model" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
             </div>
+            <div id="inv-chip-wrap" class="hidden overflow-x-auto w-full gap-2 items-center pb-1 -mb-1" style="-webkit-overflow-scrolling: touch; scrollbar-width: none;"></div>
             <div id="inv-select-wrap" class="flex sm:flex-row gap-3 w-full">
                 <select id="inv-filter-stock" class="py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20">
                     <option value="">Stock: All</option>
@@ -1813,10 +1824,6 @@
                 </select>
                 <select id="inv-filter-category" class="py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20">
                     <option value="">Category: All</option>
-                    <option value="engine">Engine / Trans.</option>
-                    <option value="electrical">Electrical / Sensors</option>
-                    <option value="brakes">Brakes</option>
-                    <option value="fluids">Fluids & Oils</option>
                 </select>
             </div>
         </div>
@@ -1832,7 +1839,7 @@
     <div id="inv-results-count" class="hidden text-xs font-semibold text-slate-500 mb-4 px-1"></div>
 
     <!-- Main Inventory Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+    <div id="inventory-table-container" class="hidden sm:flex bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[900px]">
                 <thead>
@@ -1851,6 +1858,10 @@
         </div>
     </div>
 
+    <!-- Mobile Cards Container -->
+    <div id="inventory-mobile-cards" class="flex sm:hidden flex-col gap-3 w-full">
+    </div>
+
     <!-- 1. Add New Part Profile Modal -->
     <div id="modal-add-part" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 sm:p-6">
         <div id="add-part-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeAddPartModal()"></div>
@@ -1866,52 +1877,44 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Part Name</label>
-                        <input type="text" placeholder="e.g. Throttle Position Sensor" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="add-part-name" placeholder="e.g. Throttle Position Sensor" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <span id="add-part-name-error" class="text-xs text-red-500 mt-1 hidden">Part Name is required.</span>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">SKU / Part Number</label>
-                        <input type="text" placeholder="e.g. 16410-K59-A71" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="add-part-sku" placeholder="e.g. 16410-K59-A71" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Category</label>
-                        <select class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
-                            <option>Electrical / Sensors</option>
-                            <option>Engine / Transmission</option>
-                            <option>Brakes</option>
-                            <option>Body & Frame</option>
-                            <option>Fluids & Oils</option>
+                        <select id="add-part-category" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                            <option value="">Select a Category...</option>
                         </select>
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Compatible Motorcycles</label>
-                        <input type="text" placeholder="e.g. Honda Click 125i, Honda ADV 150..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="add-part-comp" placeholder="e.g. Honda Click 125i, Honda ADV 150..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                     
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Supplier Name</label>
-                        <input type="text" placeholder="e.g. Honda Philippines" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="add-part-supplier" placeholder="e.g. Honda Philippines" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Physical Location</label>
-                        <input type="text" placeholder="e.g. Shelf A-2" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="add-part-loc" placeholder="e.g. Shelf A-2" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
-                                          <div class="sm:col-span-2 grid grid-cols-2 gap-4">
-                          <div>
-                              <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Cost Price (₱)</label>
-                              <input type="number" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
-                          </div>
-                          <div>
-                              <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Selling Price (₱)</label>
-                              <input type="number" placeholder="0.00" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-blue-700">
-                          </div>
-                      </div>
+                                          <div class="sm:col-span-2">
+                          <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">PRICE (?)</label>
+                          <input type="number" id="add-part-price" placeholder="0.00" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-blue-700">
+                      </div>>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Initial Stock Quantity</label>
-                        <input type="number" placeholder="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
+                        <input type="number" id="add-part-stock" placeholder="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
+                        <span id="add-part-stock-error" class="text-xs text-red-500 mt-1 hidden">Stock cannot be lower than reserved items</span>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5 flex items-center gap-1">Minimum Stock Threshold <i class="ph-fill ph-warning-circle text-orange-500"></i></label>
-                        <input type="number" placeholder="Alert at 5" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
+                        <input type="number" id="add-part-minstock" placeholder="Alert at 5" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold">
                     </div>
                     
                     <div class="sm:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-lg">
@@ -1919,15 +1922,16 @@
                             <i class="ph-bold ph-cpu text-blue-500 text-base"></i> Linked DTCs
                         </label>
                         <p class="text-[10px] text-slate-500 mb-2">Tag diagnostic trouble codes to trigger automatic part recommendations.</p>
-                        <input type="text" placeholder="e.g. P0122, P0123 (Press enter or comma to add tag)" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
+                        <div class="flex flex-wrap gap-2 mb-2" id="dtc-chips-container"></div>
+                        <input type="text" id="add-part-dtc" placeholder="e.g. P0122 (Press enter or comma to add tag)" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
                     </div>
                 </div>
             </div>
             
             <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 rounded-b-xl shrink-0">
                 <button onclick="closeAddPartModal()" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2 transition-colors">
-                    <i class="ph-bold ph-floppy-disk"></i> Save Part
+                <button id="btn-save-part" onclick="savePartForm()" class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2 transition-colors">
+                    <i class="ph-bold ph-floppy-disk"></i> <span id="btn-save-part-text">Save Part</span>
                 </button>
             </div>
             </div>
@@ -1947,44 +1951,44 @@
             </div>
             
             <div class="p-5 flex flex-col gap-5">
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Select Part to Restock</label>
-                    <div class="relative">
-                        <select class="w-full pl-3 pr-8 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm appearance-none font-semibold">
-                            <option value="" disabled selected>Search / Select part...</option>
-                            <option>Front Disc Brake Pads</option>
-                            <option>Yamaha V-Belt</option>
-                            <option selected>Coolant Temp Sensor</option>
-                        </select>
-                        <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-                    </div>
-                </div>
+                <div class="relative z-20" id="restock-dropdown-container">
+                      <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Select Part to Restock</label>
+                      <div class="relative">
+                          <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
+                          <input type="text" id="restock-search-input" placeholder="Search part name, SKU or category..." class="w-full pl-9 pr-8 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-slate-800" autocomplete="off">
+                          <button id="restock-clear-btn" class="hidden absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full" type="button" onclick="clearRestockSelection()">
+                              <i class="ph-bold ph-x text-sm"></i>
+                          </button>
+                      </div>
+                      <div id="restock-dropdown-list" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-[240px] overflow-y-auto z-[60] flex-col">
+                      </div>
+                  </div>
                 
                 <div class="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
                     <div>
                         <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Current Stock</span>
-                        <span class="text-sm font-bold text-slate-700">24 Units</span>
+                        <span id="restock-current-stock" class="text-sm font-bold text-slate-700">-</span>
                     </div>
                     <div>
                         <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Physical Location</span>
-                        <span class="text-sm font-bold text-slate-700">Shelf A-2</span>
+                        <span id="restock-location" class="text-sm font-bold text-slate-700">-</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Quantity to Add</label>
-                        <input type="number" placeholder="+0" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-bold text-emerald-600">
+                        <input type="number" id="restock-qty" placeholder="+0" min="1" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-bold text-emerald-600">
                     </div>
                     <div class="col-span-2">
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Supplier / Notes (Optional)</label>
-                        <input type="text" placeholder="e.g. Delivered by Honda PH" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="restock-notes" placeholder="e.g. Delivered by Honda PH" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                 </div>
             </div>
             
             <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
                 <button onclick="closeRestockModal()" class="px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button onclick="closeRestockModal()" class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-colors">Confirm Restock</button>
+                <button onclick="confirmRestock()" class="px-4 py-2 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md transition-colors">Confirm Restock</button>
             </div>
             </div>
 
@@ -2456,19 +2460,7 @@
                     <div class="bg-slate-50 px-5 py-3 border-b border-slate-200">
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-trend-up text-emerald-500"></i> Fast-Moving Spare Parts</h3>
                     </div>
-                    <div class="p-5 flex-1 flex flex-col gap-4">
-                        <div>
-                            <div class="flex justify-between text-xs mb-1"><span class="font-semibold text-slate-700">1. Yamalube Standard Oil</span><span class="font-bold text-slate-500">45 sold</span></div>
-                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div class="bg-emerald-500 h-2.5 rounded-full" style="width: 100%"></div></div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs mb-1"><span class="font-semibold text-slate-700">2. Front Disc Brake Pads</span><span class="font-bold text-slate-500">28 sold</span></div>
-                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div class="bg-emerald-400 h-2.5 rounded-full" style="width: 65%"></div></div>
-                        </div>
-                        <div>
-                            <div class="flex justify-between text-xs mb-1"><span class="font-semibold text-slate-700">3. Coolant Temp Sensor (OEM)</span><span class="font-bold text-slate-500">18 sold</span></div>
-                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div class="bg-emerald-300 h-2.5 rounded-full" style="width: 40%"></div></div>
-                        </div>
+                    <div id="reports-top-selling" class="p-5 flex-1 flex flex-col gap-4">
                     </div>
                 </div>
                 <div class="border border-slate-200 rounded-xl overflow-hidden flex flex-col">
@@ -2484,15 +2476,7 @@
                                     <th class="p-3 text-center">Remaining</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-50 text-xs">
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="p-3 font-semibold text-slate-700">Yamaha V-Belt (NMAX)</td>
-                                    <td class="p-3 text-center"><span class="bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">0</span></td>
-                                </tr>
-                                <tr class="hover:bg-slate-50 transition-colors">
-                                    <td class="p-3 font-semibold text-slate-700">Front Disc Brake Pads</td>
-                                    <td class="p-3 text-center"><span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-bold">3</span></td>
-                                </tr>
+                            <tbody id="reports-low-stock-tbody" class="divide-y divide-slate-50 text-xs">
                             </tbody>
                         </table>
                     </div>
@@ -2715,7 +2699,7 @@
                                     <td class="p-3 text-right">300.00</td>
                                 </tr>
                                 <tr>
-                                    <td class="p-3 font-semibold">Yamalube Standard Engine Oil</td>
+                                    <td class="p-3 font-semibold">Chain (Global 428h/120l)</td>
                                     <td class="p-3 text-center text-xs text-slate-500">1</td>
                                     <td class="p-3 text-right">400.00</td>
                                 </tr>
@@ -2840,7 +2824,7 @@
                 <div class="border-b border-dashed border-slate-300 pb-4">
                     <div class="font-bold border-b border-slate-200 pb-1 mb-2 flex justify-between"><span>Item/Service</span><span>Amount</span></div>
                     <div class="flex justify-between mb-1"><span>Throttle Body Cleaner (1)</span> <span>300.00</span></div>
-                    <div class="flex justify-between mb-1"><span>Yamalube Engine Oil (1)</span> <span>400.00</span></div>
+                    <div class="flex justify-between mb-1"><span>Chain (Global 428h/120l)</span> <span>400.00</span></div>
                     <div class="flex justify-between"><span>Mechanic Labor</span> <span>1,800.00</span></div>
                 </div>
                 <div class="border-b border-dashed border-slate-300 pb-4 flex flex-col gap-1">
@@ -3247,7 +3231,7 @@
             <span class="w-9 h-9 rounded-xl bg-red-100 text-red-500 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ph-warning-circle"></i></span>
             <div class="min-w-0 flex-1">
                 <p class="text-sm font-bold text-red-800">Restock Warning</p>
-                <p class="text-xs text-red-600 leading-relaxed mt-0.5">Yamaha V-Belt (NMAX) is out of stock. Front Disc Brake Pads are low (3 left).</p>
+                <p class="text-xs text-red-600 leading-relaxed mt-0.5" id="mobile-restock-alert-text"></p>
             </div>
             <i class="ph-bold ph-caret-right text-red-300 mt-2"></i>
         </button>
@@ -3342,3 +3326,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+

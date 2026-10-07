@@ -1,0 +1,258 @@
+﻿function renderInventory() {
+    const tbody = document.getElementById('inventory-tbody');
+    if (!tbody) return;
+
+    const isMobile = document.body.classList.contains('mobile-app');
+    
+    // Check Permissions
+    const canRestock = window.can('inventory.restock');
+    const canAdd = window.can('inventory.addPart');
+    const canEdit = window.can('inventory.editPart');
+    const canWalkIn = window.can('inventory.walkInSale');
+    const showActions = canEdit || canWalkIn;
+
+    // Apply Permissions to top bar
+    const btnWrap = document.getElementById('inv-btn-wrap');
+    if (btnWrap) {
+        const canAutoAssign = window.can('inventory.autoAssign');
+        let html = '';
+        
+        if (isMobile) {
+            btnWrap.className = 'w-full shrink-0 flex flex-col gap-2 mt-1';
+            
+            let topButtons = [];
+            if (canAutoAssign) {
+                topButtons.push(`<button onclick="openAutoAssignLinks()" class="flex-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-magic-wand"></i> Auto Assign</button>`);
+            }
+            if (canRestock) {
+                topButtons.push(`<button onclick="openRestockModal()" class="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-arrows-clockwise"></i> Restock Items</button>`);
+            }
+            
+            if (topButtons.length > 0) {
+                html += `<div class="flex gap-2 w-full">${topButtons.join('')}</div>`;
+            }
+            
+            if (canAdd) {
+                html += `<button onclick="openAddPartModal()" class="w-full bg-blue-600 hover:bg-blue-700 text-white h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-plus"></i> Add New Part</button>`;
+            }
+            
+        } else {
+            btnWrap.className = 'flex gap-2 w-full lg:w-auto shrink-0';
+            if (canAutoAssign) {
+                html += `<button onclick="openAutoAssignLinks()" class="flex-1 lg:flex-none bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-magic-wand"></i> Auto Assign
+                </button>`;
+            }
+            if (canRestock) {
+                html += `<button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
+                </button>`;
+            }
+            if (canAdd) {
+                html += `<button onclick="openAddPartModal()" class="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-plus"></i> Add New Part
+                </button>`;
+            }
+        }
+        
+        btnWrap.innerHTML = html;
+        btnWrap.classList.toggle('hidden', html === '');
+    }
+
+    // Adjust table classes on mobile and action header
+    const thead = document.querySelector('#view-inventory thead');
+    const table = document.querySelector('#view-inventory table');
+    if (thead) {
+        if (isMobile) {
+            thead.classList.add('hidden');
+            table?.classList.remove('min-w-[900px]');
+        } else {
+            thead.classList.remove('hidden');
+            table?.classList.add('min-w-[900px]');
+        }
+        
+        const tr = thead.querySelector('tr');
+        if (tr) {
+            const ths = tr.querySelectorAll('th');
+            if (ths.length >= 5) {
+                ths[4].style.display = showActions ? '' : 'none';
+            }
+        }
+    }
+
+    // Get filter values
+    const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
+    const stockFilter = document.getElementById('inv-filter-stock')?.value || '';
+    const catFilter = document.getElementById('inv-filter-category')?.value || '';
+
+    // Apply filters
+    const filtered = fullInventoryData.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query) || item.comp.toLowerCase().includes(query);
+        
+        let matchesStock = true;
+        if (stockFilter === 'low') matchesStock = item.stock > 0 && item.stock <= 5;
+        if (stockFilter === 'out') matchesStock = item.stock === 0;
+
+        let matchesCat = true;
+        if (catFilter) matchesCat = item.category.toLowerCase().includes(catFilter);
+
+        return matchesSearch && matchesStock && matchesCat;
+    });
+
+    // Update result count
+    const countEl = document.getElementById('inv-results-count');
+    if (countEl) {
+        if (isMobile) {
+            countEl.textContent = `${filtered.length} part${filtered.length === 1 ? '' : 's'}`;
+        } else {
+            countEl.textContent = '';
+        }
+    }
+
+    // Render HTML
+    if (filtered.length === 0) {
+        if (isMobile) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 border-0 text-center text-slate-500 font-medium"><div class="flex flex-col items-center gap-2"><i class="ph-bold ph-magnifying-glass text-3xl text-slate-300"></i> No parts found.</div></td></tr>`;
+        } else {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria.</td></tr>`;
+        }
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(item => {
+        if (isMobile) {
+            // MOBILE CARD LAYOUT
+            let stockBadgeMobile = '';
+            let rowOpacity = item.stock === 0 ? 'opacity-75' : '';
+
+            if (item.stock === 0) {
+                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>`;
+            } else if (item.stock <= 5) {
+                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">${item.stock} Available</span>`;
+            } else {
+                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">${item.stock} Available</span>`;
+            }
+
+            if (!window.expandedInvCards) window.expandedInvCards = new Set();
+            const isOpen = window.expandedInvCards.has(item.id);
+
+            return `
+                <tr class="block w-full">
+                    <td colspan="5" class="block w-full p-0 border-0">
+                        <div class="bg-white border-b border-slate-100 flex flex-col p-3.5 ${rowOpacity}">
+                            <div class="flex items-center justify-between gap-3 min-h-[50px] cursor-pointer" onclick="toggleInvCard('${item.id}')">
+                                <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
+                                    <img src="${item.img}" class="w-full h-full object-cover">
+                                </div>
+                                <div class="flex-1 min-w-0 flex flex-col justify-center">
+                                    <div class="font-bold text-slate-800 text-sm line-clamp-2 leading-tight">${item.name}</div>
+                                    <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+                                        <span class="font-bold text-slate-700 text-xs">â‚±${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                                        ${stockBadgeMobile}
+                                    </div>
+                                </div>
+                                <div id="inv-chevron-${item.id}" class="w-11 h-11 rounded-full text-slate-400 flex items-center justify-center shrink-0 transition-transform duration-200" style="transform: ${isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
+                                    <i class="ph-bold ph-caret-down text-lg"></i>
+                                </div>
+                            </div>
+                            <div id="inv-wrap-${item.id}" style="display: grid; transition: grid-template-rows 200ms ease-out; grid-template-rows: ${isOpen ? '1fr' : '0fr'};">
+                                <div style="overflow: hidden;">
+                                    <div class="pt-3 mt-3 border-t border-slate-100 flex flex-col gap-2 text-sm">
+                                        <div class="grid grid-cols-2 gap-y-2 gap-x-4">
+                                            <div class="text-slate-500 text-xs">SKU</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.sku}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Compatibility</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.comp}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Category</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.category}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Location</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.loc}</div>
+                                            
+                                            <div class="text-slate-500 text-xs">Reserved</div>
+                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.reserved}</div>
+                                        </div>
+                                        
+                                        ${item.dtc ? `
+                                        <div class="mt-1">
+                                            <div class="text-slate-500 text-xs mb-1">Linked DTC</div>
+                                            <div class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> ${item.dtc}</div>
+                                        </div>` : ''}
+                                        
+                                        ${item.linkedInspectionItems && item.linkedInspectionItems.length > 0 ? `
+                                        <div class="mt-2">
+                                            <div class="text-slate-500 text-xs mb-1">Auto Assign</div>
+                                            <div class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200"><i class="ph-bold ph-magic-wand"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</div>
+                                        </div>` : ''}
+                        
+                                        ${showActions ? `
+                                        <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+                                            ${canEdit ? `<button onclick="openEditPartModal('${item.id}')" class="flex-1 text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors"><i class="ph-bold ph-pencil-simple text-sm"></i> Edit</button>` : ''}
+                                            
+                                            ${canWalkIn ? `<button ${item.stock === 0 ? 'disabled' : `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" `} class="flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors ${item.stock === 0 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white border border-transparent'}"><i class="ph-bold ph-shopping-cart-simple text-sm"></i> Walk-in Sale</button>` : ''}
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else {
+            // DESKTOP TABLE LAYOUT
+            let stockBadge = '';
+            let rowClass = 'hover:bg-blue-50/30 transition-colors';
+            let btnStatus = `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"`;
+
+            if (item.stock === 0) {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>`;
+                rowClass += ' opacity-75 bg-slate-50';
+                btnStatus = `disabled class="bg-slate-100 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1"`;
+            } else if (item.stock <= 5) {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${item.stock} Available</span>`;
+            } else {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
+            }
+
+            let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
+            let autoLinksTag = (item.linkedInspectionItems && item.linkedInspectionItems.length > 0) ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200 ml-1"><i class="ph-bold ph-magic-wand text-purple-500"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</span>` : '';
+
+            return `
+                <tr class="${rowClass}">
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${item.img}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-sm">
+                            <div>
+                                <div class="font-bold text-slate-800">${item.name}</div>
+                                <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
+                                <div>${dtcTag}${autoLinksTag}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <div class="font-medium text-slate-600">${item.category}</div>
+                        <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
+                    </td>
+                    <td class="p-4 font-bold text-slate-800">â‚±${item.price.toFixed(2)}</td>
+                    <td class="p-4">
+                        ${stockBadge}
+                        <div class="text-[10px] font-semibold text-slate-400 mt-1.5 ml-1">(${item.reserved} Reserved)</div>
+                    </td>
+                    ${showActions ? `
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2">
+                            ${canEdit ? `<button onclick="openEditPartModal('${item.id}')" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i></button>` : ''}
+                            ${canWalkIn ? `<button ${btnStatus}>
+                                <i class="ph-bold ph-shopping-cart-simple"></i> Walk-in Sale
+                            </button>` : ''}
+                        </div>
+                    </td>
+                    ` : ''}
+                </tr>
+            `;
+        }
+    }).join('');
+    updateDashboardWidgets();

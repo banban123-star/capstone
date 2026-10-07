@@ -436,3 +436,52 @@ body.mobile-app #view-autoassign .bg-purple-50 > div:first-child span {
     white-space: normal !important;
     word-break: break-word !important;
 }
+
+
+/* Inventory Mobile UI Overrides */
+body.mobile-app #inventory-table-container {
+    display: none !important;
+}
+body.mobile-app #inventory-mobile-cards {
+    display: flex !important;
+    padding-bottom: 80px !important;
+}
+
+body.mobile-app #inv-top-bar {
+    flex-direction: column !important;
+    gap: 1rem !important;
+    padding: 1rem !important;
+}
+body.mobile-app #inv-filter-group {
+    flex-direction: column !important;
+    width: 100% !important;
+}
+body.mobile-app #inv-search-wrap,
+body.mobile-app #inv-select-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+body.mobile-app #inv-select-wrap {
+    flex-direction: row !important;
+}
+body.mobile-app #inv-select-wrap select {
+    flex: 1 !important;
+}
+
+body.mobile-app #add-part-content .grid-cols-1 {
+    grid-template-columns: 1fr !important;
+}
+body.mobile-app #add-part-content .sm\:col-span-2 {
+    grid-column: span 1 / span 1 !important;
+}
+body.mobile-app #modal-add-part > div:last-child {
+    max-width: 100% !important;
+    height: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+}
+body.mobile-app #add-part-content {
+    height: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+}

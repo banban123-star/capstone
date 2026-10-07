@@ -2,30 +2,47 @@ const MOTORCYCLE_BRANDS = ['Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Kymco', 'SY
 
 // --- Mock Inventory Data for Diagnostics Autocomplete ---
 const mockInventory = [
-    { id: 'p1', name: 'Coolant Temp Sensor (OEM Honda)', sku: '37870-KZR-601', price: 850.00, stock: 24 },
-    { id: 'p2', name: 'Front Disc Brake Pads', sku: '06455-K59-A71', price: 450.00, stock: 3, linkedInspectionItems: [{ itemId: 'pad_f', qty: 1 }] },
-    { id: 'p3', name: 'Yamaha V-Belt', sku: '2DP-E7641-00', price: 1200.00, stock: 0 },
-    { id: 'p4', name: 'Yamalube Standard Engine Oil', sku: 'YAM-OIL-STD', price: 400.00, stock: 45 },
-    { id: 'p5', name: 'Spark Plug (NGK CPR8EA-9)', sku: 'NGK-CPR8EA', price: 250.00, stock: 12 },
-    { id: 'p6', name: 'Air Filter Element', sku: 'AF-17210-KZR', price: 320.00, stock: 9 },
-    { id: 'p7', name: 'Brake Fluid DOT 3 (250ml)', sku: 'BF-DOT3-250', price: 180.00, stock: 14 },
-    { id: 'p8', name: 'Front Tire 80/90-14 Tubeless', sku: 'TR-8090-14F', price: 1650.00, stock: 2, linkedInspectionItems: [{ itemId: 'tire_f', qty: 1 }] },
-    { id: 'p9', name: 'Rear Tire 90/90-14 Tubeless', sku: 'TR-9090-14R', price: 1850.00, stock: 0, linkedInspectionItems: [{ itemId: 'tire_r', qty: 1 }] },
-    { id: 'p10', name: 'Motorcycle Battery 12V 5Ah', sku: 'BAT-12V5AH', price: 1450.00, stock: 5 },
-    { id: 'p11', name: 'Headlight Bulb (H4)', sku: 'BLB-H4-35', price: 140.00, stock: 18 },
-    { id: 'p12', name: 'Brake / Tail Light Bulb', sku: 'BLB-BRK-21', price: 60.00, stock: 25 },
-    { id: 'p13', name: 'Chain & Sprocket Kit', sku: 'CHN-428-KIT', price: 1850.00, stock: 4 },
-    { id: 'p14', name: 'CVT Roller Set', sku: 'CVT-RLR-SET', price: 520.00, stock: 6 },
-    { id: 'p15', name: 'Oil Filter', sku: 'OF-15410-KZR', price: 150.00, stock: 20 },
-    { id: 'p16', name: 'Radiator Coolant (1L)', sku: 'CLT-1L', price: 220.00, stock: 10 },
-    { id: 'p17', name: 'Clutch Cable', sku: 'CBL-CLT-01', price: 280.00, stock: 7 },
-    { id: 'p18', name: 'Regulator / Rectifier', sku: 'REG-RECT-12V', price: 950.00, stock: 2 },
-    { id: 'p19', name: 'Fork Oil Seal Kit', sku: 'FRK-SEAL-KIT', price: 480.00, stock: 3 },
-    { id: 'p20', name: 'Rear Brake Shoes', sku: 'BRK-SHOE-R', price: 260.00, stock: 6 },
-    { id: 'p21', name: 'Front Brake Disc', sku: 'BRK-DISC-F', price: 1350.00, stock: 2 },
-    { id: 'p22', name: 'Tire Patch / Sealant Kit', sku: 'TR-PATCH-KIT', price: 120.00, stock: 15 },
-    { id: 'p23', name: 'Chain Lube Spray', sku: 'CHN-LUBE-SP', price: 210.00, stock: 14 },
-    { id: 'p25', name: 'Turn Signal Bulb', sku: 'BLB-SIG-10', price: 45.00, stock: 30 }
+    // 1. Transmission & Drivetrain
+    { id: '980187', sku: '980187', name: 'Chain (Global 428h/120l)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'Global Parts', loc: 'Shelf C-1', price: 400, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Chn' },
+    { id: '330124', sku: '330124', name: 'Chain (Krx 428h/130l)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'Krx Moto', loc: 'Shelf C-1', price: 450, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Chn' },
+    { id: '120707', sku: '120707', name: 'Sprocket (TRQ 14t)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'TRQ Moto', loc: 'Shelf C-2', price: 200, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
+    { id: '120701', sku: '120701', name: 'Sprocket (TRQ 38t)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'TRQ Moto', loc: 'Shelf C-2', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
+    { id: '120708', sku: '120708', name: 'Sprocket (TRQ 42t)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'TRQ Moto', loc: 'Shelf C-2', price: 400, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
+
+    // 2. Electrical & Electronics
+    { id: '170010', sku: '170010', name: 'Battery (Spypower 12n5l)', category: 'Electrical & Electronics', comp: 'Universal 12V', supplier: 'Spypower', loc: 'Shelf E-1', price: 900, stock: 5, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bat' },
+    { id: '212028', sku: '212028', name: 'Ignition Switch (TTGR TMX supremo)', category: 'Electrical & Electronics', comp: 'TMX Supremo', supplier: 'TTGR Parts', loc: 'Shelf E-2', price: 250, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
+    { id: '211637', sku: '211637', name: 'Starter Relay (TTGR gy6)', category: 'Electrical & Electronics', comp: 'GY6', supplier: 'TTGR Parts', loc: 'Shelf E-2', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Rel' },
+    { id: '210844', sku: '210844', name: 'Regulator (TTGR 5wire green white)', category: 'Electrical & Electronics', comp: 'Universal 5-wire', supplier: 'TTGR Parts', loc: 'Shelf E-2', price: 300, stock: 3, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Reg' },
+    { id: '330601', sku: '330601', name: 'Ignition Switch (Leitakitaca tmx155)', category: 'Electrical & Electronics', comp: 'TMX 155', supplier: 'Leitakitaca', loc: 'Shelf E-2', price: 220, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
+
+    // 3. Fuel & Engine Intake
+    { id: '211700', sku: '211700', name: 'Carburetor (Keihin xr200)', category: 'Fuel & Engine Intake', comp: 'XR200', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 1200, stock: 2, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '121060', sku: '121060', name: 'Carburetor (Keihin tmx 155)', category: 'Fuel & Engine Intake', comp: 'TMX 155', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 950, stock: 4, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '212031', sku: '212031', name: 'Carburetor (Keihin tmx 125)', category: 'Fuel & Engine Intake', comp: 'TMX 125', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 900, stock: 6, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '330161', sku: '330161', name: 'Carburetor (Keihin 28mm/26mm)', category: 'Fuel & Engine Intake', comp: 'Universal 28mm/26mm', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 1100, stock: 3, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '981057', sku: '981057', name: 'Fuel Tank Cap (Crossspoo tmx)', category: 'Fuel & Engine Intake', comp: 'TMX', supplier: 'Crossspoo', loc: 'Shelf F-2', price: 150, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Cap' },
+
+    // 4. Wheels & Tires
+    { id: '330027', sku: '330027', name: 'Tube Tire (Krx 2.25x17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Krx Moto', loc: 'Shelf T-1', price: 450, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '330025', sku: '330025', name: 'Tube Tire (Krx 2.50x17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Krx Moto', loc: 'Shelf T-1', price: 500, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '330313', sku: '330313', name: 'Tube Tire (Krx 410x18)', category: 'Wheels & Tires', comp: 'Universal 18"', supplier: 'Krx Moto', loc: 'Shelf T-1', price: 800, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '122027', sku: '122027', name: 'Tire (Beast flash 120/70/17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Beast Moto', loc: 'Shelf T-2', price: 1800, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: 'PROTO-T01', sku: 'PROTO-T01', name: 'Tire (Fuji 300x17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Fuji Tires', loc: 'Shelf T-2', price: 950, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+
+    // 5. Suspension, Brakes & Cooling
+    { id: '950569', sku: '950569', name: 'Pivot Bushing (Otaka tmx155)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', supplier: 'Otaka', loc: 'Shelf S-1', price: 120, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
+    { id: '060110', sku: '060110', name: 'Steel Bushing (tmx155 transparent packaging)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', supplier: 'Generic', loc: 'Shelf S-1', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
+    { id: 'PROTO-B01', sku: 'PROTO-B01', name: 'Front Disc Brake Pads', category: 'Suspension, Brakes & Cooling', comp: 'Universal Disc', supplier: 'Nissin', loc: 'Shelf S-2', price: 250, stock: 2, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Pad' },
+    { id: 'PROTO-C01', sku: 'PROTO-C01', name: 'Coolant Temp Sensor (OEM Honda)', category: 'Suspension, Brakes & Cooling', comp: 'Honda Click/PCX', supplier: 'Honda PH', loc: 'Shelf S-2', price: 850, stock: 6, minStock: 3, reserved: 0, dtc: 'P0118, P0119', linkedDTCs: ['P0118', 'P0119'], img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Sens' },
+    { id: 'PROTO-S01', sku: 'PROTO-S01', name: 'Front Fork Seals', category: 'Suspension, Brakes & Cooling', comp: 'Universal', supplier: 'NOK', loc: 'Shelf S-3', price: 180, stock: 0, minStock: 4, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Seal' },
+
+    // 6. Accessories, Add-Ons & Consumables
+    { id: '022278', sku: '022278', name: 'Mini Driving Light (MRM-4596 v1)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'MRM', loc: 'Shelf A-1', price: 650, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
+    { id: '021568', sku: '021568', name: 'Mini Driving Light (MRM-4502 v6)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'MRM', loc: 'Shelf A-1', price: 850, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
+    { id: '980048', sku: '980048', name: 'Snail Horn (Global)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'Global Parts', loc: 'Shelf A-2', price: 250, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Horn' },
+    { id: '021718', sku: '021718', name: 'Side Mirror (MRM domino)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'MRM', loc: 'Shelf A-3', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Mirr' },
+    { id: '330411', sku: '330411', name: 'Handle Grip (Monster rubber ard)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'Monster', loc: 'Shelf A-4', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Grip' }
 ];
 
 // --- Mock Customer Data ---
@@ -468,6 +485,7 @@ async function loadView(viewName) {
         // Initialize Inventory view
         if (viewName === 'inventory') {
             if (window.expandedInvCards) window.expandedInvCards.clear();
+            populateCategoryDropdowns();
             renderInventory();
         }
 
@@ -1357,21 +1375,311 @@ function completeJob(event) {
     }, 800);
 }
 
+let currentEditingPartId = null;
+let currentPartDtcTags = [];
+
+function renderDtcChips() {
+    const container = document.getElementById('dtc-chips-container');
+    if (!container) return;
+    container.innerHTML = '';
+    currentPartDtcTags.forEach((tag, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-bold border border-blue-200';
+        chip.innerHTML = `<i class="ph-bold ph-cpu text-blue-500"></i> ${tag} <i class="ph-bold ph-x cursor-pointer hover:text-red-500 ml-1" onclick="removeDtcChip(${idx})"></i>`;
+        container.appendChild(chip);
+    });
+}
+
+function removeDtcChip(idx) {
+    currentPartDtcTags.splice(idx, 1);
+    renderDtcChips();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dtcInput = document.getElementById('add-part-dtc');
+    if (dtcInput) {
+        dtcInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const val = this.value.trim().replace(/,/g, '').toUpperCase();
+                if (val && !currentPartDtcTags.includes(val)) {
+                    currentPartDtcTags.push(val);
+                    renderDtcChips();
+                }
+                this.value = '';
+            }
+        });
+    }
+});
+
+function clearAddPartForm() {
+    document.getElementById('add-part-name').value = '';
+    document.getElementById('add-part-sku').value = '';
+    document.getElementById('add-part-category').value = '';
+    document.getElementById('add-part-comp').value = '';
+    document.getElementById('add-part-supplier').value = '';
+    document.getElementById('add-part-loc').value = '';
+    document.getElementById('add-part-price').value = '';
+    document.getElementById('add-part-stock').value = '';
+    document.getElementById('add-part-minstock').value = '';
+    document.getElementById('add-part-dtc').value = '';
+    document.getElementById('add-part-name-error').classList.add('hidden');
+    document.getElementById('add-part-stock-error').classList.add('hidden');
+    
+    currentPartDtcTags = [];
+    renderDtcChips();
+    
+    // Reset title and button
+    const title = document.querySelector('#modal-add-part h2');
+    if (title) title.innerHTML = '<i class="ph-fill ph-plus-circle text-blue-600"></i> Add New Part';
+    const btnText = document.getElementById('btn-save-part-text');
+    if (btnText) btnText.textContent = 'Save Part';
+    currentEditingPartId = null;
+}
+
 function openAddPartModal() { 
     if (!window.can('inventory.addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
+    clearAddPartForm();
     toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', true); 
 }
-function closeAddPartModal() { toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', false); }
+function closeAddPartModal() { 
+    toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', false); 
+    clearAddPartForm();
+}
 
-function openRestockModal() { 
+let currentRestockPartId = null;
+
+function openRestockModal(partId = null) { 
     if (!window.can('inventory.restock')) { closeRestockModal(); showToast("You don't have permission to do this."); return; }
+    
+    currentRestockPartId = null;
+    const input = document.getElementById('restock-search-input');
+    if (input) input.value = '';
+    const btn = document.getElementById('restock-clear-btn');
+    if (btn) btn.classList.add('hidden');
+    const list = document.getElementById('restock-dropdown-list');
+    if (list) list.classList.add('hidden');
+    
+    const qtyInput = document.getElementById('restock-qty');
+    if (qtyInput) qtyInput.value = '';
+    const notesInput = document.getElementById('restock-notes');
+    if (notesInput) notesInput.value = '';
+    
+    const curStock = document.getElementById('restock-current-stock');
+    if (curStock) curStock.textContent = '-';
+    const loc = document.getElementById('restock-location');
+    if (loc) loc.textContent = '-';
+    
+    if (partId && typeof partId === 'string') {
+        selectRestockPart(partId);
+    }
+    
     toggleModal('modal-restock', 'restock-backdrop', 'restock-content', true); 
 }
+
 function closeRestockModal() { toggleModal('modal-restock', 'restock-backdrop', 'restock-content', false); }
 
-function openEditPartModal() {
+function renderRestockDropdown(query) {
+    const list = document.getElementById('restock-dropdown-list');
+    if (!list) return;
+    
+    query = (query || '').toLowerCase();
+    const filtered = mockInventory.filter(p => 
+        p.name.toLowerCase().includes(query) || 
+        p.sku.toLowerCase().includes(query) || 
+        (p.category && p.category.toLowerCase().includes(query))
+    );
+    
+    if (filtered.length === 0) {
+        list.innerHTML = '<div class="p-4 text-center text-sm font-semibold text-slate-500">No parts found.</div>';
+        return;
+    }
+    
+    list.innerHTML = filtered.map(p => {
+        const cat = p.category || 'Uncategorized';
+        const catConf = typeof categoryConfig !== 'undefined' && categoryConfig[cat] ? categoryConfig[cat] : { icon: 'ph-box', bg: 'bg-slate-100', text: 'text-slate-600' };
+        
+        return '<div class="restock-item p-3 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex items-center gap-3 transition-colors focus:bg-slate-50 outline-none" data-id="' + p.id + '" tabindex="0">' +
+            '<div class="w-8 h-8 rounded shrink-0 flex items-center justify-center ' + catConf.bg + ' ' + catConf.text + '">' +
+                '<i class="ph-bold ' + catConf.icon + '"></i>' +
+            '</div>' +
+            '<div class="flex-1 min-w-0">' +
+                '<div class="font-bold text-slate-800 text-sm leading-tight truncate">' + p.name + '</div>' +
+                '<div class="text-[10px] font-bold text-slate-500 uppercase">#' + p.sku + '</div>' +
+            '</div>' +
+            '<div class="shrink-0 text-xs font-bold text-slate-500">' +
+                'Stock: ' + p.stock +
+            '</div>' +
+        '</div>';
+    }).join('');
+    
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function selectRestockPart(partId) {
+    const part = mockInventory.find(p => p.id === partId);
+    if (!part) return;
+    
+    currentRestockPartId = partId;
+    const input = document.getElementById('restock-search-input');
+    if (input) input.value = part.name;
+    
+    const btn = document.getElementById('restock-clear-btn');
+    if (btn) btn.classList.remove('hidden');
+    const list = document.getElementById('restock-dropdown-list');
+    if (list) list.classList.add('hidden');
+    
+    document.getElementById('restock-current-stock').textContent = part.stock + ' Units';
+    document.getElementById('restock-location').textContent = part.loc || 'N/A';
+}
+
+window.clearRestockSelection = function() {
+    currentRestockPartId = null;
+    const input = document.getElementById('restock-search-input');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+    const btn = document.getElementById('restock-clear-btn');
+    if (btn) btn.classList.add('hidden');
+    renderRestockDropdown('');
+    const list = document.getElementById('restock-dropdown-list');
+    if (list) list.classList.remove('hidden');
+    
+    document.getElementById('restock-current-stock').textContent = '-';
+    document.getElementById('restock-location').textContent = '-';
+};
+
+window.confirmRestock = function() {
+    if (!currentRestockPartId) {
+        showToast('Please select a part to restock.');
+        return;
+    }
+    const qty = parseInt(document.getElementById('restock-qty').value, 10);
+    if (isNaN(qty) || qty <= 0) {
+        showToast('Please enter a valid quantity.');
+        return;
+    }
+    
+    const part = mockInventory.find(p => p.id === currentRestockPartId);
+    if (part) {
+        part.stock += qty;
+        // Optionally update minStock or anything else, but just stock is fine
+        showToast(`Restocked ${qty} units of ${part.name}`, 'success');
+        renderInventory();
+        closeRestockModal();
+    }
+};
+
+function openEditPartModal(partId) {
     if (!window.can('inventory.editPart')) { showToast("You don't have permission to do this."); return; }
-    // Assuming edit modal would be toggled here if it existed
+    
+    const part = fullInventoryData.find(p => p.id === partId);
+    if (!part) return;
+
+    clearAddPartForm();
+    currentEditingPartId = partId;
+    
+    const title = document.querySelector('#modal-add-part h2');
+    if (title) title.innerHTML = '<i class="ph-fill ph-pencil-circle text-blue-600"></i> Edit Part';
+    const btnText = document.getElementById('btn-save-part-text');
+    if (btnText) btnText.textContent = 'Save Changes';
+
+    document.getElementById('add-part-name').value = part.name || '';
+    document.getElementById('add-part-sku').value = part.sku || '';
+    document.getElementById('add-part-category').value = part.category || '';
+    document.getElementById('add-part-comp').value = part.comp || '';
+    document.getElementById('add-part-supplier').value = part.supplier || '';
+    document.getElementById('add-part-loc').value = part.loc || '';
+    document.getElementById('add-part-price').value = part.price || '';
+    document.getElementById('add-part-stock').value = part.stock || '';
+    document.getElementById('add-part-minstock').value = part.minStock || '';
+    document.getElementById('add-part-dtc').value = ''; // Chips input is empty
+    
+    // Set up chips
+    if (part.linkedDTCs && part.linkedDTCs.length > 0) {
+        currentPartDtcTags = [...part.linkedDTCs];
+    } else if (part.dtc) {
+        currentPartDtcTags = part.dtc.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+    } else {
+        currentPartDtcTags = [];
+    }
+    renderDtcChips();
+
+    toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', true);
+}
+
+function savePartForm() {
+    const nameEl = document.getElementById('add-part-name');
+    const nameErr = document.getElementById('add-part-name-error');
+    const stockEl = document.getElementById('add-part-stock');
+    const stockErr = document.getElementById('add-part-stock-error');
+    
+    nameErr.classList.add('hidden');
+    stockErr.classList.add('hidden');
+    
+    const name = nameEl.value.trim();
+    if (!name) {
+        nameErr.classList.remove('hidden');
+        return;
+    }
+    
+    const stock = parseInt(stockEl.value || '0', 10);
+    
+    let part = null;
+    if (currentEditingPartId) {
+        part = fullInventoryData.find(p => p.id === currentEditingPartId);
+    }
+    
+    const reserved = part ? (part.reserved || 0) : 0;
+    
+    if (stock < reserved) {
+        stockErr.classList.remove('hidden');
+        return;
+    }
+
+    // Capture any pending tag in the input
+    const pendingTag = document.getElementById('add-part-dtc').value.trim().replace(/,/g, '').toUpperCase();
+    if (pendingTag && !currentPartDtcTags.includes(pendingTag)) {
+        currentPartDtcTags.push(pendingTag);
+    }
+    
+    const dtcString = currentPartDtcTags.length > 0 ? currentPartDtcTags.join(', ') : null;
+
+    const newData = {
+        name: name,
+        sku: document.getElementById('add-part-sku').value.trim(),
+        category: document.getElementById('add-part-category').value,
+        comp: document.getElementById('add-part-comp').value.trim(),
+        supplier: document.getElementById('add-part-supplier').value.trim(),
+        loc: document.getElementById('add-part-loc').value.trim(),
+        price: parseFloat(document.getElementById('add-part-price').value || '0'),
+        stock: stock,
+        minStock: parseInt(document.getElementById('add-part-minstock').value || '0', 10),
+        dtc: dtcString,
+        linkedDTCs: [...currentPartDtcTags],
+        image: part ? part.image : ''
+    };
+
+    if (part) {
+        // Update existing part in place
+        Object.assign(part, newData);
+    } else {
+        // Add new part
+        const newId = 'P' + Date.now();
+        fullInventoryData.unshift({
+            id: newId,
+            ...newData,
+            reserved: 0
+        });
+    }
+
+    closeAddPartModal();
+    renderInventory();
+    
+    if (typeof updateDiagStepper === 'function') updateDiagStepper(); // update any diagnostic steps using it
 }
 
 function openWalkInModalInv(itemName, itemPrice) {
@@ -1576,16 +1884,75 @@ function confirmAdvancePayment(event) {
     }, 800);
 }
 
+// --- Category Configuration ---
+const categoryConfig = {
+    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' },
+    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100' },
+    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100' },
+    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100' },
+    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100' },
+    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100' }
+};
+
+function populateCategoryDropdowns() {
+    const filterSelect = document.getElementById('inv-filter-category');
+    const formSelect = document.getElementById('add-part-category');
+    const chipWrap = document.getElementById('inv-chip-wrap');
+    
+    if (filterSelect) {
+        filterSelect.innerHTML = '<option value="">Category: All</option>';
+        Object.keys(categoryConfig).forEach(cat => {
+            filterSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+        });
+    }
+    
+    if (formSelect) {
+        formSelect.innerHTML = '<option value="">Select a Category...</option>';
+        Object.keys(categoryConfig).forEach(cat => {
+            formSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+        });
+    }
+    
+    if (chipWrap) {
+        let chipHtml = `<button onclick="setCategoryFilter('')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px]" data-cat="">All</button>`;
+        Object.keys(categoryConfig).forEach(cat => {
+            const conf = categoryConfig[cat];
+            chipHtml += `<button onclick="setCategoryFilter('${cat.replace(/'/g, "\\'")}')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px]" data-cat="${cat}"><i class="ph-bold ${conf.icon} text-lg"></i> ${conf.short}</button>`;
+        });
+        chipWrap.innerHTML = chipHtml;
+    }
+}
+
+window.setCategoryFilter = function(cat) {
+    const filterSelect = document.getElementById('inv-filter-category');
+    if (filterSelect) {
+        filterSelect.value = cat;
+        renderInventory();
+    }
+};
+
+document.addEventListener('DOMContentLoaded', populateCategoryDropdowns);
+
 // --- Interactive Inventory Logic ---
 
-const fullInventoryData = [
-    { id: 'inv1', name: 'Coolant Temp Sensor (OEM Honda)', sku: '37870-KZR-601', comp: 'Click 125i, PCX 150', category: 'Electrical / Sensors', loc: 'Shelf A-2', price: 850.00, stock: 24, reserved: 2, dtc: 'P0118, P0119', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Sens' },
-    { id: 'inv2', name: 'Front Disc Brake Pads', sku: '06455-K59-A71', comp: 'Click 125i/150i', category: 'Brakes', loc: 'Shelf B-1', price: 450.00, stock: 3, reserved: 1, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Pad' },
-    { id: 'inv3', name: 'Yamaha V-Belt', sku: '2DP-E7641-00', comp: 'NMAX V1/V2', category: 'Engine / Trans.', loc: 'Shelf C-4', price: 1200.00, stock: 0, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Belt' },
-    { id: 'inv4', name: 'Yamalube Standard Engine Oil', sku: 'YAM-OIL-STD', comp: 'Universal (Yamaha)', category: 'Fluids & Oils', loc: 'Shelf D-1', price: 400.00, stock: 45, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Oil' },
-    { id: 'inv5', name: 'Spark Plug (NGK CPR8EA-9)', sku: 'NGK-CPR8EA', comp: 'Click, NMAX, Aerox', category: 'Electrical / Sensors', loc: 'Shelf A-3', price: 250.00, stock: 12, reserved: 0, dtc: 'P0300', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Plug' }
-];
+const fullInventoryData = mockInventory;
 
+// Map inspection item IDs to part IDs (SKUs in this case matching id)
+const inspectionToPartMapping = {
+    'pad_f': 'PROTO-B01',
+    'tire_r': 'PROTO-T01',
+    'coolant': 'PROTO-C01'
+};
+
+// Apply mappings dynamically
+Object.keys(inspectionToPartMapping).forEach(itemId => {
+    const partId = inspectionToPartMapping[itemId];
+    const part = mockInventory.find(p => p.id === partId);
+    if (part) {
+        if (!part.linkedInspectionItems) part.linkedInspectionItems = [];
+        part.linkedInspectionItems.push({ itemId, qty: 1 });
+    }
+});
 function renderInventory() {
     const tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
@@ -1671,7 +2038,29 @@ function renderInventory() {
     // Get filter values
     const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
     const stockFilter = document.getElementById('inv-filter-stock')?.value || '';
-    const catFilter = document.getElementById('inv-filter-category')?.value || '';
+    const rawCatFilter = document.getElementById('inv-filter-category')?.value || '';
+    const catFilter = rawCatFilter.toLowerCase();
+    
+    // Update chip styling based on selection
+    const chips = document.querySelectorAll('.inv-cat-chip');
+    chips.forEach(chip => {
+        const cVal = chip.getAttribute('data-cat');
+        if (cVal === rawCatFilter) {
+            if (cVal === '') {
+                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px]';
+            } else {
+                const conf = categoryConfig[cVal];
+                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors flex items-center gap-1.5 h-[40px] ${conf.bg} ${conf.text} ${conf.border}`;
+            }
+        } else {
+            if (cVal === '') {
+                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 h-[40px]';
+            } else {
+                const conf = categoryConfig[cVal];
+                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px]`;
+            }
+        }
+    });
 
     // Apply filters
     const filtered = fullInventoryData.filter(item => {
@@ -1682,7 +2071,9 @@ function renderInventory() {
         if (stockFilter === 'out') matchesStock = item.stock === 0;
 
         let matchesCat = true;
-        if (catFilter) matchesCat = item.category.toLowerCase().includes(catFilter);
+        if (query === '' && catFilter) {
+            matchesCat = item.category.toLowerCase().includes(catFilter);
+        }
 
         return matchesSearch && matchesStock && matchesCat;
     });
@@ -1698,151 +2089,212 @@ function renderInventory() {
     }
 
     // Render HTML
+    const mobileContainer = document.getElementById('inventory-mobile-cards');
+
+    let mobileHtml = '<div class="flex flex-col gap-2">';
+    
+    if (query !== '') {
+        mobileHtml += `<div class="text-xs text-slate-500 font-medium px-2 py-1 flex items-center gap-1.5 bg-slate-50 rounded-lg border border-slate-200 mb-1"><i class="ph-fill ph-info text-slate-400"></i> Showing results from all categories</div>`;
+    }
+
     if (filtered.length === 0) {
-        if (isMobile) {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-8 border-0 text-center text-slate-500 font-medium"><div class="flex flex-col items-center gap-2"><i class="ph-bold ph-magnifying-glass text-3xl text-slate-300"></i> No parts found.</div></td></tr>`;
-        } else {
-            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria. <button onclick="clearInvFilters()" class="text-blue-600 font-bold hover:underline ml-2">Clear filters</button></td></tr>`;
+        if (mobileContainer) {
+            mobileContainer.innerHTML = mobileHtml + `<div class="py-12 px-6 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center gap-3"><i class="ph-bold ph-magnifying-glass text-4xl text-slate-300"></i> <div>No parts found</div><button onclick="clearInvFilters()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 shadow-sm mt-2 transition-colors">Clear filters</button></div></div>`;
         }
         return;
     }
 
+    // 1. Generate Desktop HTML
     tbody.innerHTML = filtered.map(item => {
-        if (isMobile) {
-            // MOBILE CARD LAYOUT
-            let stockBadgeMobile = '';
-            let rowOpacity = item.stock === 0 ? 'opacity-75' : '';
+        // DESKTOP TABLE LAYOUT
+        let stockBadge = '';
+        let rowClass = 'hover:bg-blue-50/30 transition-colors';
+        let btnStatus = `onclick="openWalkInModalInv('${item.name.replace(/'/g, "\\'")}', '${item.price.toFixed(2)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"`;
 
-            if (item.stock === 0) {
-                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>`;
-            } else if (item.stock <= 5) {
-                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">${item.stock} Available</span>`;
-            } else {
-                stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">${item.stock} Available</span>`;
-            }
-
-            if (!window.expandedInvCards) window.expandedInvCards = new Set();
-            const isOpen = window.expandedInvCards.has(item.id);
-
-            return `
-                <tr class="block w-full">
-                    <td colspan="5" class="block w-full p-0 border-0">
-                        <div class="bg-white border-b border-slate-100 flex flex-col p-3.5 ${rowOpacity}">
-                            <div class="flex items-center justify-between gap-3 min-h-[50px] cursor-pointer" onclick="toggleInvCard('${item.id}')">
-                                <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
-                                    <img src="${item.img}" class="w-full h-full object-cover">
-                                </div>
-                                <div class="flex-1 min-w-0 flex flex-col justify-center">
-                                    <div class="font-bold text-slate-800 text-sm line-clamp-2 leading-tight">${item.name}</div>
-                                    <div class="flex items-center gap-2 mt-1.5 flex-wrap">
-                                        <span class="font-bold text-slate-700 text-xs">₱${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
-                                        ${stockBadgeMobile}
-                                    </div>
-                                </div>
-                                <div id="inv-chevron-${item.id}" class="w-11 h-11 rounded-full text-slate-400 flex items-center justify-center shrink-0 transition-transform duration-200" style="transform: ${isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
-                                    <i class="ph-bold ph-caret-down text-lg"></i>
-                                </div>
-                            </div>
-                            <div id="inv-wrap-${item.id}" style="display: grid; transition: grid-template-rows 200ms ease-out; grid-template-rows: ${isOpen ? '1fr' : '0fr'};">
-                                <div style="overflow: hidden;">
-                                    <div class="pt-3 mt-3 border-t border-slate-100 flex flex-col gap-2 text-sm">
-                                        <div class="grid grid-cols-2 gap-y-2 gap-x-4">
-                                            <div class="text-slate-500 text-xs">SKU</div>
-                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.sku}</div>
-                                            
-                                            <div class="text-slate-500 text-xs">Compatibility</div>
-                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.comp}</div>
-                                            
-                                            <div class="text-slate-500 text-xs">Category</div>
-                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.category}</div>
-                                            
-                                            <div class="text-slate-500 text-xs">Location</div>
-                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.loc}</div>
-                                            
-                                            <div class="text-slate-500 text-xs">Reserved</div>
-                                            <div class="font-semibold text-slate-800 text-xs text-right truncate">${item.reserved}</div>
-                                        </div>
-                                        
-                                        ${item.dtc ? `
-                                        <div class="mt-1">
-                                            <div class="text-slate-500 text-xs mb-1">Linked DTC</div>
-                                            <div class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> ${item.dtc}</div>
-                                        </div>` : ''}
-                                        
-                                        ${item.linkedInspectionItems && item.linkedInspectionItems.length > 0 ? `
-                                        <div class="mt-2">
-                                            <div class="text-slate-500 text-xs mb-1">Auto Assign</div>
-                                            <div class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200"><i class="ph-bold ph-magic-wand"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</div>
-                                        </div>` : ''}
-                        
-                                        ${showActions ? `
-                                        <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                                            ${canEdit ? `<button onclick="openEditPartModal()" class="flex-1 text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors"><i class="ph-bold ph-pencil-simple text-sm"></i> Edit</button>` : ''}
-                                            
-                                            ${canWalkIn ? `<button ${item.stock === 0 ? 'disabled' : `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" `} class="flex-1 py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors ${item.stock === 0 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white border border-transparent'}"><i class="ph-bold ph-shopping-cart-simple text-sm"></i> Walk-in Sale</button>` : ''}
-                                        </div>
-                                        ` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            `;
+        if (item.stock === 0) {
+            stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>`;
+            rowClass += ' opacity-75 bg-slate-50';
+            btnStatus = `disabled class="bg-slate-100 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1"`;
+        } else if (item.stock <= 5) {
+            stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${item.stock} Available</span>`;
         } else {
-            // DESKTOP TABLE LAYOUT
-            let stockBadge = '';
-            let rowClass = 'hover:bg-blue-50/30 transition-colors';
-            let btnStatus = `onclick="openWalkInModalInv('${item.name}', '${item.price.toFixed(2)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"`;
-
-            if (item.stock === 0) {
-                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>`;
-                rowClass += ' opacity-75 bg-slate-50';
-                btnStatus = `disabled class="bg-slate-100 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1"`;
-            } else if (item.stock <= 5) {
-                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${item.stock} Available</span>`;
-            } else {
-                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
-            }
-
-            let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
-            let autoLinksTag = (item.linkedInspectionItems && item.linkedInspectionItems.length > 0) ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200 ml-1"><i class="ph-bold ph-magic-wand text-purple-500"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</span>` : '';
-
-            return `
-                <tr class="${rowClass}">
-                    <td class="p-4">
-                        <div class="flex items-center gap-3">
-                            <img src="${item.img}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-sm">
-                            <div>
-                                <div class="font-bold text-slate-800">${item.name}</div>
-                                <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
-                                <div>${dtcTag}${autoLinksTag}</div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="p-4">
-                        <div class="font-medium text-slate-600">${item.category}</div>
-                        <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
-                    </td>
-                    <td class="p-4 font-bold text-slate-800">₱${item.price.toFixed(2)}</td>
-                    <td class="p-4">
-                        ${stockBadge}
-                        <div class="text-[10px] font-semibold text-slate-400 mt-1.5 ml-1">(${item.reserved} Reserved)</div>
-                    </td>
-                    ${showActions ? `
-                    <td class="p-4 text-right">
-                        <div class="flex justify-end gap-2">
-                            ${canEdit ? `<button onclick="openEditPartModal()" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i></button>` : ''}
-                            ${canWalkIn ? `<button ${btnStatus}>
-                                <i class="ph-bold ph-shopping-cart-simple"></i> Walk-in Sale
-                            </button>` : ''}
-                        </div>
-                    </td>
-                    ` : ''}
-                </tr>
-            `;
+            stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
         }
+
+        let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
+        let autoLinksTag = (item.linkedInspectionItems && item.linkedInspectionItems.length > 0) ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200 ml-1"><i class="ph-bold ph-magic-wand text-purple-500"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</span>` : '';
+
+        return `
+            <tr class="${rowClass}">
+                <td class="p-4">
+                    <div class="flex items-center gap-3">
+                        <img src="${item.img}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-sm">
+                        <div>
+                            <div class="font-bold text-slate-800">${item.name}</div>
+                            <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
+                            <div>${dtcTag}${autoLinksTag}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="p-4">
+                    <div class="font-medium text-slate-600">${item.category}</div>
+                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
+                </td>
+                <td class="p-4 font-bold text-slate-800">₱${item.price.toFixed(2)}</td>
+                <td class="p-4">
+                    ${stockBadge}
+                    <div class="text-[10px] font-semibold text-slate-400 mt-1.5 ml-1">(${item.reserved} Reserved)</div>
+                </td>
+                ${showActions ? `
+                <td class="p-4 text-right">
+                    <div class="flex justify-end gap-2">
+                        ${canEdit ? `<button onclick="openEditPartModal('${item.id}')" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-1.5 rounded transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i></button>` : ''}
+                        ${canWalkIn ? `<button ${btnStatus}>
+                            <i class="ph-bold ph-shopping-cart-simple"></i> Walk-in Sale
+                        </button>` : ''}
+                    </div>
+                </td>
+                ` : ''}
+            </tr>
+        `;
     }).join('');
+
+    // 2. Generate Mobile Cards HTML
+    if (mobileContainer) {
+        // Sort filtered array by category order, then by name
+        const catOrder = Object.keys(categoryConfig);
+        const sortedFiltered = [...filtered].sort((a, b) => {
+            const catA = catOrder.indexOf(a.category);
+            const catB = catOrder.indexOf(b.category);
+            if (catA !== catB) return catA - catB;
+            return a.name.localeCompare(b.name);
+        });
+
+        // mobileHtml is already initialized above with the search banner if needed
+        
+        sortedFiltered.forEach(item => {
+            const cat = item.category || 'Uncategorized';
+            const catConf = categoryConfig[cat] || { name: cat, icon: 'ph-box', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
+            
+            let stockBadgeMobile = '';
+            if (item.stock === 0) stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>`;
+            else if (item.stock <= 5) stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">${item.stock} Available</span>`;
+            else stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">${item.stock} Available</span>`;
+            
+            let isOut = item.stock === 0;
+            let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
+            
+            mobileHtml += `
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col ${isOut ? 'opacity-75' : ''}">
+                <div class="p-3 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors" onclick="toggleInvPartCard('${item.id}')">
+                    <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center relative">
+                        <div class="absolute inset-0 flex items-center justify-center ${catConf.bg} ${catConf.text}">
+                            <i class="ph-bold ${catConf.icon} text-xl"></i>
+                        </div>
+                        ${(item.img && !item.img.includes('placehold.co')) ? `<img src="${item.img}" class="absolute inset-0 w-full h-full object-cover z-10" onerror="this.style.display='none'">` : ''}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-slate-800 text-sm leading-tight">${item.name}</div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5">#${item.sku}</div>
+                        <div class="flex items-center justify-between mt-1.5">
+                            <span class="font-bold text-slate-700 text-sm">₱${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                            ${stockBadgeMobile}
+                        </div>
+                    </div>
+                    <div class="shrink-0 pt-3">
+                        <i id="m-inv-icon-${item.id}" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
+                    </div>
+                </div>
+                <div id="m-inv-body-${item.id}" class="hidden border-t border-slate-100 bg-slate-50/50 p-3">
+                    <div class="flex flex-col gap-2 text-xs text-slate-600 mb-4">
+                        <div class="flex justify-between items-center"><span class="font-bold">Category</span><span class="inline-flex items-center gap-1 ${catConf.bg} ${catConf.text} px-1.5 py-0.5 rounded font-bold">${catConf.name}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-bold">Compatible</span><span class="text-slate-500">${item.comp}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-bold">Supplier</span><span class="text-slate-500">${item.supplier}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-bold">Location</span><span class="text-slate-500">${item.loc}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-bold">Reserved</span><span class="text-slate-500">${item.reserved}</span></div>
+                        <div class="flex justify-between items-center"><span class="font-bold">Min Stock</span><span class="text-slate-500">${item.minStock}</span></div>
+                        ${item.dtc ? `<div class="mt-1">${dtcTag}</div>` : ''}
+                    </div>
+                    ${showActions ? `
+                    <div class="flex flex-col gap-2">
+                        ${canEdit ? `<button onclick="openEditPartModal('${item.id}')" class="w-full h-[44px] text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 shadow-sm transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i> Edit</button>` : ''}
+                        ${canWalkIn ? `<button ${isOut ? 'disabled' : `onclick="openWalkInModalInv('${item.name.replace(/'/g, "\\'")}', '${item.price.toFixed(2)}')"`} class="w-full h-[44px] rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 shadow-sm transition-colors ${isOut ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white border border-transparent'}"><i class="ph-bold ph-shopping-cart-simple text-lg"></i> Walk-in Sale</button>` : ''}
+                    </div>` : ''}
+                </div>
+            </div>
+            `;
+        });
+        
+        mobileHtml += '</div>';
+        
+        mobileContainer.innerHTML = mobileHtml;
+    }
+    updateDashboardWidgets();
+}
+
+function updateDashboardWidgets() {
+    const lowStockParts = mockInventory.filter(p => p.stock > 0 && p.stock <= p.minStock);
+    const outOfStockParts = mockInventory.filter(p => p.stock === 0);
+    const totalAlerts = lowStockParts.length + outOfStockParts.length;
+
+    const countEl = document.getElementById('dashboard-inventory-alerts-count');
+    if (countEl) countEl.textContent = totalAlerts;
+
+    const kpiTotal = document.getElementById('kpi-alert-total');
+    const kpiLow = document.getElementById('kpi-alert-low');
+    const kpiOut = document.getElementById('kpi-alert-out');
+    if (kpiTotal) kpiTotal.textContent = totalAlerts;
+    if (kpiLow) kpiLow.textContent = lowStockParts.length;
+    if (kpiOut) kpiOut.textContent = outOfStockParts.length;
+
+    const dashText = document.getElementById('dashboard-restock-alert-text');
+    const mobileText = document.getElementById('mobile-restock-alert-text');
+    
+    let textParts = [];
+    if (outOfStockParts.length > 0) {
+        textParts.push(`${outOfStockParts[0].name} is out of stock!`);
+    }
+    if (lowStockParts.length > 0) {
+        textParts.push(`${lowStockParts[0].name} is low (${lowStockParts[0].stock} left).`);
+    }
+    
+    const alertText = textParts.length > 0 ? textParts.join(' ') : 'Inventory levels are looking good.';
+    
+    if (dashText) dashText.textContent = alertText;
+    if (mobileText) mobileText.textContent = alertText;
+
+    const reportsTbody = document.getElementById('reports-low-stock-tbody');
+    if (reportsTbody) {
+        const allAlertParts = [...outOfStockParts, ...lowStockParts];
+        if (allAlertParts.length === 0) {
+            reportsTbody.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-slate-500">No low stock items</td></tr>`;
+        } else {
+            reportsTbody.innerHTML = allAlertParts.map(p => `
+                <tr class="hover:bg-slate-50 transition-colors">
+                    <td class="p-3 font-semibold text-slate-700">${p.name}</td>
+                    <td class="p-3 text-center">
+                        <span class="${p.stock === 0 ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'} px-2 py-0.5 rounded font-bold">${p.stock}</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    const topSelling = document.getElementById('reports-top-selling');
+    if (topSelling) {
+        const topParts = mockInventory.slice(0, 3);
+        const percentages = [100, 65, 40];
+        const colors = ['bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'];
+        const sold = [45, 28, 18];
+        
+        topSelling.innerHTML = topParts.map((p, i) => `
+            <div>
+                <div class="flex justify-between text-xs mb-1"><span class="font-semibold text-slate-700">${i+1}. ${p.name}</span><span class="font-bold text-slate-500">${sold[i]} sold</span></div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div class="${colors[i]} h-2.5 rounded-full" style="width: ${percentages[i]}%"></div></div>
+            </div>
+        `).join('');
+    }
 }
 
 // Global Event Listeners for Inventory Filtering
@@ -4127,7 +4579,7 @@ const inspectionSections = [
         items: [
             { id: 'pad_f', label: 'Front Brake Pads', hint: 'Pad thickness and even wear',
               measure: { type: 'below', unit: 'mm', start: 4, step: 0.5, soon: 4, fix: 2, help: 'OK ≥ 4 mm · Fix ≤ 2 mm' },
-              tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'], part: 'p2' },
+              tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'], part: 'PROTO-B01' },
             { id: 'pad_r', label: 'Rear Pads / Shoes', hint: 'Lining thickness and even wear',
               measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.5, help: 'OK ≥ 3 mm · Fix ≤ 1.5 mm' },
               tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'] },
@@ -4893,19 +5345,27 @@ document.addEventListener('change', function(e) {
     if (e.target.matches && e.target.matches('[data-insp-file]')) handleInspectionPhoto(e.target);
 });
 
-window.toggleInvCard = function(id) {
-    if (!window.expandedInvCards) window.expandedInvCards = new Set();
-    const wrap = document.getElementById(`inv-wrap-${id}`);
-    const chevron = document.getElementById(`inv-chevron-${id}`);
+
+
+window.toggleInvPartCard = function(id) {
+    const body = document.getElementById(`m-inv-body-${id}`);
+    const icon = document.getElementById(`m-inv-icon-${id}`);
+    if (!body) return;
     
-    if (window.expandedInvCards.has(id)) {
-        window.expandedInvCards.delete(id);
-        if (wrap) wrap.style.gridTemplateRows = '0fr';
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
-    } else {
-        window.expandedInvCards.add(id);
-        if (wrap) wrap.style.gridTemplateRows = '1fr';
-        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    const isHidden = body.classList.contains('hidden');
+    
+    // Close others
+    document.querySelectorAll('[id^="m-inv-body-"]').forEach(b => {
+        b.classList.add('hidden');
+    });
+    document.querySelectorAll('[id^="m-inv-icon-"]').forEach(i => {
+        i.classList.remove('rotate-180', 'text-blue-500');
+    });
+    
+    // Toggle current
+    if (isHidden) {
+        body.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180', 'text-blue-500');
     }
 };
 
@@ -5119,16 +5579,16 @@ function partsForDtc(code) {
     const c = String(code || '').toUpperCase();
     const out = [];
     if (c === 'P0117' || c === 'P0118' || c === 'P0119') {
-        out.push({ id: 'p1', qty: 1 });                       // coolant temp sensor circuit
+        out.push({ id: 'PROTO-C01', qty: 1 });                       // coolant temp sensor circuit
     } else if (/^P030[0-6]$/.test(c)) {
-        out.push({ id: 'p5', qty: 1 });                       // misfire -> spark plug
+        // out.push({ id: 'p5', qty: 1 });                       // misfire -> spark plug (not in inventory)
     } else if (c === 'P0562' || c === 'P0563') {
-        out.push({ id: 'p10', qty: 1 });                      // system voltage -> battery
+        out.push({ id: '170010', qty: 1 });                      // system voltage -> battery
     } else if (c === 'P0171' || c === 'P0172') {
-        out.push({ id: 'p6', qty: 1 });                       // fuel trim -> air filter
-        out.push({ id: 'p5', qty: 1 });
+        // out.push({ id: 'p6', qty: 1 });                       // fuel trim -> air filter (not in inventory)
+        // out.push({ id: 'p5', qty: 1 });
     } else if (c === 'P0217') {
-        out.push({ id: 'p16', qty: 1 });                      // overtemp -> coolant
+        // out.push({ id: 'p16', qty: 1 });                      // overtemp -> coolant (not in inventory)
     }
     return out;
 }
@@ -5698,3 +6158,84 @@ systemUsers.chief.password = 'mech123';
 systemUsers.sub.password = 'sub123';
 systemUsers.superadmin.password = 'admin123';
 
+// Initialize widgets on load
+updateDashboardWidgets();
+
+window.clearInvFilters = function() {
+    document.getElementById('inv-search').value = '';
+    document.getElementById('inv-filter-stock').value = '';
+    document.getElementById('inv-filter-category').value = '';
+    renderInventory();
+};
+
+
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'restock-search-input') {
+        currentRestockPartId = null;
+        const btn = document.getElementById('restock-clear-btn');
+        if (btn) btn.classList.add('hidden');
+        const list = document.getElementById('restock-dropdown-list');
+        if (list) list.classList.remove('hidden');
+        renderRestockDropdown(e.target.value);
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const restockItem = e.target.closest('.restock-item');
+    if (restockItem) {
+        selectRestockPart(restockItem.getAttribute('data-id'));
+    }
+    
+    const container = e.target.closest('#restock-dropdown-container');
+    if (!container) {
+        const list = document.getElementById('restock-dropdown-list');
+        if (list && !list.classList.contains('hidden')) {
+            list.classList.add('hidden');
+        }
+    }
+});
+
+document.addEventListener('focusin', function(e) {
+    if (e.target.id === 'restock-search-input' && !currentRestockPartId) {
+        const list = document.getElementById('restock-dropdown-list');
+        if (list) list.classList.remove('hidden');
+        renderRestockDropdown(e.target.value);
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.target.id === 'restock-search-input' || e.target.closest('#restock-dropdown-list')) {
+        const list = document.getElementById('restock-dropdown-list');
+        if (!list || list.classList.contains('hidden')) return;
+        
+        const items = Array.from(list.querySelectorAll('.restock-item'));
+        if (items.length === 0) return;
+        
+        let currentIndex = items.findIndex(item => item === document.activeElement);
+        
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (currentIndex < items.length - 1) {
+                items[currentIndex + 1].focus();
+            } else if (currentIndex === -1) {
+                items[0].focus();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (currentIndex > 0) {
+                items[currentIndex - 1].focus();
+            } else if (currentIndex === 0) {
+                document.getElementById('restock-search-input').focus();
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (currentIndex !== -1) {
+                selectRestockPart(items[currentIndex].getAttribute('data-id'));
+            }
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            list.classList.add('hidden');
+            document.getElementById('restock-search-input').focus();
+        }
+    }
+});

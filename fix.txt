@@ -1,0 +1,100 @@
+﻿                        ${canWalkIn ? `<button ${btnStatus}>
+                            <i class="ph-bold ph-shopping-cart-simple"></i> Walk-in Sale
+                        </button>` : ''}
+                    </div>
+                </td>
+                ` : ''}
+            </tr>
+        `;
+    }).join('');
+
+    // 2. Generate Mobile Cards HTML
+    if (mobileContainer) {
+        // Group by category
+        const groups = {};
+        filtered.forEach(item => {
+            const cat = item.category || 'Uncategorized';
+            if (!groups[cat]) groups[cat] = [];
+            groups[cat].push(item);
+        });
+
+        if (!window.expandedInvCategories) window.expandedInvCategories = new Set();
+        let mobileHtml = '';
+        
+        Object.keys(groups).forEach(cat => {
+            const group = groups[cat];
+            const catConf = categoryConfig[cat] || { name: cat, icon: 'ph-box', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
+            const safeCat = cat.replace(/[^a-zA-Z0-9]/g, '');
+            const isOpen = window.expandedInvCategories.has(safeCat);
+
+            mobileHtml += `
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col mb-1">
+                <div class="p-3.5 flex items-center justify-between cursor-pointer ${catConf.bg}" onclick="toggleInvCategory('${safeCat}')">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-white shadow-sm ${catConf.text}">
+                            <i class="${catConf.icon} text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-800 text-sm">${catConf.name}</div>
+                            <div class="text-xs font-semibold ${catConf.text} mt-0.5">${group.length} Parts</div>
+                        </div>
+                    </div>
+                    <div id="inv-cat-chev-${safeCat}" class="w-8 h-8 flex items-center justify-center text-slate-400 transition-transform duration-200" style="transform: ${isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}">
+                        <i class="ph-bold ph-caret-down text-lg"></i>
+                    </div>
+                </div>
+                <div id="inv-cat-wrap-${safeCat}" style="display: grid; transition: grid-template-rows 200ms ease-out; grid-template-rows: ${isOpen ? '1fr' : '0fr'};">
+                    <div style="overflow: hidden;">
+                        <div class="p-3 flex flex-col gap-3 bg-slate-50/50">
+                            ${group.map(item => {
+                                let stockBadgeMobile = '';
+                                if (item.stock === 0) stockBadgeMobile = \`<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>\`;
+                                else if (item.stock <= 5) stockBadgeMobile = \`<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">\${item.stock} Available</span>\`;
+                                else stockBadgeMobile = \`<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">\${item.stock} Available</span>\`;
+                                
+                                return \`
+                                <div class="bg-white rounded-xl border border-slate-200 p-3 shadow-sm flex flex-col gap-3">
+                                    <div class="flex items-start gap-3">
+                                        <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center relative">
+                                            <div class="absolute inset-0 flex items-center justify-center \${catConf.bg} \${catConf.text}">
+                                                <i class="\${catConf.icon} text-xl"></i>
+                                            </div>
+                                            \${item.img ? \`<img src="\${item.img}" class="absolute inset-0 w-full h-full object-cover z-10" onerror="this.style.display='none'">\` : ''}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="font-bold text-slate-800 text-sm leading-tight">\${item.name}</div>
+                                            <div class="text-xs text-slate-500 mt-0.5">SKU: \${item.sku}</div>
+                                            <div class="flex items-center justify-between mt-2">
+                                                <span class="font-bold text-slate-700 text-sm">â‚±\${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                                                \${stockBadgeMobile}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    \${showActions ? \`
+                                    <div class="flex flex-col gap-2 pt-3 border-t border-slate-100">
+                                        \${canEdit ? \`<button onclick="openEditPartModal('\${item.id}')" class="w-full h-[44px] text-slate-600 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 shadow-sm transition-colors"><i class="ph-bold ph-pencil-simple text-lg"></i> Edit</button>\` : ''}
+                                        \${canWalkIn ? \`<button \${item.stock === 0 ? 'disabled' : \`onclick="openWalkInModalInv('\${item.name.replace(/'/g, "\\\\'")}', '\${item.price.toFixed(2)}')"\`} class="w-full h-[44px] rounded-lg font-bold text-sm flex items-center justify-center gap-1.5 shadow-sm transition-colors \${item.stock === 0 ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white border border-transparent'}"><i class="ph-bold ph-shopping-cart-simple text-lg"></i> Walk-in Sale</button>\` : ''}
+                                    </div>\` : ''}
+                                </div>
+                                \`;
+                            }).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+        
+        mobileContainer.innerHTML = mobileHtml;
+    }
+    updateDashboardWidgets();
+}
+
+function updateDashboardWidgets() {
+    const lowStockParts = mockInventory.filter(p => p.stock > 0 && p.stock <= p.minStock);
+    const outOfStockParts = mockInventory.filter(p => p.stock === 0);
+    const totalAlerts = lowStockParts.length + outOfStockParts.length;
+
+    const countEl = document.getElementById('dashboard-inventory-alerts-count');
+    if (countEl) countEl.textContent = totalAlerts;
+
