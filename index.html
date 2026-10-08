@@ -168,60 +168,169 @@
 
 
     <!-- Login Screen Overlay -->
-        <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-slate-900/95 flex-col items-center justify-center p-4 backdrop-blur-md">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-8 flex flex-col gap-6 text-center transform transition-all relative">
-            <!-- Login Form View -->
-            <div id="login-form-view" class="flex flex-col gap-6 w-full">
+    <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex-col items-center justify-center p-4 overflow-hidden">
+        
+        <!-- Blurred background glow -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[100px]"></div>
+        </div>
+
+        <!-- Login Form View (Card) -->
+        <div id="login-form-view" class="flex flex-col items-center justify-center w-full max-w-sm z-10">
+            <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full p-8 flex flex-col gap-8 text-center relative animate-fade-rise">
                 <button onclick="showSignedOutView()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors z-10" title="Close">
                     <i class="ph ph-x text-lg"></i>
                 </button>
-            <div>
-                <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-[72px] w-auto object-contain mx-auto mb-4">
-                <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">MotoCare OS</h2>
-                <p class="text-sm text-slate-500 mt-1">Sign in to your account</p>
-            </div>
-            
-            <div class="flex flex-col gap-4 text-left">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Sign In As</label>
-                    <div class="flex flex-wrap gap-2" id="role-selector">
-                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="owner" onclick="selectLoginRole('owner', this)">Owner</button>
-                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="chief" onclick="selectLoginRole('chief', this)">Mechanic</button>
-                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="sub" onclick="selectLoginRole('sub', this)">Sub-Mechanic</button>
-                        <button type="button" class="role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors" data-role="superadmin" onclick="selectLoginRole('superadmin', this)">Admin</button>
+                    <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-[72px] w-auto object-contain mx-auto mb-5">
+                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight">MotoCare OS</h2>
+                    <p class="text-[10px] font-bold text-blue-600 tracking-widest uppercase mt-1 mb-2">Shop Management System</p>
+                    <p class="text-sm text-slate-500">Sign in to your account</p>
+                </div>
+                
+                <div class="flex flex-col gap-4 text-left">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Sign In As</label>
+                        <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3" id="role-selector">
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="owner" onclick="selectLoginRole('owner', this)">
+                                <div class="flex items-center gap-2 mb-1.5 w-full">
+                                    <div class="w-6 h-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-storefront"></i>
+                                    </div>
+                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Owner</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Full shop access & analytics</p>
+                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
+                                    <i class="ph-bold ph-check text-[10px]"></i>
+                                </div>
+                            </button>
+
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="chief" onclick="selectLoginRole('chief', this)">
+                                <div class="flex items-center gap-2 mb-1.5 w-full">
+                                    <div class="w-6 h-6 rounded bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-wrench"></i>
+                                    </div>
+                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Mechanic</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Repairs and diagnostics</p>
+                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
+                                    <i class="ph-bold ph-check text-[10px]"></i>
+                                </div>
+                            </button>
+
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="sub" onclick="selectLoginRole('sub', this)">
+                                <div class="flex items-center gap-2 mb-1.5 w-full">
+                                    <div class="w-6 h-6 rounded bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-nut"></i>
+                                    </div>
+                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Sub-Mechanic</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Assist with repairs</p>
+                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
+                                    <i class="ph-bold ph-check text-[10px]"></i>
+                                </div>
+                            </button>
+
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="superadmin" onclick="selectLoginRole('superadmin', this)">
+                                <div class="flex items-center gap-2 mb-1.5 w-full">
+                                    <div class="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-shield-check"></i>
+                                    </div>
+                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Admin</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Users and system settings</p>
+                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
+                                    <i class="ph-bold ph-check text-[10px]"></i>
+                                </div>
+                            </button>
+                        </div>
+                        <input type="hidden" id="login-selected-role" value="">
+                        <p id="login-role-error" class="text-xs text-red-600 font-bold hidden mt-1">Please select a role.</p>
                     </div>
-                    <input type="hidden" id="login-selected-role" value="">
-                    <p id="login-role-error" class="text-xs text-red-600 font-bold hidden mt-1">Please select a role.</p>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD (optional)</label>
+                        <input type="password" id="login-password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Not required for prototype" onkeydown="if(event.key === 'Enter') submitLogin()">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD (optional)</label>
-                    <input type="password" id="login-password" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Not required for prototype" onkeydown="if(event.key === 'Enter') submitLogin()">
-                </div>
-            </div>
 
-            <button onclick="submitLogin()" id="btn-login-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-500/30 flex items-center justify-center gap-2">
-                Sign In
-            </button>
-            
-            <div class="mt-2 pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium text-center">
-                Prototype mode: select a role to continue.
-            </div>
-            </div>
-
-            <!-- Signed Out View -->
-            <div id="signed-out-view" class="hidden flex flex-col gap-6 w-full items-center py-4">
-                <div class="w-20 h-20 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                    <i class="ph-fill ph-user-minus text-4xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-2xl font-extrabold text-slate-800 tracking-tight mb-2">MotoCare OS</h2>
-                    <p class="text-base text-slate-600 font-medium">You are signed out</p>
-                </div>
-                <button onclick="showLoginForm()" class="w-full mt-4 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
+                <button onclick="submitLogin()" id="btn-login-submit" class="w-full bg-slate-200 text-slate-500 cursor-not-allowed font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2">
                     Sign In
+                </button>
+                
+                <div class="mt-2 pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium text-center">
+                    Prototype mode: select a role to continue.
+                </div>
+            </div>
+            
+            <!-- Footer under card -->
+            <div class="mt-6 text-slate-400 text-xs font-medium tracking-wide relative">
+                &copy; <span id="current-year">2026</span> MotoCare OS &middot; Prototype
+            </div>
+        </div>
+
+        <!-- Signed Out / Landing Page View -->
+        <div id="signed-out-view" class="hidden absolute inset-0 z-20 flex-col overflow-y-auto">
+            <!-- Top bar -->
+            <div class="w-full px-6 py-4 flex items-center justify-between border-b border-white/10 bg-slate-900/50 backdrop-blur-md sticky top-0 z-30">
+                <div class="flex items-center gap-3">
+                    <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-10 w-auto rounded-md bg-white">
+                    <span class="text-xl font-extrabold text-white tracking-tight hidden sm:inline">MotoCare OS</span>
+                </div>
+                <button onclick="showLoginForm()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg transition-colors shadow-lg shadow-blue-600/20">Sign In</button>
+            </div>
+            
+            <!-- Hero -->
+            <div class="flex-1 flex flex-col items-center justify-center p-6 text-center mt-12 mb-8">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight max-w-3xl mb-6">Your motorcycle repair shop, <span class="text-blue-400">organized.</span></h1>
+                <p class="text-lg text-slate-300 max-w-xl mb-10">The complete operating system for modern motorcycle workshops. Manage repairs, inventory, and billing all in one place.</p>
+                <button onclick="showLoginForm()" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-bold rounded-xl transition-all shadow-xl shadow-blue-600/30 flex items-center gap-2 transform hover:-translate-y-1">
+                    Get Started <i class="ph-bold ph-arrow-right"></i>
                 </button>
             </div>
 
+            <!-- Feature Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 px-6 max-w-6xl mx-auto w-full mb-16">
+                <!-- Card 1 -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+                    <div class="w-12 h-12 rounded-xl bg-orange-500/20 text-orange-400 flex items-center justify-center mb-4">
+                        <i class="ph-bold ph-wrench text-2xl"></i>
+                    </div>
+                    <h3 class="text-white font-bold mb-2">Diagnostics & Inspections</h3>
+                    <p class="text-slate-400 text-sm">Comprehensive multi-point checks.</p>
+                </div>
+                <!-- Card 2 -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4">
+                        <i class="ph-bold ph-package text-2xl"></i>
+                    </div>
+                    <h3 class="text-white font-bold mb-2">Parts & Inventory</h3>
+                    <p class="text-slate-400 text-sm">Track stock levels and expiry dates.</p>
+                </div>
+                <!-- Card 3 -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+                    <div class="w-12 h-12 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mb-4">
+                        <i class="ph-bold ph-clipboard-text text-2xl"></i>
+                    </div>
+                    <h3 class="text-white font-bold mb-2">Repair Tracking</h3>
+                    <p class="text-slate-400 text-sm">Manage tickets from intake to release.</p>
+                </div>
+                <!-- Card 4 -->
+                <div class="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-sm">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center mb-4">
+                        <i class="ph-bold ph-receipt text-2xl"></i>
+                    </div>
+                    <h3 class="text-white font-bold mb-2">Billing & History</h3>
+                    <p class="text-slate-400 text-sm">Clear invoices and complete records.</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-auto border-t border-white/10 bg-slate-950/50 py-8 px-6 text-center text-sm text-slate-400 w-full shrink-0">
+                <p id="landing-shop-name" class="font-bold text-slate-300 mb-2">MotoCare OS</p>
+                <p class="mb-1 flex items-center justify-center gap-1"><i class="ph-fill ph-map-pin"></i> <span id="landing-shop-address">123 Example Street, City</span></p>
+                <p class="mb-1 flex items-center justify-center gap-1"><i class="ph-fill ph-phone"></i> <span id="landing-shop-phone">+1 (555) 123-4567</span></p>
+                <p class="flex items-center justify-center gap-1"><i class="ph-fill ph-clock"></i> <span id="landing-shop-hours">Mon-Fri: 8am - 6pm</span></p>
+            </div>
         </div>
     </div>
 

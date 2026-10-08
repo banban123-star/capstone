@@ -1,3 +1,10 @@
+const shopConfig = {
+    name: "MotoCare OS",
+    address: "123 Example Street, City",
+    phone: "+1 (555) 123-4567",
+    hours: "Mon-Fri: 8am - 6pm"
+};
+
 const MOTORCYCLE_BRANDS = ['Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Kymco', 'SYM', 'Rusi', 'Skygo', 'Other'];
 
 // --- Mock Inventory Data for Diagnostics Autocomplete ---
@@ -739,6 +746,18 @@ function switchRole(roleId) {
 
 // Trigger initial setup
 document.addEventListener('DOMContentLoaded', () => {
+    const yearSpan = document.getElementById('current-year');
+    if (yearSpan) yearSpan.textContent = new Date().getFullYear();
+
+    const shopName = document.getElementById('landing-shop-name');
+    if (shopName) shopName.textContent = shopConfig.name;
+    const shopAddr = document.getElementById('landing-shop-address');
+    if (shopAddr) shopAddr.textContent = shopConfig.address;
+    const shopPhone = document.getElementById('landing-shop-phone');
+    if (shopPhone) shopPhone.textContent = shopConfig.phone;
+    const shopHours = document.getElementById('landing-shop-hours');
+    if (shopHours) shopHours.textContent = shopConfig.hours;
+
     const activeRole = localStorage.getItem('activeRole');
     if (activeRole && systemUsers[activeRole]) {
         switchRole(activeRole);
@@ -6230,14 +6249,7 @@ window.showLoginForm = function() {
         loginForm.classList.add('flex');
     }
     
-    const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
-    const roleInput = document.getElementById('login-selected-role');
-    if (roleInput) roleInput.value = '';
-    const roleErrorMsg = document.getElementById('login-role-error');
-    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
-    document.querySelectorAll('#role-selector .role-chip').forEach(c => {
-        c.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors';
-    });
+    selectLoginRole('', null);
 };
 
 document.addEventListener('keydown', function(e) {
@@ -6297,25 +6309,9 @@ window.handleLogout = function() {
         loginScreen.classList.remove('hidden');
         loginScreen.classList.add('flex');
     }
-    const loginForm = document.getElementById('login-form-view');
-    const signedOut = document.getElementById('signed-out-view');
-    if (loginForm && signedOut) {
-        loginForm.classList.remove('hidden');
-        loginForm.classList.add('flex');
-        signedOut.classList.add('hidden');
-        signedOut.classList.remove('flex');
-    }
+    showLoginForm();
     sessionStorage.removeItem('currentUserRole');
     localStorage.removeItem('activeRole');
-    
-    const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
-    const roleInput = document.getElementById('login-selected-role');
-    if (roleInput) roleInput.value = '';
-    const roleErrorMsg = document.getElementById('login-role-error');
-    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
-    document.querySelectorAll('#role-selector .role-chip').forEach(c => {
-        c.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors';
-    });
 };
 
 // --- Settings Logic ---
@@ -6405,11 +6401,31 @@ window.selectLoginRole = function(roleId, btn) {
     const roleErrorMsg = document.getElementById('login-role-error');
     if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
     
-    document.querySelectorAll('#role-selector .role-chip').forEach(c => {
-        c.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition-colors';
+    document.querySelectorAll('#role-selector .role-card').forEach(c => {
+        c.className = 'role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]';
+        const check = c.querySelector('.role-check');
+        if(check) {
+            check.classList.add('opacity-0', 'scale-50');
+            check.classList.remove('opacity-100', 'scale-100');
+        }
     });
+    
     if (btn) {
-        btn.className = 'role-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 transition-colors';
+        btn.className = 'role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-blue-500 bg-blue-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all min-h-[64px]';
+        const check = btn.querySelector('.role-check');
+        if(check) {
+            check.classList.remove('opacity-0', 'scale-50');
+            check.classList.add('opacity-100', 'scale-100');
+        }
+    }
+    
+    const submitBtn = document.getElementById('btn-login-submit');
+    if (submitBtn) {
+        if (roleId) {
+            submitBtn.className = 'w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer';
+        } else {
+            submitBtn.className = 'w-full bg-slate-200 text-slate-500 cursor-not-allowed font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2';
+        }
     }
 };
 

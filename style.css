@@ -485,3 +485,27 @@ body.mobile-app #add-part-content {
     max-height: 100vh !important;
     border-radius: 0 !important;
 }
+
+/* Login screen animation */
+@keyframes fadeRise {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-rise {
+    animation: fadeRise 0.25s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-fade-rise {
+        animation: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+    }
+}
