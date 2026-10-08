@@ -205,18 +205,24 @@ document.addEventListener('input', function(e) {
         const matches = mockInventory.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query));
         
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(part => `
+            dropdown.innerHTML = matches.map(part => {
+    let expText = '';
+    if (typeof getExpiryStatus === 'function' && getExpiryStatus(part).status === 'expired') {
+        expText = '<span class="text-red-600 text-[10px] font-bold ml-1.5">Expired</span>';
+    }
+    return `
                 <div class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer flex justify-between items-center autocomplete-item" data-id="${part.id}">
                     <div>
-                        <div class="text-sm font-bold text-slate-800">${part.name}</div>
+                        <div class="text-sm font-bold text-slate-800">${part.name}${expText}</div>
                         <div class="text-[10px] text-slate-500">SKU: ${part.sku}</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-sm font-bold text-blue-600">₱${part.price.toFixed(2)}</div>
+                        <div class="text-sm font-bold text-blue-600">\u20B1${part.price.toFixed(2)}</div>
                         <div class="text-[10px] font-semibold ${part.stock > 0 ? 'text-emerald-600' : 'text-red-500'}">Stock: ${part.stock}</div>
                     </div>
                 </div>
-            `).join('');
+            `;
+}).join('');
             dropdown.classList.remove('hidden');
         } else {
             dropdown.innerHTML = `<div class="p-3 text-sm text-slate-500 text-center">No parts found matching "${query}"</div>`;
@@ -887,7 +893,7 @@ function toggleModal(modalId, backdropId, contentId, show, effect = 'scale') {
 // mechanic edit / finalize them, then continues to "Confirm Vehicle for Repair".
 // =====================================================================
 
-const fmtPeso = n => '₱ ' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPeso = n => '\u20B1 ' + (Number(n) || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const sourceBadgeStyles = {
     ecu:      { cls: 'bg-blue-50 text-blue-600 border-blue-200',         icon: 'ph-cpu',    label: 'ECU/OBD' },
@@ -1165,7 +1171,7 @@ function renderRepairPlan() {
                                     ${isObsolete ? `<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">No longer needed</span>` : stockBadge}
                                 </div>
                                 <div class="text-xs text-slate-500">
-                                    SKU: ${escHTML(p.part.sku)} · ₱${p.part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700 ${isObsolete ? 'line-through text-slate-400' : ''}">₱ ${(p.part.price * p.qty).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    SKU: ${escHTML(p.part.sku)} · \u20B1${p.part.price.toFixed(2)} / unit · <span class="line-total font-bold text-slate-700 ${isObsolete ? 'line-through text-slate-400' : ''}">\u20B1 ${(p.part.price * p.qty).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                 </div>
                                 <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
                                     For: ${escHTML(p.target)} ${p.category ? `(${escHTML(p.category)})` : ''}
@@ -1413,6 +1419,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function clearAddPartForm() {
+    const form = document.getElementById('modal-add-part');
+    const expiryInput = form ? form.querySelector('.part-expiry-input') : null;
+    if (expiryInput) expiryInput.value = '';
+    // Container visibility is now handled by updatePartExpiryVisibility() at the end
     document.getElementById('add-part-name').value = '';
     document.getElementById('add-part-sku').value = '';
     document.getElementById('add-part-category').value = '';
@@ -1435,11 +1445,28 @@ function clearAddPartForm() {
     const btnText = document.getElementById('btn-save-part-text');
     if (btnText) btnText.textContent = 'Save Part';
     currentEditingPartId = null;
+    
+    const formElement = document.getElementById('modal-add-part');
+    if (formElement) updatePartExpiryVisibility(formElement);
 }
 
 function openAddPartModal() { 
     if (!window.can('inventory.addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
     clearAddPartForm();
+    const activeCatFilter = document.getElementById('inv-filter-category')?.value;
+    if (activeCatFilter) {
+        const catSelect = document.getElementById('add-part-category');
+        if (catSelect) catSelect.value = activeCatFilter;
+    }
+    const form = document.getElementById('modal-add-part');
+    updatePartExpiryVisibility(form);
+    
+    requestAnimationFrame(() => {
+        updatePartExpiryVisibility(form);
+        const categorySelect = document.getElementById('add-part-category');
+        console.log("expiry check", document.querySelectorAll(".part-expiry-field").length, categorySelect ? categorySelect.value : '');
+    });
+    
     toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', true); 
 }
 function closeAddPartModal() { 
@@ -1474,6 +1501,7 @@ function openRestockModal(partId = null) {
         selectRestockPart(partId);
     }
     
+    updateRestockExpiryVisibility();
     toggleModal('modal-restock', 'restock-backdrop', 'restock-content', true); 
 }
 
@@ -1518,6 +1546,38 @@ function renderRestockDropdown(query) {
     }
 }
 
+function updateRestockExpiryVisibility() {
+    const form = document.getElementById('modal-restock');
+    if (!form) return;
+    const container = form.querySelector('.restock-expiry-field');
+    const input = form.querySelector('.restock-expiry-input');
+    const hint = form.querySelector('.restock-expiry-hint');
+    if (!container || !input || !hint) return;
+
+    let part = null;
+    if (currentRestockPartId) {
+        part = mockInventory.find(p => p.id === currentRestockPartId) || fullInventoryData.find(p => p.id === currentRestockPartId);
+    }
+    
+    if (part) {
+        const conf = categoryConfig[part.category];
+        if (conf && conf.hasExpiry) {
+            container.classList.remove('hidden');
+            input.value = part.expiryDate || '';
+            if (part.expiryDate) {
+                hint.textContent = `Current: ${part.expiryDate}. Change it only if the new stock has a different expiry.`;
+            } else {
+                hint.textContent = "No expiry set yet. Enter one if this stock expires.";
+            }
+            return;
+        }
+    }
+    
+    container.classList.add('hidden');
+    input.value = '';
+    hint.textContent = '';
+}
+
 function selectRestockPart(partId) {
     const part = mockInventory.find(p => p.id === partId);
     if (!part) return;
@@ -1533,6 +1593,8 @@ function selectRestockPart(partId) {
     
     document.getElementById('restock-current-stock').textContent = part.stock + ' Units';
     document.getElementById('restock-location').textContent = part.loc || 'N/A';
+    
+    updateRestockExpiryVisibility();
 }
 
 window.clearRestockSelection = function() {
@@ -1550,6 +1612,7 @@ window.clearRestockSelection = function() {
     
     document.getElementById('restock-current-stock').textContent = '-';
     document.getElementById('restock-location').textContent = '-';
+    updateRestockExpiryVisibility();
 };
 
 window.confirmRestock = function() {
@@ -1566,8 +1629,21 @@ window.confirmRestock = function() {
     const part = mockInventory.find(p => p.id === currentRestockPartId);
     if (part) {
         part.stock += qty;
+        
+        const catConf = categoryConfig[part.category];
+        if (catConf && catConf.hasExpiry) {
+            const form = document.getElementById('modal-restock');
+            if (form) {
+                const expInput = form.querySelector('.restock-expiry-input');
+                if (expInput && expInput.value) {
+                    part.expiryDate = expInput.value;
+                }
+            }
+        }
+        
         // Optionally update minStock or anything else, but just stock is fine
         showToast(`Restocked ${qty} units of ${part.name}`, 'success');
+        updateDashboardWidgets();
         renderInventory();
         closeRestockModal();
     }
@@ -1583,13 +1659,20 @@ function openEditPartModal(partId) {
     currentEditingPartId = partId;
     
     const title = document.querySelector('#modal-add-part h2');
-    if (title) title.innerHTML = '<i class="ph-fill ph-pencil-circle text-blue-600"></i> Edit Part';
+    if (title) title.innerHTML = '<i class="ph-fill ph-pencil text-blue-600"></i> Edit Part';
     const btnText = document.getElementById('btn-save-part-text');
     if (btnText) btnText.textContent = 'Save Changes';
 
     document.getElementById('add-part-name').value = part.name || '';
     document.getElementById('add-part-sku').value = part.sku || '';
     document.getElementById('add-part-category').value = part.category || '';
+    const form = document.getElementById('modal-add-part');
+    if (form) updatePartExpiryVisibility(form);
+    
+    if (part.expiryDate) {
+        const expiryInput = form ? form.querySelector('.part-expiry-input') : null;
+        if (expiryInput) expiryInput.value = part.expiryDate;
+    }
     document.getElementById('add-part-comp').value = part.comp || '';
     document.getElementById('add-part-supplier').value = part.supplier || '';
     document.getElementById('add-part-loc').value = part.loc || '';
@@ -1662,6 +1745,14 @@ function savePartForm() {
         linkedDTCs: [...currentPartDtcTags],
         image: part ? part.image : ''
     };
+    const conf = categoryConfig[document.getElementById('add-part-category').value];
+    if (conf && conf.hasExpiry) {
+        const form = document.getElementById('modal-add-part');
+        const expiryInput = form ? form.querySelector('.part-expiry-input') : null;
+        newData.expiryDate = expiryInput ? (expiryInput.value || '') : '';
+    } else {
+        newData.expiryDate = '';
+    }
 
     if (part) {
         // Update existing part in place
@@ -1685,7 +1776,7 @@ function savePartForm() {
 function openWalkInModalInv(itemName, itemPrice) {
     if (!window.can('inventory.walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     document.getElementById('walkin-inv-item-name').textContent = itemName;
-    document.getElementById('walkin-inv-item-price').textContent = "₱" + itemPrice;
+    document.getElementById('walkin-inv-item-price').textContent = "\u20B1" + itemPrice;
     toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', true);
 }
 function closeWalkInModalInv() { toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', false); }
@@ -1855,7 +1946,7 @@ function createRepairTicket(modelName, plateNumber) {
 // --- New Advance Payment Modal Logic ---
 function openAdvanceModal() { 
     document.getElementById('advance-amount').value = "";
-    document.getElementById('advance-remaining').textContent = "₱1,800.00";
+    document.getElementById('advance-remaining').textContent = "\u20B11,800.00";
     toggleModal('modal-advance', 'advance-backdrop', 'advance-content', true); 
 }
 function closeAdvanceModal() { toggleModal('modal-advance', 'advance-backdrop', 'advance-content', false); }
@@ -1868,7 +1959,7 @@ function calcRemainingAdvance() {
     let remaining = estimatedCost - advance;
     if (remaining < 0) remaining = 0; // Prevent negative remaining balance
     
-    remainingLabel.textContent = `₱${remaining.toFixed(2)}`;
+    remainingLabel.textContent = `\u20B1${remaining.toFixed(2)}`;
 }
 
 function confirmAdvancePayment(event) {
@@ -1886,12 +1977,12 @@ function confirmAdvancePayment(event) {
 
 // --- Category Configuration ---
 const categoryConfig = {
-    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' },
-    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100' },
-    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100' },
-    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100' },
-    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100' },
-    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100' }
+    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' , hasExpiry: false},
+    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100' , hasExpiry: false},
+    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100' , hasExpiry: true},
+    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100' , hasExpiry: false},
+    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100' , hasExpiry: false},
+    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100' , hasExpiry: false}
 };
 
 function populateCategoryDropdowns() {
@@ -1933,9 +2024,98 @@ window.setCategoryFilter = function(cat) {
 
 document.addEventListener('DOMContentLoaded', populateCategoryDropdowns);
 
+function updatePartExpiryVisibility(form) {
+    if (!form) return;
+    const catSelect = form.querySelector('#add-part-category');
+    if (!catSelect) return;
+    const val = catSelect.value;
+    const conf = categoryConfig[val];
+    const container = form.querySelector('.part-expiry-field');
+    if (!container) return;
+    const input = container.querySelector('.part-expiry-input');
+    
+    if (conf && conf.hasExpiry) {
+        container.classList.remove('hidden');
+    } else {
+        container.classList.add('hidden');
+        if (input) input.value = ''; // clear when hidden
+    }
+}
+
+document.addEventListener('change', (e) => {
+    if (e.target.id === 'add-part-category') {
+        const form = e.target.closest('#modal-add-part');
+        if (form) updatePartExpiryVisibility(form);
+    }
+});
+
 // --- Interactive Inventory Logic ---
 
+
+
+// --- EXPIRY DATE DEMO DATA ---
+(function() {
+    function addDaysLocal(date, days) {
+        const d = new Date(date);
+        d.setDate(d.getDate() + days);
+        return d;
+    }
+    
+    function formatDateLocal(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    const today = new Date();
+    
+    const targets = {
+        '211700': formatDateLocal(addDaysLocal(today, -10)),
+        '121060': formatDateLocal(addDaysLocal(today, 15)),
+        '212031': formatDateLocal(addDaysLocal(today, 180)),
+        '330161': formatDateLocal(addDaysLocal(today, 365))
+    };
+    
+    mockInventory.forEach(p => {
+        if (targets[p.id]) {
+            p.expiryDate = targets[p.id];
+        } else if (p.id === '981057') {
+            p.expiryDate = '';
+        }
+    });
+})();
+
+const SOON_DAYS = 30;
+
+window.getExpiryStatus = function(part) {
+    if (!part || !part.expiryDate) return { status: 'none', days: 0 };
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const [y, m, d] = part.expiryDate.split('-');
+    const expDate = new Date(y, m - 1, d);
+    
+    const diffTime = expDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return { status: 'expired', days: diffDays };
+    } else if (diffDays <= SOON_DAYS) {
+        return { status: 'soon', days: diffDays };
+    } else {
+        return { status: 'ok', days: diffDays };
+    }
+};
+
+function getExpiryStatus(part) {
+    return window.getExpiryStatus(part);
+}
+// --- END EXPIRY DATE DEMO DATA ---
+
 const fullInventoryData = mockInventory;
+
 
 // Map inspection item IDs to part IDs (SKUs in this case matching id)
 const inspectionToPartMapping = {
@@ -2122,6 +2302,24 @@ function renderInventory() {
             stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
         }
 
+        let expBadgeDesktop = '';
+        if (typeof getExpiryStatus === 'function') {
+            const st = getExpiryStatus(item);
+            let fDate = item.expiryDate;
+            if (item.expiryDate) {
+                const [y, m, d] = item.expiryDate.split('-');
+                const dt = new Date(y, m - 1, d);
+                fDate = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            if (st.status === 'expired') {
+                expBadgeDesktop = `<div class="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 px-1.5 py-0.5 rounded"><i class="ph ph-calendar"></i> Expired ${fDate}</div>`;
+            } else if (st.status === 'soon') {
+                expBadgeDesktop = `<div class="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 border border-orange-200 bg-orange-50 px-1.5 py-0.5 rounded"><i class="ph ph-calendar"></i> Expires in ${st.days} days</div>`;
+            } else if (st.status === 'ok') {
+                expBadgeDesktop = `<div class="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 border border-slate-200 bg-slate-50 px-1.5 py-0.5 rounded"><i class="ph ph-calendar"></i> Exp: ${fDate}</div>`;
+            }
+        }
+
         let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
         let autoLinksTag = (item.linkedInspectionItems && item.linkedInspectionItems.length > 0) ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded text-[10px] font-bold border border-purple-200 ml-1"><i class="ph-bold ph-magic-wand text-purple-500"></i> Auto: ${item.linkedInspectionItems.map(l => (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[l.itemId]) ? inspectionItemMap[l.itemId].label : l.itemId).join(', ')}</span>` : '';
 
@@ -2141,10 +2339,13 @@ function renderInventory() {
                     <div class="font-medium text-slate-600">${item.category}</div>
                     <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
                 </td>
-                <td class="p-4 font-bold text-slate-800">₱${item.price.toFixed(2)}</td>
+                <td class="p-4 font-bold text-slate-800">\u20B1${item.price.toFixed(2)}</td>
                 <td class="p-4">
-                    ${stockBadge}
-                    <div class="text-[10px] font-semibold text-slate-400 mt-1.5 ml-1">(${item.reserved} Reserved)</div>
+                    <div class="flex flex-col items-start">
+                        ${stockBadge}
+                        ${expBadgeDesktop}
+                        <div class="text-[10px] font-semibold text-slate-400 mt-1 ml-1">(${item.reserved} Reserved)</div>
+                    </div>
                 </td>
                 ${showActions ? `
                 <td class="p-4 text-right">
@@ -2185,6 +2386,27 @@ function renderInventory() {
             let isOut = item.stock === 0;
             let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
             
+            let expDot = '';
+            let expRow = '';
+            if (typeof getExpiryStatus === 'function') {
+                const st = getExpiryStatus(item);
+                let fDate = item.expiryDate;
+                if (item.expiryDate) {
+                    const [y, m, d] = item.expiryDate.split('-');
+                    const dt = new Date(y, m - 1, d);
+                    fDate = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                }
+                if (st.status === 'expired') {
+                    expDot = '<span class="w-2 h-2 rounded-full bg-red-500 inline-block ml-2 mb-0.5 shadow-sm border border-red-200"></span>';
+                    expRow = `<div class="flex justify-between items-center"><span class="font-bold">Expires</span><span class="text-red-600 font-bold flex items-center gap-1"><i class="ph ph-calendar"></i> ${fDate}</span></div>`;
+                } else if (st.status === 'soon') {
+                    expDot = '<span class="w-2 h-2 rounded-full bg-orange-500 inline-block ml-2 mb-0.5 shadow-sm border border-orange-200"></span>';
+                    expRow = `<div class="flex justify-between items-center"><span class="font-bold">Expires</span><span class="text-orange-600 font-bold flex items-center gap-1"><i class="ph ph-calendar"></i> In ${st.days} days</span></div>`;
+                } else if (st.status === 'ok') {
+                    expRow = `<div class="flex justify-between items-center"><span class="font-bold">Expires</span><span class="text-slate-500 font-medium flex items-center gap-1"><i class="ph ph-calendar"></i> ${fDate}</span></div>`;
+                }
+            }
+            
             mobileHtml += `
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col ${isOut ? 'opacity-75' : ''}">
                 <div class="p-3 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors" onclick="toggleInvPartCard('${item.id}')">
@@ -2195,10 +2417,10 @@ function renderInventory() {
                         ${(item.img && !item.img.includes('placehold.co')) ? `<img src="${item.img}" class="absolute inset-0 w-full h-full object-cover z-10" onerror="this.style.display='none'">` : ''}
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-bold text-slate-800 text-sm leading-tight">${item.name}</div>
+                        <div class="font-bold text-slate-800 text-sm leading-tight">${item.name}${expDot}</div>
                         <div class="text-[11px] text-slate-400 font-mono mt-0.5">#${item.sku}</div>
                         <div class="flex items-center justify-between mt-1.5">
-                            <span class="font-bold text-slate-700 text-sm">₱${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                            <span class="font-bold text-slate-700 text-sm">\u20B1${item.price.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
                             ${stockBadgeMobile}
                         </div>
                     </div>
@@ -2214,6 +2436,7 @@ function renderInventory() {
                         <div class="flex justify-between items-center"><span class="font-bold">Location</span><span class="text-slate-500">${item.loc}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Reserved</span><span class="text-slate-500">${item.reserved}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Min Stock</span><span class="text-slate-500">${item.minStock}</span></div>
+                        ${expRow}
                         ${item.dtc ? `<div class="mt-1">${dtcTag}</div>` : ''}
                     </div>
                     ${showActions ? `
@@ -2231,12 +2454,29 @@ function renderInventory() {
         mobileContainer.innerHTML = mobileHtml;
     }
     updateDashboardWidgets();
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
 }
 
 function updateDashboardWidgets() {
     const lowStockParts = mockInventory.filter(p => p.stock > 0 && p.stock <= p.minStock);
     const outOfStockParts = mockInventory.filter(p => p.stock === 0);
-    const totalAlerts = lowStockParts.length + outOfStockParts.length;
+    
+    const expiredParts = [];
+    const soonParts = [];
+    if (typeof getExpiryStatus === 'function') {
+        mockInventory.forEach(p => {
+            const st = getExpiryStatus(p);
+            if (st.status === 'expired') expiredParts.push(p);
+            else if (st.status === 'soon') {
+                p._soonDays = st.days;
+                soonParts.push(p);
+            }
+        });
+    }
+    const totalAlerts = lowStockParts.length + outOfStockParts.length + expiredParts.length + soonParts.length;
+
 
     const countEl = document.getElementById('dashboard-inventory-alerts-count');
     if (countEl) countEl.textContent = totalAlerts;
@@ -2259,10 +2499,20 @@ function updateDashboardWidgets() {
         textParts.push(`${lowStockParts[0].name} is low (${lowStockParts[0].stock} left).`);
     }
     
-    const alertText = textParts.length > 0 ? textParts.join(' ') : 'Inventory levels are looking good.';
     
-    if (dashText) dashText.textContent = alertText;
-    if (mobileText) mobileText.textContent = alertText;
+    expiredParts.forEach(p => {
+        textParts.push(`<div class="mb-1"><span class="text-red-600 font-bold">Expired:</span> ${p.name}</div>`);
+    });
+    soonParts.forEach(p => {
+        textParts.push(`<div class="mb-1"><span class="text-orange-600 font-bold">Expiring soon:</span> ${p.name} (${p._soonDays} days)</div>`);
+    });
+    
+    textParts = textParts.map(t => t.startsWith('<div') ? t : `<div class="mb-1">${t}</div>`);
+    
+    const alertHtml = textParts.length > 0 ? textParts.join('') : 'Inventory levels are looking good.';
+    
+    if (dashText) dashText.innerHTML = alertHtml;
+    if (mobileText) mobileText.innerHTML = alertHtml;
 
     const reportsTbody = document.getElementById('reports-low-stock-tbody');
     if (reportsTbody) {
@@ -2318,7 +2568,7 @@ function renderWalkinCart() {
     if (!container || !totalLabel) return;
 
     walkinTotalDue = walkinCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-    totalLabel.textContent = `₱${walkinTotalDue.toFixed(2)}`;
+    totalLabel.textContent = `\u20B1${walkinTotalDue.toFixed(2)}`;
 
     if (walkinCart.length === 0) {
         container.innerHTML = `<div class="text-center p-6 bg-slate-50 rounded-lg border border-slate-200 border-dashed text-xs text-slate-400 font-medium">Cart is empty. Search and select parts above.</div>`;
@@ -2327,7 +2577,7 @@ function renderWalkinCart() {
             <div class="bg-white p-3 border border-slate-200 rounded-lg flex justify-between items-center shadow-sm animate-[fadeIn_0.2s_ease-out]">
                 <div class="flex-1">
                     <div class="text-sm font-bold text-slate-700 truncate pr-2">${item.name}</div>
-                    <div class="text-xs text-slate-500">₱${item.price.toFixed(2)} / unit</div>
+                    <div class="text-xs text-slate-500">\u20B1${item.price.toFixed(2)} / unit</div>
                 </div>
                 <div class="flex items-center gap-2 sm:gap-4">
                     <div class="flex items-center bg-slate-50 rounded-md border border-slate-200">
@@ -2335,7 +2585,7 @@ function renderWalkinCart() {
                         <span class="w-6 text-center text-xs font-bold text-slate-700">${item.qty}</span>
                         <button class="px-2 py-1 text-slate-400 hover:text-emerald-600 btn-cart-plus transition-colors" data-index="${index}"><i class="ph-bold ph-plus"></i></button>
                     </div>
-                    <div class="text-sm font-bold text-slate-800 w-16 text-right">₱${(item.price * item.qty).toFixed(2)}</div>
+                    <div class="text-sm font-bold text-slate-800 w-16 text-right">\u20B1${(item.price * item.qty).toFixed(2)}</div>
                     <button class="text-slate-400 hover:text-red-500 p-1 btn-cart-remove" data-index="${index}"><i class="ph-bold ph-trash"></i></button>
                 </div>
             </div>
@@ -2360,15 +2610,21 @@ document.addEventListener('input', function(e) {
         const matches = typeof fullInventoryData !== 'undefined' ? fullInventoryData.filter(p => p.name.toLowerCase().includes(query) || p.sku.toLowerCase().includes(query)) : [];
         
         if (matches.length > 0) {
-            dropdown.innerHTML = matches.map(part => `
+            dropdown.innerHTML = matches.map(part => {
+    let expText = '';
+    if (typeof getExpiryStatus === 'function' && getExpiryStatus(part).status === 'expired') {
+        expText = '<span class="text-red-600 text-[10px] font-bold ml-1.5">Expired</span>';
+    }
+    return `
                 <div class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer flex justify-between items-center walkin-autocomplete-item" data-id="${part.id}">
                     <div>
-                        <div class="text-sm font-bold text-slate-800">${part.name}</div>
+                        <div class="text-sm font-bold text-slate-800">${part.name}${expText}</div>
                         <div class="text-[10px] text-slate-500">Stock Available: ${part.stock}</div>
                     </div>
-                    <div class="text-sm font-bold text-emerald-600">₱${part.price.toFixed(2)}</div>
+                    <div class="text-sm font-bold text-emerald-600">\u20B1${part.price.toFixed(2)}</div>
                 </div>
-            `).join('');
+            `;
+}).join('');
             dropdown.classList.remove('hidden');
         } else {
             dropdown.innerHTML = `<div class="p-3 text-sm text-slate-500 text-center">No parts found matching "${query}".</div>`;
@@ -2442,11 +2698,11 @@ window.calcWalkinChange = function() {
     if (!changeLabel) return;
 
     if (tendered >= walkinTotalDue && walkinTotalDue > 0) {
-        changeLabel.textContent = `₱${(tendered - walkinTotalDue).toFixed(2)}`;
+        changeLabel.textContent = `\u20B1${(tendered - walkinTotalDue).toFixed(2)}`;
         changeLabel.parentElement.classList.remove('text-red-400');
         changeLabel.parentElement.classList.add('text-emerald-400');
     } else {
-        changeLabel.textContent = "₱0.00";
+        changeLabel.textContent = "\u20B10.00";
         changeLabel.parentElement.classList.remove('text-emerald-400');
         changeLabel.parentElement.classList.add('text-red-400');
     }
@@ -2513,7 +2769,7 @@ const mockTxnData = [
         details: 'Yamaha NMAX (XYZ-9876)',
         amount: 2500.00,
         amountSuffix: '<span class="text-[10px] font-normal text-slate-400 ml-1">(Final)</span>',
-        status: 'Partial/Adv Paid (₱500)',
+        status: 'Partial/Adv Paid (\u20B1500)',
         statusClass: 'bg-yellow-50 text-yellow-700 border-yellow-200',
         statusDot: 'bg-yellow-500',
         btnText: 'Settle Balance',
@@ -2581,7 +2837,7 @@ function renderTransactions() {
                     <div class="font-semibold text-slate-700">${txn.customer}</div>
                     <div class="text-xs text-slate-500 mt-0.5">${txn.details}</div>
                 </td>
-                <td class="p-4 font-bold text-slate-800">₱${txn.amount.toFixed(2)} ${txn.amountSuffix}</td>
+                <td class="p-4 font-bold text-slate-800">\u20B1${txn.amount.toFixed(2)} ${txn.amountSuffix}</td>
                 <td class="p-4">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${txn.statusClass}">
                         ${statusIndicator}
@@ -2685,7 +2941,7 @@ function renderHistory() {
                 <span class="font-bold text-slate-700 block mb-0.5">${record.issueTitle}</span>
                 ${record.issueDesc}
             </td>
-            <td class="p-4 font-bold text-slate-800">₱${record.cost.toFixed(2)}</td>
+            <td class="p-4 font-bold text-slate-800">\u20B1${record.cost.toFixed(2)}</td>
             <td class="p-4 text-center">
                 <button onclick="openHistoryDetailModal()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
                     View Full Record
@@ -2764,12 +3020,12 @@ function renderReports(range = 'today') {
     safeSet('kpi-scan-clear', data.scanClear);
 
     // Update Breakdown Charts & Tables
-    safeSet('chart-rev-parts', `₱${data.chartParts}`);
-    safeSet('chart-rev-repair', `₱${data.chartRepair}`);
+    safeSet('chart-rev-parts', `\u20B1${data.chartParts}`);
+    safeSet('chart-rev-repair', `\u20B1${data.chartRepair}`);
     
-    safeSet('summary-adv', `₱${data.sumAdv}`);
-    safeSet('summary-out', `₱${data.sumOut}`);
-    safeSet('summary-set', `₱${data.sumSet}`);
+    safeSet('summary-adv', `\u20B1${data.sumAdv}`);
+    safeSet('summary-out', `\u20B1${data.sumOut}`);
+    safeSet('summary-set', `\u20B1${data.sumSet}`);
 }
 
 // Attach Event Listener for Date Range Filters
@@ -3563,7 +3819,7 @@ window.proceedToPayment = function(jobId) {
                         <span class="font-semibold text-slate-700">${p.part.name}</span> <span class="text-xs text-slate-500">x${p.qty}</span>
                         <div class="text-[10px] text-slate-400">For: ${p.target}</div>
                     </div>
-                    <span class="font-mono text-slate-700">₱${lineTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                    <span class="font-mono text-slate-700">\u20B1${lineTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
                 </div>
             `;
         });
@@ -3573,14 +3829,14 @@ window.proceedToPayment = function(jobId) {
             itemsHTML += `
                 <div class="flex justify-between text-sm py-2 mt-2 border-t border-slate-100">
                     <div class="font-semibold text-slate-700">Labor</div>
-                    <span class="font-mono text-slate-700">₱${job.repairPlan.laborCost.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
+                    <span class="font-mono text-slate-700">\u20B1${job.repairPlan.laborCost.toLocaleString('en-US', {minimumFractionDigits: 2})}</span>
                 </div>
             `;
         }
     }
     
     document.getElementById('payment-items').innerHTML = itemsHTML || '<div class="text-sm text-slate-500 text-center py-2">No items</div>';
-    document.getElementById('payment-grand-total').textContent = `₱${grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('payment-grand-total').textContent = `\u20B1${grandTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     
     currentPaymentJob.computedTotal = grandTotal;
     
@@ -3661,7 +3917,7 @@ function updatePaymentValidation() {
     const baseTotal = currentPaymentJob.computedTotal || 0;
     const total = Math.max(0, baseTotal - discount);
     
-    document.getElementById('payment-grand-total').textContent = `₱${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('payment-grand-total').textContent = `\u20B1${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
     
     if (currentPayMethod === 'Cash') {
         const amount = parseFloat(document.getElementById('payment-amount').value) || 0;
@@ -5426,11 +5682,15 @@ window.performAutoAssignSearch = function(itemId, query) {
     
     let html = '';
     results.forEach(p => {
+        let expText = '';
+        if (typeof getExpiryStatus === 'function' && getExpiryStatus(p).status === 'expired') {
+            expText = '<span class="text-red-600 text-[10px] font-bold ml-1.5">Expired</span>';
+        }
         html += `
             <div class="flex items-center justify-between p-2 hover:bg-gray-50 border-b last:border-0">
                 <div class="flex-1 min-w-0 pr-2">
-                    <div class="text-sm font-medium text-gray-900 truncate">${p.name}</div>
-                    <div class="text-xs text-gray-500">${p.sku} | ₱${p.price.toLocaleString()}</div>
+                    <div class="text-sm font-medium text-gray-900 truncate">${p.name}${expText}</div>
+                    <div class="text-xs text-gray-500">${p.sku} | \u20B1${p.price.toLocaleString()}</div>
                 </div>
                 <div class="flex items-center gap-2">
                     <input type="number" id="aa-qty-${itemId}-${p.id}" value="1" min="1" class="w-16 px-2 py-1 text-sm border rounded focus:ring-purple-500 focus:border-purple-500">
