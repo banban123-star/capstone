@@ -10,46 +10,46 @@ const MOTORCYCLE_BRANDS = ['Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Kymco', 'SY
 // --- Mock Inventory Data for Diagnostics Autocomplete ---
 const mockInventory = [
     // 1. Transmission & Drivetrain
-    { id: '980187', sku: '980187', name: 'Chain (Global 428h/120l)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'Global Parts', loc: 'Shelf C-1', price: 400, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Chn' },
-    { id: '330124', sku: '330124', name: 'Chain (Krx 428h/130l)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'Krx Moto', loc: 'Shelf C-1', price: 450, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Chn' },
-    { id: '120707', sku: '120707', name: 'Sprocket (TRQ 14t)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'TRQ Moto', loc: 'Shelf C-2', price: 200, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
-    { id: '120701', sku: '120701', name: 'Sprocket (TRQ 38t)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'TRQ Moto', loc: 'Shelf C-2', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
-    { id: '120708', sku: '120708', name: 'Sprocket (TRQ 42t)', category: 'Transmission & Drivetrain', comp: 'Universal', supplier: 'TRQ Moto', loc: 'Shelf C-2', price: 400, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
+    { id: '980187', sku: '980187', name: 'Chain (Global 428h/120l)', category: 'Transmission & Drivetrain', comp: 'Universal', price: 400, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Chn' },
+    { id: '330124', sku: '330124', name: 'Chain (Krx 428h/130l)', category: 'Transmission & Drivetrain', comp: 'Universal', price: 450, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Chn' },
+    { id: '120707', sku: '120707', name: 'Sprocket (TRQ 14t)', category: 'Transmission & Drivetrain', comp: 'Universal', price: 200, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
+    { id: '120701', sku: '120701', name: 'Sprocket (TRQ 38t)', category: 'Transmission & Drivetrain', comp: 'Universal', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
+    { id: '120708', sku: '120708', name: 'Sprocket (TRQ 42t)', category: 'Transmission & Drivetrain', comp: 'Universal', price: 400, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
 
     // 2. Electrical & Electronics
-    { id: '170010', sku: '170010', name: 'Battery (Spypower 12n5l)', category: 'Electrical & Electronics', comp: 'Universal 12V', supplier: 'Spypower', loc: 'Shelf E-1', price: 900, stock: 5, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bat' },
-    { id: '212028', sku: '212028', name: 'Ignition Switch (TTGR TMX supremo)', category: 'Electrical & Electronics', comp: 'TMX Supremo', supplier: 'TTGR Parts', loc: 'Shelf E-2', price: 250, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
-    { id: '211637', sku: '211637', name: 'Starter Relay (TTGR gy6)', category: 'Electrical & Electronics', comp: 'GY6', supplier: 'TTGR Parts', loc: 'Shelf E-2', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Rel' },
-    { id: '210844', sku: '210844', name: 'Regulator (TTGR 5wire green white)', category: 'Electrical & Electronics', comp: 'Universal 5-wire', supplier: 'TTGR Parts', loc: 'Shelf E-2', price: 300, stock: 3, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Reg' },
-    { id: '330601', sku: '330601', name: 'Ignition Switch (Leitakitaca tmx155)', category: 'Electrical & Electronics', comp: 'TMX 155', supplier: 'Leitakitaca', loc: 'Shelf E-2', price: 220, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
+    { id: '170010', sku: '170010', name: 'Battery (Spypower 12n5l)', category: 'Electrical & Electronics', comp: 'Universal 12V', price: 900, stock: 5, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bat' },
+    { id: '212028', sku: '212028', name: 'Ignition Switch (TTGR TMX supremo)', category: 'Electrical & Electronics', comp: 'TMX Supremo', price: 250, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
+    { id: '211637', sku: '211637', name: 'Starter Relay (TTGR gy6)', category: 'Electrical & Electronics', comp: 'GY6', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Rel' },
+    { id: '210844', sku: '210844', name: 'Regulator (TTGR 5wire green white)', category: 'Electrical & Electronics', comp: 'Universal 5-wire', price: 300, stock: 3, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Reg' },
+    { id: '330601', sku: '330601', name: 'Ignition Switch (Leitakitaca tmx155)', category: 'Electrical & Electronics', comp: 'TMX 155', price: 220, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
 
     // 3. Fuel & Engine Intake
-    { id: '211700', sku: '211700', name: 'Carburetor (Keihin xr200)', category: 'Fuel & Engine Intake', comp: 'XR200', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 1200, stock: 2, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
-    { id: '121060', sku: '121060', name: 'Carburetor (Keihin tmx 155)', category: 'Fuel & Engine Intake', comp: 'TMX 155', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 950, stock: 4, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
-    { id: '212031', sku: '212031', name: 'Carburetor (Keihin tmx 125)', category: 'Fuel & Engine Intake', comp: 'TMX 125', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 900, stock: 6, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
-    { id: '330161', sku: '330161', name: 'Carburetor (Keihin 28mm/26mm)', category: 'Fuel & Engine Intake', comp: 'Universal 28mm/26mm', supplier: 'Keihin Corp', loc: 'Shelf F-1', price: 1100, stock: 3, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
-    { id: '981057', sku: '981057', name: 'Fuel Tank Cap (Crossspoo tmx)', category: 'Fuel & Engine Intake', comp: 'TMX', supplier: 'Crossspoo', loc: 'Shelf F-2', price: 150, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Cap' },
+    { id: '211700', sku: '211700', name: 'Carburetor (Keihin xr200)', category: 'Fuel & Engine Intake', comp: 'XR200', price: 1200, stock: 2, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '121060', sku: '121060', name: 'Carburetor (Keihin tmx 155)', category: 'Fuel & Engine Intake', comp: 'TMX 155', price: 950, stock: 4, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '212031', sku: '212031', name: 'Carburetor (Keihin tmx 125)', category: 'Fuel & Engine Intake', comp: 'TMX 125', price: 900, stock: 6, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '330161', sku: '330161', name: 'Carburetor (Keihin 28mm/26mm)', category: 'Fuel & Engine Intake', comp: 'Universal 28mm/26mm', price: 1100, stock: 3, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
+    { id: '981057', sku: '981057', name: 'Fuel Tank Cap (Crossspoo tmx)', category: 'Fuel & Engine Intake', comp: 'TMX', price: 150, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Cap' },
 
     // 4. Wheels & Tires
-    { id: '330027', sku: '330027', name: 'Tube Tire (Krx 2.25x17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Krx Moto', loc: 'Shelf T-1', price: 450, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
-    { id: '330025', sku: '330025', name: 'Tube Tire (Krx 2.50x17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Krx Moto', loc: 'Shelf T-1', price: 500, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
-    { id: '330313', sku: '330313', name: 'Tube Tire (Krx 410x18)', category: 'Wheels & Tires', comp: 'Universal 18"', supplier: 'Krx Moto', loc: 'Shelf T-1', price: 800, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
-    { id: '122027', sku: '122027', name: 'Tire (Beast flash 120/70/17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Beast Moto', loc: 'Shelf T-2', price: 1800, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
-    { id: 'PROTO-T01', sku: 'PROTO-T01', name: 'Tire (Fuji 300x17)', category: 'Wheels & Tires', comp: 'Universal 17"', supplier: 'Fuji Tires', loc: 'Shelf T-2', price: 950, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '330027', sku: '330027', name: 'Tube Tire (Krx 2.25x17)', category: 'Wheels & Tires', comp: 'Universal 17"', price: 450, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '330025', sku: '330025', name: 'Tube Tire (Krx 2.50x17)', category: 'Wheels & Tires', comp: 'Universal 17"', price: 500, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '330313', sku: '330313', name: 'Tube Tire (Krx 410x18)', category: 'Wheels & Tires', comp: 'Universal 18"', price: 800, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: '122027', sku: '122027', name: 'Tire (Beast flash 120/70/17)', category: 'Wheels & Tires', comp: 'Universal 17"', price: 1800, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
+    { id: 'PROTO-T01', sku: 'PROTO-T01', name: 'Tire (Fuji 300x17)', category: 'Wheels & Tires', comp: 'Universal 17"', price: 950, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
 
     // 5. Suspension, Brakes & Cooling
-    { id: '950569', sku: '950569', name: 'Pivot Bushing (Otaka tmx155)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', supplier: 'Otaka', loc: 'Shelf S-1', price: 120, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
-    { id: '060110', sku: '060110', name: 'Steel Bushing (tmx155 transparent packaging)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', supplier: 'Generic', loc: 'Shelf S-1', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
-    { id: 'PROTO-B01', sku: 'PROTO-B01', name: 'Front Disc Brake Pads', category: 'Suspension, Brakes & Cooling', comp: 'Universal Disc', supplier: 'Nissin', loc: 'Shelf S-2', price: 250, stock: 2, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Pad' },
-    { id: 'PROTO-C01', sku: 'PROTO-C01', name: 'Coolant Temp Sensor (OEM Honda)', category: 'Suspension, Brakes & Cooling', comp: 'Honda Click/PCX', supplier: 'Honda PH', loc: 'Shelf S-2', price: 850, stock: 6, minStock: 3, reserved: 0, dtc: 'P0118, P0119', linkedDTCs: ['P0118', 'P0119'], img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Sens' },
-    { id: 'PROTO-S01', sku: 'PROTO-S01', name: 'Front Fork Seals', category: 'Suspension, Brakes & Cooling', comp: 'Universal', supplier: 'NOK', loc: 'Shelf S-3', price: 180, stock: 0, minStock: 4, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Seal' },
+    { id: '950569', sku: '950569', name: 'Pivot Bushing (Otaka tmx155)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', price: 120, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
+    { id: '060110', sku: '060110', name: 'Steel Bushing (tmx155 transparent packaging)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
+    { id: 'PROTO-B01', sku: 'PROTO-B01', name: 'Front Disc Brake Pads', category: 'Suspension, Brakes & Cooling', comp: 'Universal Disc', price: 250, stock: 2, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Pad' },
+    { id: 'PROTO-C01', sku: 'PROTO-C01', name: 'Coolant Temp Sensor (OEM Honda)', category: 'Suspension, Brakes & Cooling', comp: 'Honda Click/PCX', price: 850, stock: 6, minStock: 3, reserved: 0, dtc: 'P0118, P0119', linkedDTCs: ['P0118', 'P0119'], img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Sens' },
+    { id: 'PROTO-S01', sku: 'PROTO-S01', name: 'Front Fork Seals', category: 'Suspension, Brakes & Cooling', comp: 'Universal', price: 180, stock: 0, minStock: 4, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Seal' },
 
     // 6. Accessories, Add-Ons & Consumables
-    { id: '022278', sku: '022278', name: 'Mini Driving Light (MRM-4596 v1)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'MRM', loc: 'Shelf A-1', price: 650, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
-    { id: '021568', sku: '021568', name: 'Mini Driving Light (MRM-4502 v6)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'MRM', loc: 'Shelf A-1', price: 850, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
-    { id: '980048', sku: '980048', name: 'Snail Horn (Global)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'Global Parts', loc: 'Shelf A-2', price: 250, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Horn' },
-    { id: '021718', sku: '021718', name: 'Side Mirror (MRM domino)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'MRM', loc: 'Shelf A-3', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Mirr' },
-    { id: '330411', sku: '330411', name: 'Handle Grip (Monster rubber ard)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', supplier: 'Monster', loc: 'Shelf A-4', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Grip' }
+    { id: '022278', sku: '022278', name: 'Mini Driving Light (MRM-4596 v1)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 650, stock: 8, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
+    { id: '021568', sku: '021568', name: 'Mini Driving Light (MRM-4502 v6)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 850, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
+    { id: '980048', sku: '980048', name: 'Snail Horn (Global)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 250, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Horn' },
+    { id: '021718', sku: '021718', name: 'Side Mirror (MRM domino)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Mirr' },
+    { id: '330411', sku: '330411', name: 'Handle Grip (Monster rubber ard)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Grip' }
 ];
 
 // --- Mock Customer Data ---
@@ -434,6 +434,24 @@ const mainContentArea = document.getElementById('main-content-area');
 let viewLoadToken = 0;
 
 async function loadView(viewName) {
+    const allowedScreens = rolePermissions[currentRole] || [];
+    if (viewName !== 'more' && !allowedScreens.includes(viewName)) {
+        mainContentArea.innerHTML = `
+            <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                    <i class="ph-bold ph-lock-key"></i>
+                </div>
+                <h2 class="text-slate-800 font-bold text-lg mb-2">Access Denied</h2>
+                <p class="text-slate-500 text-sm mb-6">You do not have access to this screen.</p>
+                <button onclick="document.querySelector('.nav-link[data-target=\\'dashboard\\']')?.click()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm">
+                    Back to Dashboard
+                </button>
+            </div>
+        `;
+        mainContentArea.classList.remove('m-screen');
+        mainContentArea.scrollTop = 0;
+        return;
+    }
     const loadToken = ++viewLoadToken;
     let html;
     let useMobileView = false;
@@ -480,6 +498,14 @@ async function loadView(viewName) {
 
     try {
         if (useMobileView && viewName === 'dashboard') renderMobileHome();
+
+        if (viewName === 'dashboard') {
+            const backupAlert = document.getElementById('dashboard-backup-alert');
+            if (backupAlert) {
+                const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
+                backupAlert.style.display = canBackup ? 'flex' : 'none';
+            }
+        }
 
         // Initialize Diagnostics view state
         if (viewName === 'diagnostics') {
@@ -532,28 +558,11 @@ async function loadView(viewName) {
 
         // Initialize Mobile More view
         if (useMobileView && viewName === 'more') {
-            const moreView = document.getElementById('m-more-view');
-            if (moreView) {
-                moreView.querySelectorAll('button[data-mtab]').forEach(el => {
-                    const target = el.getAttribute('data-mtab');
-                    if (target) {
-                        const allowed = rolePermissions[currentRole] && rolePermissions[currentRole].includes(target);
-                        el.style.display = allowed ? '' : 'none';
-                    }
-                });
-                
-                // Hide parent sections if all children are hidden
-                moreView.querySelectorAll('div.bg-white.rounded-2xl').forEach(parentDiv => {
-                    const anyVisible = Array.from(parentDiv.querySelectorAll('button[data-mtab]')).some(b => b.style.display !== 'none');
-                    const sectionContainer = parentDiv.parentElement;
-                    if (sectionContainer) sectionContainer.style.display = anyVisible ? '' : 'none';
-                });
-            }
-            
-            const deskToggle = document.getElementById('m-more-desktop-toggle');
-            if (deskToggle) {
-                deskToggle.style.display = currentRole === 'owner' ? '' : 'none';
-            }
+            updateMobileMoreNav(currentRole);
+        }
+
+        if (typeof updateRoleLabels === 'function') {
+            updateRoleLabels();
         }
 
     } catch (error) {
@@ -621,25 +630,40 @@ navLinks.forEach(link => {
 });
 
 // --- Role-Based Access Control (RBAC) Simulation ---
-const systemUsers = {
-    superadmin: { name: 'System Admin', role: 'Super Admin', initials: 'SA', color: 'bg-slate-800' },
-    owner: { name: 'Admin', role: 'Shop Owner', initials: 'IG', color: 'bg-blue-600' },
-    chief: { name: 'Larpus', role: 'Chief Mechanic', initials: 'JB', color: 'bg-purple-600' },
-    sub: { name: 'Hiyo', role: 'Sub-Mechanic', initials: 'F', color: 'bg-slate-600' },
-    
+const ROLES_CONFIG = {
+    super_admin: {
+        id: 'super_admin',
+        label: 'Super Admin',
+        description: 'Users and system settings'
+    },
+    admin: {
+        id: 'admin',
+        label: 'Admin',
+        description: 'Full shop access'
+    },
+    mechanic: {
+        id: 'mechanic',
+        label: 'Mechanic',
+        description: 'Repairs and diagnostics'
+    }
 };
 
-let currentRole = 'owner';
+const systemUsers = {
+    super_admin: { name: 'System Admin', role: ROLES_CONFIG.super_admin.label, initials: 'SA', color: 'bg-slate-800', password: 'admin123' },
+    admin: { name: 'User', role: ROLES_CONFIG.admin.label, initials: 'IG', color: 'bg-blue-600', password: 'admin123' },
+    mechanic: { name: 'Larpus', role: ROLES_CONFIG.mechanic.label, initials: 'JB', color: 'bg-purple-600', password: 'mech123' }
+};
+
+let currentRole = 'admin';
 
 const rolePermissions = {
-    superadmin: ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings', 'backup'],
-    owner:      ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings', 'backup'],
-    chief:      ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'history', 'settings'],
-    sub:        ['dashboard', 'diagnostics', 'repairs', 'inventory', 'settings']
+    super_admin: ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings', 'backup'],
+    admin:       ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings'],
+    mechanic:    ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'history', 'settings']
 };
 
 const ROLE_PERMISSIONS = {
-    sys: {
+    super_admin: {
         'inventory.view': true,
         'inventory.search': true,
         'inventory.restock': true,
@@ -648,7 +672,7 @@ const ROLE_PERMISSIONS = {
         'inventory.walkInSale': true,
         'inventory.autoAssign': true
     },
-    owner: {
+    admin: {
         'inventory.view': true,
         'inventory.search': true,
         'inventory.restock': true,
@@ -657,16 +681,7 @@ const ROLE_PERMISSIONS = {
         'inventory.walkInSale': true,
         'inventory.autoAssign': true
     },
-    chief: {
-        'inventory.view': true,
-        'inventory.search': true,
-        'inventory.restock': false,
-        'inventory.addPart': false,
-        'inventory.editPart': false,
-        'inventory.walkInSale': false,
-        'inventory.autoAssign': false
-    },
-    sub: {
+    mechanic: {
         'inventory.view': true,
         'inventory.search': true,
         'inventory.restock': false,
@@ -685,18 +700,145 @@ window.can = function(role, permission) {
     return !!(ROLE_PERMISSIONS[role] && ROLE_PERMISSIONS[role][permission]);
 };
 
+function updateRoleLabels() {
+    // 1. Login role cards (titles & descriptions)
+    document.querySelectorAll('#role-selector .role-card[data-role]').forEach(card => {
+        const rId = card.getAttribute('data-role');
+        const cfg = ROLES_CONFIG[rId];
+        if (cfg) {
+            const titleEl = card.querySelector('.role-card-title');
+            if (titleEl) titleEl.textContent = cfg.label;
+            const descEl = card.querySelector('.role-card-desc');
+            if (descEl) descEl.textContent = cfg.description;
+        }
+    });
+
+    // 2. Sidebar role label
+    const userRoleText = document.getElementById('user-role-text');
+    if (userRoleText && ROLES_CONFIG[currentRole]) {
+        userRoleText.textContent = ROLES_CONFIG[currentRole].label;
+    }
+
+    // 3. Settings > Current Session role
+    const accRole = document.getElementById('acc-role');
+    if (accRole && ROLES_CONFIG[currentRole]) {
+        accRole.textContent = ROLES_CONFIG[currentRole].label;
+    }
+
+    // 4. Dashboard subtext under "Welcome back"
+    const dashSub = document.getElementById('dashboard-subtext');
+    if (dashSub) {
+        const roleLabel = ROLES_CONFIG[currentRole]?.label || ROLES_CONFIG.admin.label;
+        dashSub.textContent = `${roleLabel} | Thursday, September 24, 2026`;
+    }
+
+    // 5. "Simulate Login As" dropdown
+    const roleSwitcher = document.getElementById('role-switcher');
+    if (roleSwitcher) {
+        const suffixes = { super_admin: ' (System)', admin: ' (User)', mechanic: ' (Larpus)' };
+        roleSwitcher.innerHTML = Object.values(ROLES_CONFIG).map(r => 
+            `<option value="${r.id}">${r.label}${suffixes[r.id] || ''}</option>`
+        ).join('');
+        roleSwitcher.value = currentRole;
+    }
+
+    // 6. User Management: role filter dropdown
+    const userFilterRole = document.getElementById('user-filter-role');
+    if (userFilterRole) {
+        const currentVal = userFilterRole.value;
+        userFilterRole.innerHTML = `
+            <option value="all">Filter by Role: All</option>
+            <option value="super_admin">${ROLES_CONFIG.super_admin.label}</option>
+            <option value="admin">${ROLES_CONFIG.admin.label}</option>
+            <option value="mechanic">${ROLES_CONFIG.mechanic.label}</option>
+        `;
+        if (currentVal) userFilterRole.value = currentVal;
+    }
+
+    // 7. User Management: Add/Edit User modal role dropdown
+    const userFormRole = document.getElementById('user-form-role');
+    if (userFormRole) {
+        userFormRole.innerHTML = `
+            <option value="" disabled selected>Select Role Assignment...</option>
+            <option value="super_admin">${ROLES_CONFIG.super_admin.label} (${ROLES_CONFIG.super_admin.description})</option>
+            <option value="admin">${ROLES_CONFIG.admin.label} (${ROLES_CONFIG.admin.description})</option>
+            <option value="mechanic">${ROLES_CONFIG.mechanic.label} (${ROLES_CONFIG.mechanic.description})</option>
+        `;
+    }
+
+    // 8. Permissions Matrix headings
+    const matrixSuper = document.querySelector('.matrix-role-super_admin');
+    if (matrixSuper) matrixSuper.textContent = ROLES_CONFIG.super_admin.label;
+    const matrixAdmin = document.querySelector('.matrix-role-admin');
+    if (matrixAdmin) matrixAdmin.textContent = ROLES_CONFIG.admin.label;
+    const matrixMech = document.querySelector('.matrix-role-mechanic');
+    if (matrixMech) matrixMech.textContent = ROLES_CONFIG.mechanic.label;
+
+    // 9. Audit Logs role filter dropdown
+    const auditFilterRole = document.getElementById('audit-filter-role');
+    if (auditFilterRole) {
+        const currentVal = auditFilterRole.value;
+        auditFilterRole.innerHTML = `
+            <option value="all">User Role: All</option>
+            <option value="super_admin">${ROLES_CONFIG.super_admin.label}</option>
+            <option value="admin">${ROLES_CONFIG.admin.label}</option>
+            <option value="mechanic">${ROLES_CONFIG.mechanic.label}</option>
+            <option value="automated">Automated (System)</option>
+        `;
+        if (currentVal) auditFilterRole.value = currentVal;
+    }
+
+    // 10. Dashboard Backup Alert
+    const backupAlert = document.getElementById('dashboard-backup-alert');
+    if (backupAlert) {
+        const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
+        backupAlert.style.display = canBackup ? 'flex' : 'none';
+    }
+}
+
+function updateMobileMoreNav(roleId) {
+    const moreView = document.getElementById('m-more-view');
+    if (!moreView) return;
+    const allowed = rolePermissions[roleId] || [];
+    
+    moreView.querySelectorAll('button[data-mtab]').forEach(el => {
+        const target = el.getAttribute('data-mtab');
+        if (target) {
+            el.style.display = allowed.includes(target) ? '' : 'none';
+        }
+    });
+    
+    // Hide parent sections if all children are hidden
+    moreView.querySelectorAll('div.bg-white.rounded-2xl').forEach(parentDiv => {
+        const anyVisible = Array.from(parentDiv.querySelectorAll('button[data-mtab]')).some(b => b.style.display !== 'none');
+        const sectionContainer = parentDiv.parentElement;
+        if (sectionContainer) sectionContainer.style.display = anyVisible ? '' : 'none';
+    });
+
+    const deskToggle = document.getElementById('m-more-desktop-toggle');
+    if (deskToggle) {
+        deskToggle.style.display = '';
+    }
+}
+
 function switchRole(roleId) {
+    if (!roleId || !ROLES_CONFIG[roleId] || !systemUsers[roleId]) {
+        handleLogout();
+        return;
+    }
     const user = systemUsers[roleId];
     currentRole = roleId;
+    localStorage.setItem('activeRole', roleId);
+    sessionStorage.setItem('currentUserRole', roleId);
 
-    // 0. Chief / Sub-Mechanic run in the mobile-app UI; every other role keeps the desktop UI
+    // 0. Mechanic runs in the mobile-app UI; every other role keeps the desktop UI
     const wasMobile = document.body.classList.contains('mobile-app');
     const isMobile = applyMobileMode(roleId);
     document.querySelectorAll('#role-switcher, #m-role-switcher').forEach(s => { s.value = roleId; });
     
     // 1. Update Profile UI
     document.getElementById('user-name').textContent = user.name;
-    document.getElementById('user-role-text').textContent = user.role;
+    document.getElementById('user-role-text').textContent = ROLES_CONFIG[roleId].label;
     const avatar = document.getElementById('user-avatar');
     avatar.textContent = user.initials;
     avatar.className = `w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-inner ${user.color}`;
@@ -720,24 +862,39 @@ function switchRole(roleId) {
         }
     });
 
-    // 3. Hide/Show Header Sections (Admin & Settings are Owner Only)
+    // 3. Hide/Show Header Sections
     const adminHeader = document.getElementById('nav-header-admin');
     const settingsHeader = document.getElementById('nav-header-settings');
     const desktopMobileToggle = document.getElementById('desktop-mobile-toggle');
     
-    if (roleId === 'owner') {
-        if(adminHeader) adminHeader.style.display = 'block';
-        if(settingsHeader) settingsHeader.style.display = 'block';
-        if(desktopMobileToggle) desktopMobileToggle.style.display = 'flex';
-    } else {
-        if(adminHeader) adminHeader.style.display = 'none';
-        if(settingsHeader) settingsHeader.style.display = 'none';
-        if(desktopMobileToggle) desktopMobileToggle.style.display = 'none';
+    if (adminHeader) {
+        adminHeader.style.display = (roleId === 'super_admin' || roleId === 'admin') ? 'block' : 'none';
     }
 
+    if (settingsHeader) {
+        const hasVisibleSettings = Array.from(settingsHeader.querySelectorAll('.nav-link[data-target]'))
+            .some(link => {
+                const target = link.getAttribute('data-target');
+                return rolePermissions[roleId] && rolePermissions[roleId].includes(target);
+            });
+        settingsHeader.style.display = hasVisibleSettings ? 'block' : 'none';
+    }
+
+    if (desktopMobileToggle) {
+        desktopMobileToggle.style.display = 'flex';
+    }
+
+    updateRoleLabels();
+    updateMobileMoreNav(roleId);
+
     // 4. Force redirect to Dashboard if the user is currently on a restricted page
-    if (!isCurrentViewAllowed) {
-        document.querySelector('.nav-link[data-target="dashboard"]').click();
+    const isCurrentlyOnBackup = !!document.querySelector('#main-content-area #view-backup') || currentActiveTarget === 'backup';
+    const roleHasBackupAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('backup');
+
+    if (isCurrentlyOnBackup && !roleHasBackupAccess) {
+        document.querySelector('.nav-link[data-target="dashboard"]')?.click();
+    } else if (!isCurrentViewAllowed) {
+        document.querySelector('.nav-link[data-target="dashboard"]')?.click();
     } else if (wasMobile || isMobile || currentActiveTarget === 'inventory') {
         // Entering/leaving mobile mode, or viewing inventory: re-render the current screen
         document.querySelector(`.nav-link[data-target="${currentActiveTarget}"]`)?.click();
@@ -758,8 +915,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const shopHours = document.getElementById('landing-shop-hours');
     if (shopHours) shopHours.textContent = shopConfig.hours;
 
+    // Reset old sessions so swapped roles don't grant mismatched access
+    const ROLES_SESSION_VERSION = 'v3_swapped';
+    if (sessionStorage.getItem('roles_version') !== ROLES_SESSION_VERSION) {
+        sessionStorage.clear();
+        localStorage.removeItem('activeRole');
+        sessionStorage.setItem('roles_version', ROLES_SESSION_VERSION);
+    }
+
     const activeRole = localStorage.getItem('activeRole');
-    if (activeRole && systemUsers[activeRole]) {
+    if (activeRole && ROLES_CONFIG[activeRole] && systemUsers[activeRole]) {
         switchRole(activeRole);
         const loginScreen = document.getElementById('login-screen');
         if (loginScreen) {
@@ -768,12 +933,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         document.querySelector('.nav-link[data-target="dashboard"]')?.click();
     } else {
+        localStorage.removeItem('activeRole');
+        sessionStorage.removeItem('currentUserRole');
         const loginScreen = document.getElementById('login-screen');
         if (loginScreen) {
             loginScreen.classList.remove('hidden');
             loginScreen.classList.add('flex');
         }
+        if (typeof showLoginForm === 'function') showLoginForm();
     }
+    updateRoleLabels();
 });
 
 
@@ -1135,7 +1304,7 @@ function renderRepairPlan() {
                     <i class="ph-fill ph-info text-sm mt-0.5 shrink-0"></i>
                     <div>
                         <span class="font-bold">No part linked for:</span> ${window.unlinkedFixesList.join(', ')}.<br>
-                        Add them manually or ask the owner to link them in Inventory.
+                        Add them manually or ask an Admin to link them in Inventory.
                     </div>
                 </div>
             `;
@@ -1446,8 +1615,6 @@ function clearAddPartForm() {
     document.getElementById('add-part-sku').value = '';
     document.getElementById('add-part-category').value = '';
     document.getElementById('add-part-comp').value = '';
-    document.getElementById('add-part-supplier').value = '';
-    document.getElementById('add-part-loc').value = '';
     document.getElementById('add-part-price').value = '';
     document.getElementById('add-part-stock').value = '';
     document.getElementById('add-part-minstock').value = '';
@@ -1513,8 +1680,6 @@ function openRestockModal(partId = null) {
     
     const curStock = document.getElementById('restock-current-stock');
     if (curStock) curStock.textContent = '-';
-    const loc = document.getElementById('restock-location');
-    if (loc) loc.textContent = '-';
     
     if (partId && typeof partId === 'string') {
         selectRestockPart(partId);
@@ -1611,7 +1776,6 @@ function selectRestockPart(partId) {
     if (list) list.classList.add('hidden');
     
     document.getElementById('restock-current-stock').textContent = part.stock + ' Units';
-    document.getElementById('restock-location').textContent = part.loc || 'N/A';
     
     updateRestockExpiryVisibility();
 }
@@ -1630,7 +1794,6 @@ window.clearRestockSelection = function() {
     if (list) list.classList.remove('hidden');
     
     document.getElementById('restock-current-stock').textContent = '-';
-    document.getElementById('restock-location').textContent = '-';
     updateRestockExpiryVisibility();
 };
 
@@ -1693,8 +1856,6 @@ function openEditPartModal(partId) {
         if (expiryInput) expiryInput.value = part.expiryDate;
     }
     document.getElementById('add-part-comp').value = part.comp || '';
-    document.getElementById('add-part-supplier').value = part.supplier || '';
-    document.getElementById('add-part-loc').value = part.loc || '';
     document.getElementById('add-part-price').value = part.price || '';
     document.getElementById('add-part-stock').value = part.stock || '';
     document.getElementById('add-part-minstock').value = part.minStock || '';
@@ -1755,8 +1916,6 @@ function savePartForm() {
         sku: document.getElementById('add-part-sku').value.trim(),
         category: document.getElementById('add-part-category').value,
         comp: document.getElementById('add-part-comp').value.trim(),
-        supplier: document.getElementById('add-part-supplier').value.trim(),
-        loc: document.getElementById('add-part-loc').value.trim(),
         price: parseFloat(document.getElementById('add-part-price').value || '0'),
         stock: stock,
         minStock: parseInt(document.getElementById('add-part-minstock').value || '0', 10),
@@ -2356,7 +2515,6 @@ function renderInventory() {
                 </td>
                 <td class="p-4">
                     <div class="font-medium text-slate-600">${item.category}</div>
-                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1"><i class="ph-fill ph-map-pin"></i> Loc: ${item.loc}</div>
                 </td>
                 <td class="p-4 font-bold text-slate-800">\u20B1${item.price.toFixed(2)}</td>
                 <td class="p-4">
@@ -2451,8 +2609,6 @@ function renderInventory() {
                     <div class="flex flex-col gap-2 text-xs text-slate-600 mb-4">
                         <div class="flex justify-between items-center"><span class="font-bold">Category</span><span class="inline-flex items-center gap-1 ${catConf.bg} ${catConf.text} px-1.5 py-0.5 rounded font-bold">${catConf.name}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Compatible</span><span class="text-slate-500">${item.comp}</span></div>
-                        <div class="flex justify-between items-center"><span class="font-bold">Supplier</span><span class="text-slate-500">${item.supplier}</span></div>
-                        <div class="flex justify-between items-center"><span class="font-bold">Location</span><span class="text-slate-500">${item.loc}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Reserved</span><span class="text-slate-500">${item.reserved}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Min Stock</span><span class="text-slate-500">${item.minStock}</span></div>
                         ${expRow}
@@ -2532,6 +2688,12 @@ function updateDashboardWidgets() {
     
     if (dashText) dashText.innerHTML = alertHtml;
     if (mobileText) mobileText.innerHTML = alertHtml;
+
+    const backupAlert = document.getElementById('dashboard-backup-alert');
+    if (backupAlert) {
+        const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
+        backupAlert.style.display = canBackup ? 'flex' : 'none';
+    }
 
     const reportsTbody = document.getElementById('reports-low-stock-tbody');
     if (reportsTbody) {
@@ -2901,7 +3063,7 @@ const mockHistoryData = [
         plate: 'XYZ-9876',
         vehicle: 'Yamaha NMAX',
         customer: 'Maria Clara',
-        mechanic: 'Leo (Sub-Mechanic)',
+        mechanic: 'Leo (Mechanic)',
         mechanicId: 'leo',
         issueTitle: 'Throttle & Oil Maintenance',
         issueDesc: 'Throttle body cleaning and standard engine oil replacement.',
@@ -2913,7 +3075,7 @@ const mockHistoryData = [
         plate: 'ABC-1234',
         vehicle: 'Honda Click 125i',
         customer: 'Juan Dela Cruz',
-        mechanic: 'Mike (Chief Mechanic)',
+        mechanic: `Mike (${ROLES_CONFIG.mechanic.label})`,
         mechanicId: 'mike',
         issueTitle: 'Engine Overheating (P0118)',
         issueDesc: 'Replaced faulty Coolant Temp Sensor and front brake pads.',
@@ -3066,15 +3228,30 @@ document.addEventListener('click', function(e) {
 // --- Interactive Audit Logs Logic ---
 
 const mockAuditData = [    
-    
+    {
+        id: '1',
+        date: 'Oct 24, 2026',
+        time: '11:45:10 AM',
+        dateGroup: 'today',
+        userName: 'User',
+        userRole: ROLES_CONFIG.admin.label,
+        roleFilter: 'admin',
+        module: 'User Management',
+        moduleFilter: 'users',
+        action: "Updated system settings and permissions.",
+        severity: 'Modification',
+        severityClass: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+        dotClass: 'bg-yellow-500',
+        hasDetails: false
+    },
     {
         id: '2',
         date: 'Oct 24, 2026',
         time: '10:15:33 AM',
         dateGroup: 'today',
         userName: 'Mike Cruz',
-        userRole: 'Chief Mechanic',
-        roleFilter: 'chief mechanic',
+        userRole: ROLES_CONFIG.mechanic.label,
+        roleFilter: 'mechanic',
         module: 'Inventory',
         moduleFilter: 'inventory',
         action: "Manual stock override for 'Front Disc Brake Pads'.",
@@ -3089,7 +3266,22 @@ const mockAuditData = [
         afterLabelTheme: 'text-yellow-600',
         reason: 'Reason: Inventory Correction'
     },
-
+    {
+        id: '3',
+        date: 'Oct 24, 2026',
+        time: '09:00:15 AM',
+        dateGroup: 'today',
+        userName: 'System Admin',
+        userRole: ROLES_CONFIG.super_admin.label,
+        roleFilter: 'super_admin',
+        module: 'Authentication',
+        moduleFilter: 'authentication',
+        action: "User session authenticated.",
+        severity: 'Standard',
+        severityClass: 'bg-blue-50 text-blue-700 border-blue-200',
+        dotClass: 'bg-blue-500',
+        hasDetails: false
+    },
     {
         id: '4',
         date: 'Oct 23, 2026',
@@ -3136,6 +3328,7 @@ function renderAudit() {
     }
 
     tbody.innerHTML = filtered.map(log => {
+        const roleDisplay = (ROLES_CONFIG[log.roleFilter]?.label || log.userRole).toUpperCase();
         // Build the primary row
         let rowHtml = `
             <tr class="hover:bg-slate-50 transition-colors ${log.hasDetails ? 'cursor-pointer' : ''}" ${log.hasDetails ? `onclick="toggleAuditDetail('audit-detail-${log.id}')"` : ''}>
@@ -3145,7 +3338,7 @@ function renderAudit() {
                 <td class="p-4 text-slate-600 font-medium">${log.date}<br><span class="text-xs text-slate-400">${log.time}</span></td>
                 <td class="p-4">
                     <div class="font-semibold text-slate-700">${log.userName}</div>
-                    <div class="text-[10px] uppercase font-bold text-slate-400 mt-0.5">${log.userRole}</div>
+                    <div class="text-[10px] uppercase font-bold text-slate-400 mt-0.5">${roleDisplay}</div>
                 </td>
                 <td class="p-4 text-slate-600">${log.module}</td>
                 <td class="p-4 text-slate-700">${log.action}</td>
@@ -3203,23 +3396,29 @@ document.addEventListener('change', function(e) {
 
 const mockUserData = [
     {
-        id: 'u1', initials: 'IG', name: 'User', username: '@User.owner',
-        roleName: 'Shop Owner', roleValue: 'owner', roleIcon: 'ph-crown', roleClass: 'bg-slate-800 text-white',
+        id: 'u1', initials: 'IG', name: 'User', username: '@User.admin',
+        roleName: ROLES_CONFIG.admin.label, roleValue: 'admin', roleIcon: 'ph-crown', roleClass: 'bg-slate-800 text-white',
         status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
         lastLoginDate: 'Oct 24, 2026', lastLoginTime: '08:00 AM', avatarClass: 'bg-slate-800 text-white'
     },
     {
-        id: 'u2', initials: 'JB', name: 'Larpus', username: '@Larpus.chief',
-        roleName: 'Chief Mechanic', roleValue: 'chief', roleIcon: 'ph-wrench', roleClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+        id: 'u2', initials: 'SA', name: 'System Admin', username: '@Admin.super_admin',
+        roleName: ROLES_CONFIG.super_admin.label, roleValue: 'super_admin', roleIcon: 'ph-shield-check', roleClass: 'bg-purple-50 text-purple-700 border border-purple-200',
+        status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
+        lastLoginDate: 'Oct 24, 2026', lastLoginTime: '08:15 AM', avatarClass: 'bg-purple-100 text-purple-700'
+    },
+    {
+        id: 'u3', initials: 'JB', name: 'Larpus', username: '@Larpus.mechanic',
+        roleName: ROLES_CONFIG.mechanic.label, roleValue: 'mechanic', roleIcon: 'ph-wrench', roleClass: 'bg-blue-50 text-blue-700 border border-blue-200',
         status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
         lastLoginDate: 'Oct 24, 2026', lastLoginTime: '07:45 AM', avatarClass: 'bg-blue-100 text-blue-700'
     },
     {
-        id: 'u3', initials: 'F', name: 'Hiyo', username: '@Hiyo.sub',
-        roleName: 'Sub-Mechanic', roleValue: 'sub', roleIcon: 'ph-wrench', roleClass: 'bg-slate-100 text-slate-600 border border-slate-200',
+        id: 'u4', initials: 'F', name: 'Hiyo', username: '@Hiyo.mechanic',
+        roleName: ROLES_CONFIG.mechanic.label, roleValue: 'mechanic', roleIcon: 'ph-wrench', roleClass: 'bg-blue-50 text-blue-700 border border-blue-200',
         status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
-        lastLoginDate: 'Oct 24, 2026', lastLoginTime: '07:50 AM', avatarClass: 'bg-slate-100 text-slate-600 border border-slate-200'
-    },
+        lastLoginDate: 'Oct 24, 2026', lastLoginTime: '07:50 AM', avatarClass: 'bg-blue-100 text-blue-700'
+    }
     
 ];
 
@@ -3273,7 +3472,7 @@ function renderUsers() {
                 </td>
                 <td class="p-4">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${u.roleClass}">
-                        <i class="ph-fill ${u.roleIcon}"></i> ${u.roleName}
+                        <i class="ph-fill ${u.roleIcon}"></i> ${ROLES_CONFIG[u.roleValue]?.label || u.roleName}
                     </span>
                 </td>
                 <td class="p-4">
@@ -3305,11 +3504,11 @@ document.addEventListener('change', function(e) {
 // --- Interactive Backup & Restore Logic ---
 
 const mockBackupHistory = [
-    { id: 1, datetime: 'Oct 12, 2026 - 04:30 PM', action: 'Backup Created (motocare_backup_20261012.sql)', type: 'backup', user: 'User (Shop Owner)' },
-    { id: 2, datetime: 'Oct 05, 2026 - 10:15 AM', action: 'Backup Created (motocare_backup_20261005.sql)', type: 'backup', user: 'User (Shop Owner)' },
-    { id: 3, datetime: 'Sep 28, 2026 - 05:00 PM', action: 'Backup Created (motocare_backup_20260928.sql)', type: 'backup', user: 'User (Shop Owner)' },
-    { id: 4, datetime: 'Sep 15, 2026 - 09:00 AM', action: 'System Restored from Archive', type: 'restore', user: 'User (Shop Owner)' },
-    { id: 5, datetime: 'Sep 14, 2026 - 04:00 PM', action: 'Backup Created (motocare_backup_20260914.sql)', type: 'backup', user: 'User (Shop Owner)' }
+    { id: 1, datetime: 'Oct 12, 2026 - 04:30 PM', action: 'Backup Created (motocare_backup_20261012.sql)', type: 'backup', user: `User (${ROLES_CONFIG.admin.label})` },
+    { id: 2, datetime: 'Oct 05, 2026 - 10:15 AM', action: 'Backup Created (motocare_backup_20261005.sql)', type: 'backup', user: `User (${ROLES_CONFIG.admin.label})` },
+    { id: 3, datetime: 'Sep 28, 2026 - 05:00 PM', action: 'Backup Created (motocare_backup_20260928.sql)', type: 'backup', user: `User (${ROLES_CONFIG.admin.label})` },
+    { id: 4, datetime: 'Sep 15, 2026 - 09:00 AM', action: 'System Restored from Archive', type: 'restore', user: `User (${ROLES_CONFIG.admin.label})` },
+    { id: 5, datetime: 'Sep 14, 2026 - 04:00 PM', action: 'Backup Created (motocare_backup_20260914.sql)', type: 'backup', user: `User (${ROLES_CONFIG.admin.label})` }
 ];
 
 function renderBackupHistory() {
@@ -3371,6 +3570,7 @@ window.updateRestoreFileName = function(input) {
 };
 
 window.createManualBackup = function(e) {
+    if (!rolePermissions[currentRole] || !rolePermissions[currentRole].includes('backup')) return;
     const btn = e.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> Generating Backup...`;
@@ -3389,7 +3589,7 @@ window.createManualBackup = function(e) {
             datetime: formattedDate,
             action: 'Backup Created (motocare_backup_20261024.sql)',
             type: 'backup',
-            user: 'User (Shop Owner)'
+            user: `${systemUsers[currentRole]?.name || 'System Admin'} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
         });
         
         renderBackupHistory();
@@ -3398,6 +3598,7 @@ window.createManualBackup = function(e) {
 };
 
 window.openRestorePasswordModal = function() {
+    if (!rolePermissions[currentRole] || !rolePermissions[currentRole].includes('backup')) return;
     const fileInput = document.getElementById('restore-file-input');
     if (!fileInput || fileInput.files.length === 0) {
         alert("Please select a backup file to restore first.");
@@ -3411,6 +3612,7 @@ window.closeRestorePasswordModal = function() {
 };
 
 window.confirmSystemRestore = function(e) {
+    if (!rolePermissions[currentRole] || !rolePermissions[currentRole].includes('backup')) return;
     const pass = document.getElementById('restore-admin-pass').value;
     if (!pass) {
         alert('Please enter your password to proceed.');
@@ -3435,7 +3637,7 @@ window.confirmSystemRestore = function(e) {
             datetime: formattedDate,
             action: 'System Restored from Archive',
             type: 'restore',
-            user: 'User (Shop Owner)'
+            user: `${systemUsers[currentRole]?.name || 'System Admin'} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
         });
         
         closeRestorePasswordModal();
@@ -3609,11 +3811,15 @@ window.submitLogin = function() {
         loginScreen.classList.remove('flex');
         
         // Sync the bottom-left dropdown to match the selected role
+        const targetRole = currentLoginRole || roleId;
         const switcher = document.getElementById('role-switcher');
-        if (switcher) switcher.value = currentLoginRole;
+        if (switcher) switcher.value = targetRole;
+        
+        localStorage.setItem('activeRole', targetRole);
+        sessionStorage.setItem('currentUserRole', targetRole);
         
         // Run existing role-switching permissions logic
-        switchRole(currentLoginRole);
+        switchRole(targetRole);
         
         // Navigate back to Dashboard
         const dashLink = document.querySelector('.nav-link[data-target="dashboard"]');
@@ -3631,7 +3837,7 @@ const mockRepairsData = [
         plate: 'ABC-1234',
         model: 'Honda Click 125i',
         customer: 'Juan Dela Cruz',
-        mechanicOptions: ['Mike (Chief Mechanic)', 'Leo (Sub-Mechanic)'],
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
         selectedMechIndex: 0,
         diagnosis: 'Coolant temp sensor high (P0118). Brake pads heavily worn. Requires part replacement.',
         statusId: 'waiting',
@@ -3668,7 +3874,7 @@ const mockRepairsData = [
         plate: 'XYZ-9876',
         model: 'Yamaha NMAX',
         customer: 'Maria Clara',
-        mechanicOptions: ['Mike (Chief Mechanic)', 'Leo (Sub-Mechanic)'],
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
         selectedMechIndex: 1,
         diagnosis: 'Throttle body cleaning and standard change oil.',
         statusId: 'pending',
@@ -4604,13 +4810,13 @@ document.addEventListener('change', function(e) {
 
 
 // =====================================================================
-// --- Mobile App Mode (Chief Mechanic & Sub-Mechanic) ---
-// Only these roles get the mobile UI. Screens are converted one at a time:
+// --- Mobile App Mode (Mechanic) ---
+// Only this role gets the mobile UI. Screens are converted one at a time:
 // add the screen name to `mobileViews` once views/mobile/<name>.html exists.
 // =====================================================================
 
-const MOBILE_ROLES = ['chief', 'sub'];
-let forceOwnerMobile = localStorage.getItem('forceOwnerMobile') === 'true'; // Tracks if owner manually toggled mobile UI
+const MOBILE_ROLES = ['mechanic'];
+let forceOwnerMobile = localStorage.getItem('forceOwnerMobile') === 'true'; // Tracks if admin manually toggled mobile UI
 
 window.toggleOwnerMobileMode = function() {
     forceOwnerMobile = !forceOwnerMobile;
@@ -4636,15 +4842,15 @@ const mobileTones = {
     blue:   { chip: 'bg-blue-100 text-blue-700',     bar: 'bg-blue-500' }
 };
 
-// Jobs visible to a role: Chief sees the whole shop, Sub only their own
+// Jobs visible to a role: Mechanic, Admin, and Super Admin see shop jobs
 function getMobileJobs(roleId) {
-    if (roleId === 'chief' || roleId === 'owner') return mockMobileJobs;
-    return mockMobileJobs.filter(job => job.mechanic === systemUsers[roleId].name);
+    if (roleId === 'mechanic' || roleId === 'admin' || roleId === 'super_admin') return mockMobileJobs;
+    return mockMobileJobs.filter(job => job.mechanic === (systemUsers[roleId] ? systemUsers[roleId].name : ''));
 }
 
 // Toggles mobile mode + fills the shell (app bar avatar, tab badge). Returns true if mobile.
 function applyMobileMode(roleId) {
-    const isMobile = MOBILE_ROLES.includes(roleId) || (roleId === 'owner' && forceOwnerMobile);
+    const isMobile = MOBILE_ROLES.includes(roleId) || forceOwnerMobile;
     document.body.classList.toggle('mobile-app', isMobile);
 
     if (!isMobile) {
@@ -4652,7 +4858,7 @@ function applyMobileMode(roleId) {
         return false;
     }
 
-    const user = systemUsers[roleId];
+    const user = systemUsers[roleId] || systemUsers.admin;
     const headerAvatar = document.getElementById('m-header-avatar');
     if (headerAvatar) {
         headerAvatar.textContent = user.initials;
@@ -4717,22 +4923,22 @@ function mApprove(plate, btn) {
     }
 }
 
-// Fills views/mobile/dashboard.html for the current role (Chief vs Sub)
+// Fills views/mobile/dashboard.html for the current role
 function renderMobileHome() {
     const roleId = currentRole;
-    const user = systemUsers[roleId];
-    const isChief = roleId === 'chief' || roleId === 'owner';
+    const user = systemUsers[roleId] || systemUsers.admin;
+    const isLeadOrSuper = roleId === 'mechanic' || roleId === 'admin';
     const jobs = getMobileJobs(roleId);
     const hour = new Date().getHours();
 
     // Hero (role-coloured) + greeting
     const hero = document.getElementById('m-hero');
     hero.classList.remove('from-purple-600', 'to-indigo-700', 'from-sky-600', 'to-blue-700');
-    hero.classList.add(...(isChief ? ['from-purple-600', 'to-indigo-700'] : ['from-sky-600', 'to-blue-700']));
+    hero.classList.add(...(isLeadOrSuper ? ['from-purple-600', 'to-indigo-700'] : ['from-sky-600', 'to-blue-700']));
     document.getElementById('m-greeting').textContent = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
     document.getElementById('m-name').textContent = user.name;
     document.getElementById('m-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    document.getElementById('m-role-chip').innerHTML = `<i class="ph-fill ${isChief ? 'ph-crown-simple' : 'ph-wrench'}"></i> ${user.role}`;
+    document.getElementById('m-role-chip').innerHTML = `<i class="ph-fill ${roleId === 'admin' ? 'ph-crown-simple' : 'ph-wrench'}"></i> ${user.role}`;
 
     // Role-gated blocks inside the view
     document.querySelectorAll('#m-home [data-mroles]').forEach(el => {
@@ -4744,7 +4950,7 @@ function renderMobileHome() {
     document.getElementById('m-stat-waiting').textContent = jobs.filter(j => j.status === 'Waiting Parts').length;
 
     // Job cards
-    document.getElementById('m-jobs-title').textContent = isChief ? 'Shop Jobs' : 'My Jobs';
+    document.getElementById('m-jobs-title').textContent = isLeadOrSuper ? 'Shop Jobs' : 'My Jobs';
     const jobsList = document.getElementById('m-jobs-list');
     jobsList.innerHTML = jobs.length ? jobs.map(job => {
         const tone = mobileTones[job.tone];
@@ -4765,15 +4971,15 @@ function renderMobileHome() {
                     <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ${tone.bar}" style="width:${job.progress}%"></div></div>
                     <span class="text-[10px] font-bold text-slate-500">${job.progress}%</span>
                 </div>
-                ${isChief ? `<div class="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"><i class="ph-fill ph-user-circle text-base"></i> ${job.mechanic}</div>` : ''}
+                ${isLeadOrSuper ? `<div class="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"><i class="ph-fill ph-user-circle text-base"></i> ${job.mechanic}</div>` : ''}
             </button>`;
     }).join('') : `
         <div class="bg-white rounded-2xl border border-slate-100 p-6 text-center text-xs font-semibold text-slate-400">
             <i class="ph-fill ph-coffee text-3xl block mb-1 text-slate-300"></i> No jobs assigned to you
         </div>`;
 
-    // Chief-only: post-scan approvals + team workload
-    if (isChief) {
+    // Approvals + team workload
+    if (isLeadOrSuper) {
         const reviews = mockMobileJobs.filter(j => j.status === 'Pending Post-Scan');
         document.getElementById('m-review-list').innerHTML = reviews.length ? reviews.map(job => `
             <div class="m-review-card bg-white rounded-2xl p-4 shadow-sm border border-purple-100 flex items-center gap-3">
@@ -4787,8 +4993,8 @@ function renderMobileHome() {
             <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center text-xs font-semibold text-slate-400">All caught up</div>`;
 
         const team = [
-            { name: 'Larpus', initials: 'JB', color: 'bg-purple-600', role: 'Chief' },
-            { name: 'Hiyo', initials: 'F', color: 'bg-slate-600', role: 'Sub' }
+            { name: 'Larpus', initials: 'JB', color: 'bg-purple-600', role: ROLES_CONFIG.mechanic.label },
+            { name: 'Hiyo', initials: 'F', color: 'bg-slate-600', role: ROLES_CONFIG.mechanic.label }
         ];
         document.getElementById('m-team-list').innerHTML = team.map(member => {
             const count = mockMobileJobs.filter(j => j.mechanic === member.name).length;
@@ -6268,7 +6474,7 @@ window.submitLogin = function() {
     const roleErrorMsg = document.getElementById('login-role-error');
     if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
     
-    if (!roleId) {
+    if (!roleId || !ROLES_CONFIG[roleId]) {
         if (roleErrorMsg) roleErrorMsg.classList.remove('hidden');
         return;
     }
@@ -6294,6 +6500,10 @@ window.submitLogin = function() {
         
         localStorage.setItem('activeRole', roleId);
         sessionStorage.setItem('currentUserRole', roleId);
+        sessionStorage.setItem('roles_version', 'v3_swapped');
+        
+        const switcher = document.getElementById('role-switcher');
+        if (switcher) switcher.value = roleId;
         
         switchRole(roleId);
         
@@ -6309,6 +6519,7 @@ window.handleLogout = function() {
         loginScreen.classList.remove('hidden');
         loginScreen.classList.add('flex');
     }
+    document.body.classList.remove('mobile-app');
     showLoginForm();
     sessionStorage.removeItem('currentUserRole');
     localStorage.removeItem('activeRole');
@@ -6316,13 +6527,14 @@ window.handleLogout = function() {
 
 // --- Settings Logic ---
 window.initSettingsView = function() {
-    const roleId = sessionStorage.getItem('currentUserRole') || 'owner';
-    const user = systemUsers[roleId];
+    const rawRole = currentRole || sessionStorage.getItem('currentUserRole');
+    const roleId = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
+    const user = systemUsers[roleId] || systemUsers.admin;
     
     const accName = document.getElementById('acc-name');
     const accRole = document.getElementById('acc-role');
     if (accName) accName.textContent = user.name;
-    if (accRole) accRole.textContent = user.role;
+    if (accRole) accRole.textContent = ROLES_CONFIG[roleId]?.label || user.role;
     
     const avatar = document.getElementById('acc-avatar');
     if (avatar) {
@@ -6348,8 +6560,9 @@ window.changePassword = function() {
     const confirm = document.getElementById('acc-pwd-confirm').value;
     const msg = document.getElementById('acc-pwd-msg');
     
-    const roleId = sessionStorage.getItem('currentUserRole') || 'owner';
-    const user = systemUsers[roleId];
+    const rawRole = currentRole || sessionStorage.getItem('currentUserRole');
+    const roleId = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
+    const user = systemUsers[roleId] || systemUsers.admin;
     
     msg.classList.remove('hidden', 'bg-emerald-50', 'text-emerald-600', 'border-emerald-200', 'bg-red-50', 'text-red-600', 'border-red-200');
     
@@ -6429,10 +6642,9 @@ window.selectLoginRole = function(roleId, btn) {
     }
 };
 
-systemUsers.owner.password = 'owner123';
-systemUsers.chief.password = 'mech123';
-systemUsers.sub.password = 'sub123';
-systemUsers.superadmin.password = 'admin123';
+systemUsers.super_admin.password = 'admin123';
+systemUsers.admin.password = 'admin123';
+systemUsers.mechanic.password = 'mech123';
 
 // Initialize widgets on load
 updateDashboardWidgets();

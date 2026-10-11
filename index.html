@@ -80,11 +80,11 @@
                 <button class="nav-link flex items-center w-full py-1.5 text-slate-300 hover:text-white transition-colors" data-target="backup">
                     <i class="ph ph-database text-base w-6"></i> Backup & Restore
                 </button>
-                <!-- Desktop to Mobile Toggle (Owner) -->
-                <button class="flex items-center w-full py-1.5 mt-2 text-blue-400 hover:text-blue-300 transition-colors font-semibold" id="desktop-mobile-toggle" onclick="toggleOwnerMobileMode()">
-                    <i class="ph ph-device-mobile text-base w-6"></i> Switch to Mobile UI
-                </button>
             </div>
+            <!-- Desktop to Mobile Toggle -->
+            <button class="flex items-center w-full px-3 py-2 mt-2 text-blue-400 hover:text-blue-300 transition-colors font-semibold" id="desktop-mobile-toggle" onclick="toggleOwnerMobileMode()">
+                <i class="ph ph-device-mobile text-base w-6"></i> Switch to Mobile UI
+            </button>
         </nav>
 
         <!-- Dynamic User Profile & Role Switcher -->
@@ -96,7 +96,7 @@
                     </div>
                     <div class="flex flex-col truncate">
                         <span id="user-name" class="text-sm font-bold text-slate-200 leading-none truncate">User</span>
-                        <span id="user-role-text" class="text-[10px] text-slate-500 mt-1 truncate">Shop Owner</span>
+                        <span id="user-role-text" class="text-[10px] text-slate-500 mt-1 truncate">Admin</span>
                     </div>
                 </div>
                 <button class="text-slate-400 hover:text-red-400 p-2 rounded-lg hover:bg-red-500/10 transition-colors shrink-0" title="Log Out" onclick="handleLogout()">
@@ -108,11 +108,9 @@
             <div class="pt-3 border-t border-slate-800">
                 <label class="text-[9px] uppercase font-bold text-slate-500 tracking-wider mb-1 block">Simulate Login As:</label>
                 <select id="role-switcher" class="w-full bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-md px-2 py-1.5 outline-none focus:border-blue-500 transition-colors" onchange="switchRole(this.value)">
-                    <option value="superadmin">Super Admin (System)</option>
-                    <option value="owner">Shop Owner (User)</option>
-                    <option value="chief">Chief Mechanic (Larpus)</option>
-                    <option value="sub">Sub-Mechanic (Hiyo)</option>
-                
+                    <option value="super_admin">Super Admin (System)</option>
+                    <option value="admin">Admin (User)</option>
+                    <option value="mechanic">Mechanic (Larpus)</option>
                 </select>
             </div>
         </div>
@@ -125,7 +123,7 @@
             </button>
             <img src="a_photo/logo.jpg" alt="MotoCare logo" class="h-8 w-auto object-contain">
 
-            <!-- Mobile app bar actions (Chief / Sub-Mechanic only) -->
+            <!-- Mobile app bar actions (Mechanic only) -->
             <div id="m-header-actions" class="hidden ml-auto items-center gap-3">
                 <span class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-300">
                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online
@@ -139,7 +137,7 @@
             <!-- Fetch API will insert views here -->
         </div>
 
-        <!-- Mobile bottom tab bar (Chief / Sub-Mechanic only) -->
+        <!-- Mobile bottom tab bar (Mechanic only) -->
         <nav id="mobile-bottom-nav" class="hidden shrink-0 bg-white border-t border-slate-200 grid-cols-5 items-end px-1 relative z-20">
             <button class="m-tab" data-mtab="dashboard" onclick="mNav('dashboard')">
                 <i class="ph-fill ph-house text-2xl"></i><span>Home</span>
@@ -176,7 +174,7 @@
         </div>
 
         <!-- Login Form View (Card) -->
-        <div id="login-form-view" class="flex flex-col items-center justify-center w-full max-w-sm z-10">
+        <div id="login-form-view" class="flex flex-col items-center justify-center w-full max-w-sm sm:max-w-md z-10">
             <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full p-8 flex flex-col gap-8 text-center relative animate-fade-rise">
                 <button onclick="showSignedOutView()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors z-10" title="Close">
                     <i class="ph ph-x text-lg"></i>
@@ -191,54 +189,41 @@
                 <div class="flex flex-col gap-4 text-left">
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Sign In As</label>
-                        <div class="grid grid-cols-1 min-[360px]:grid-cols-2 gap-3" id="role-selector">
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="owner" onclick="selectLoginRole('owner', this)">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="role-selector">
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="super_admin" onclick="selectLoginRole('super_admin', this)">
                                 <div class="flex items-center gap-2 mb-1.5 w-full">
-                                    <div class="w-6 h-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                                        <i class="ph-bold ph-storefront"></i>
+                                    <div class="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-user-gear"></i>
                                     </div>
-                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Owner</span>
+                                    <span class="role-card-title font-bold text-slate-800 text-sm leading-none flex-1">Super Admin</span>
                                 </div>
-                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Full shop access & analytics</p>
+                                <p class="role-card-desc text-[10px] text-slate-500 font-medium leading-snug">Users and system settings</p>
                                 <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
                                     <i class="ph-bold ph-check text-[10px]"></i>
                                 </div>
                             </button>
 
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="chief" onclick="selectLoginRole('chief', this)">
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="admin" onclick="selectLoginRole('admin', this)">
+                                <div class="flex items-center gap-2 mb-1.5 w-full">
+                                    <div class="w-6 h-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                        <i class="ph-bold ph-crown"></i>
+                                    </div>
+                                    <span class="role-card-title font-bold text-slate-800 text-sm leading-none flex-1">Admin</span>
+                                </div>
+                                <p class="role-card-desc text-[10px] text-slate-500 font-medium leading-snug">Full shop access</p>
+                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
+                                    <i class="ph-bold ph-check text-[10px]"></i>
+                                </div>
+                            </button>
+
+                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="mechanic" onclick="selectLoginRole('mechanic', this)">
                                 <div class="flex items-center gap-2 mb-1.5 w-full">
                                     <div class="w-6 h-6 rounded bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
                                         <i class="ph-bold ph-wrench"></i>
                                     </div>
-                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Mechanic</span>
+                                    <span class="role-card-title font-bold text-slate-800 text-sm leading-none flex-1">Mechanic</span>
                                 </div>
-                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Repairs and diagnostics</p>
-                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
-                                    <i class="ph-bold ph-check text-[10px]"></i>
-                                </div>
-                            </button>
-
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="sub" onclick="selectLoginRole('sub', this)">
-                                <div class="flex items-center gap-2 mb-1.5 w-full">
-                                    <div class="w-6 h-6 rounded bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
-                                        <i class="ph-bold ph-nut"></i>
-                                    </div>
-                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Sub-Mechanic</span>
-                                </div>
-                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Assist with repairs</p>
-                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
-                                    <i class="ph-bold ph-check text-[10px]"></i>
-                                </div>
-                            </button>
-
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]" data-role="superadmin" onclick="selectLoginRole('superadmin', this)">
-                                <div class="flex items-center gap-2 mb-1.5 w-full">
-                                    <div class="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                                        <i class="ph-bold ph-shield-check"></i>
-                                    </div>
-                                    <span class="font-bold text-slate-800 text-sm leading-none flex-1">Admin</span>
-                                </div>
-                                <p class="text-[10px] text-slate-500 font-medium leading-snug">Users and system settings</p>
+                                <p class="role-card-desc text-[10px] text-slate-500 font-medium leading-snug">Repairs and diagnostics</p>
                                 <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
                                     <i class="ph-bold ph-check text-[10px]"></i>
                                 </div>
@@ -351,9 +336,9 @@
                 </select>
                 <select id="audit-filter-role" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
                     <option value="all">User Role: All</option>
-                    <option value="owner">Shop Owner</option>
-                    <option value="chief mechanic">Chief Mechanic</option>
-                  
+                    <option value="super_admin">Super Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="mechanic">Mechanic</option>
                     <option value="automated">Automated (System)</option>
                 </select>
                 <select id="audit-filter-module" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
@@ -513,10 +498,10 @@
             
             <div class="p-5 flex flex-col gap-4 text-xs">
                 <p class="text-slate-600 leading-relaxed">
-                    You are about to overwrite the active database with an external file. Please enter your owner password to authorize this action.
+                    You are about to overwrite the active database with an external file. Please enter your admin password to authorize this action.
                 </p>
                 <div>
-                    <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Owner Password</label>
+                    <label class="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Admin Password</label>
                     <input type="password" id="restore-admin-pass" placeholder="Enter password..." class="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-red-500/20 outline-none font-mono text-sm">
                 </div>
             </div>
@@ -644,7 +629,7 @@
             <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-5">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="sm:col-span-2">
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Select Owner</label>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Select Customer</label>
                         <div class="relative">
                             <select class="w-full pl-3 pr-8 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm appearance-none font-semibold">
                                 <option value="" disabled selected>Search existing customer...</option>
@@ -706,7 +691,7 @@
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
         <div>
             <h2 class="text-xl font-bold text-slate-800">Welcome back,  👋</h2>
-            <p class="text-sm text-slate-500 font-medium mt-0.5">Shop Owner | Thursday, September 24, 2026</p>
+            <p id="dashboard-subtext" class="text-sm text-slate-500 font-medium mt-0.5">Admin | Thursday, September 24, 2026</p>
         </div>
         <div class="flex items-center gap-3">
             <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -822,7 +807,7 @@
                     </div>
                 </div>
                 <!-- Maintenance Alert -->
-                <div class="flex gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg items-start">
+                <div id="dashboard-backup-alert" style="display: none;" class="flex gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg items-start">
                     <i class="ph-fill ph-database text-blue-500 text-xl shrink-0 mt-0.5"></i>
                     <div>
                         <p class="text-sm font-bold text-blue-800 mb-0.5">Database Backup Recommended</p>
@@ -1670,8 +1655,8 @@
                 </select>
                 <select id="history-mech-filter" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
                     <option value="all">Assigned Mechanic: All</option>
-                    <option value="mike">Mike (Chief Mechanic)</option>
-                    <option value="leo">Leo (Sub-Mechanic)</option>
+                    <option value="mike">Mike (Mechanic)</option>
+                    <option value="leo">Leo (Mechanic)</option>
                 </select>
                 <button class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
                     <i class="ph-bold ph-export"></i> Export List
@@ -1954,7 +1939,7 @@
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
                         <th class="p-4">Part Details</th>
-                        <th class="p-4">Category & Location</th>
+                        <th class="p-4">Category</th>
                         <th class="p-4">Price (₱)</th>
                         <th class="p-4">Stock Level</th>
                         <th class="p-4 text-right">Actions</th>
@@ -2004,14 +1989,6 @@
                         <input type="text" id="add-part-comp" placeholder="e.g. Honda Click 125i, Honda ADV 150..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                     
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Supplier Name</label>
-                        <input type="text" id="add-part-supplier" placeholder="e.g. Honda Philippines" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Physical Location</label>
-                        <input type="text" id="add-part-loc" placeholder="e.g. Shelf A-2" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
-                    </div>
                       <div class="sm:col-span-2">
                           <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">PRICE (&#8369;)</label>
                           <input type="number" id="add-part-price" placeholder="0.00" step="0.01" min="0" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-blue-700">
@@ -2078,14 +2055,10 @@
                       </div>
                   </div>
                 
-                <div class="grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                     <div>
                         <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Current Stock</span>
                         <span id="restock-current-stock" class="text-sm font-bold text-slate-700">-</span>
-                    </div>
-                    <div>
-                        <span class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Physical Location</span>
-                        <span id="restock-location" class="text-sm font-bold text-slate-700">-</span>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -2099,8 +2072,8 @@
                         <span class="restock-expiry-hint text-xs text-slate-500 mt-1 block"></span>
                     </div>
                     <div class="col-span-2">
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Supplier / Notes (Optional)</label>
-                        <input type="text" id="restock-notes" placeholder="e.g. Delivered by Honda PH" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">NOTES (OPTIONAL)</label>
+                        <input type="text" id="restock-notes" placeholder="e.g. Delivered on Oct 8" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                 </div>
             </div>
@@ -2938,7 +2911,7 @@
                     <div class="flex justify-between"><span>TXN No:</span> <span>TXN-103</span></div>
                     <div class="flex justify-between"><span>Customer:</span> <span>Maria Clara</span></div>
                     <div class="flex justify-between"><span>Vehicle:</span> <span>Yamaha NMAX (XYZ-9876)</span></div>
-                    <div class="flex justify-between"><span>Mechanic:</span> <span>Leo (Sub-Mechanic)</span></div>
+                    <div class="flex justify-between"><span>Mechanic:</span> <span>Leo (Mechanic)</span></div>
                 </div>
                 <div class="border-b border-dashed border-slate-300 pb-4">
                     <div class="font-bold border-b border-slate-200 pb-1 mb-2 flex justify-between"><span>Item/Service</span><span>Amount</span></div>
@@ -2992,10 +2965,9 @@
                 </div>
                 <select id="user-filter-role" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
                     <option value="all">Filter by Role: All</option>
-                    <option value="owner">Shop Owner</option>
-                    <option value="chief">Chief Mechanic</option>
-                    <option value="sub">Sub-Mechanic</option>
-                  
+                    <option value="super_admin">Super Admin</option>
+                    <option value="admin">Admin</option>
+                    <option value="mechanic">Mechanic</option>
                 </select>
                 <select id="user-filter-status" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
                     <option value="all">Filter by Status: All</option>
@@ -3044,54 +3016,53 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-center border-collapse min-w-[800px]">
                     <thead>
-                        <tr class="bg-slate-800 text-white text-[10px] uppercase tracking-wider font-bold">
+                        <tr id="matrix-header-row" class="bg-slate-800 text-white text-[10px] uppercase tracking-wider font-bold">
                             <th class="p-4 text-left border-r border-slate-700">System Module</th>
-                            <th class="p-4 border-r border-slate-700 w-1/5"><i class="ph-fill ph-crown text-base block mb-1 text-yellow-400"></i> Shop Owner</th>
-                            <th class="p-4 border-r border-slate-700 w-1/5"><i class="ph-fill ph-wrench text-base block mb-1 text-blue-400"></i> Chief Mechanic</th>
-                            <th class="p-4 border-r border-slate-700 w-1/5"><i class="ph-fill ph-wrench text-base block mb-1 text-slate-400"></i> Sub-Mechanic</th>
-                          
+                            <th class="p-4 border-r border-slate-700 w-1/4"><i class="ph-fill ph-user-gear text-base block mb-1 text-purple-400"></i> <span class="matrix-role-super_admin">Super Admin</span></th>
+                            <th class="p-4 border-r border-slate-700 w-1/4"><i class="ph-fill ph-crown text-base block mb-1 text-yellow-400"></i> <span class="matrix-role-admin">Admin</span></th>
+                            <th class="p-4 w-1/4"><i class="ph-fill ph-wrench text-base block mb-1 text-blue-400"></i> <span class="matrix-role-mechanic">Mechanic</span></th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200 text-sm bg-white">
                         <tr class="hover:bg-slate-50">
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Customers & Motorcycles</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
-                            <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
                         </tr>
                         <tr class="hover:bg-slate-50">
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Diagnostics & Inspections</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
-                            <td class="p-4"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
+                            <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
                         </tr>
                         <tr class="hover:bg-slate-50">
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Active Repairs</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Can Finalize</span></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Update Only</span></td>
-                            <td class="p-4"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Can Finalize</span></td>
                         </tr>
                         <tr class="hover:bg-slate-50">
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Inventory Management</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Full Access</span></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">View / Request</span></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">View / Request</span></td>
-                            <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Walk-in Sales Only</span></td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Full Access</span></td>
+                            <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">View / Request</span></td>
                         </tr>
                         <tr class="hover:bg-slate-50">
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Transactions & Billing</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
-                            <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
                         </tr>
                         <tr class="hover:bg-slate-50 bg-slate-50/50">
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Reports, Audit Logs, Users</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
-                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
+                        </tr>
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Backup & Restore</td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
                             <td class="p-4"><i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i></td>
                         </tr>
@@ -3140,12 +3111,12 @@
                 <div>
                     <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">2. Role & Access Level</h3>
                     <div>
-                        <select class="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-slate-800">
+                        <select id="user-form-role" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-semibold text-slate-800">
                             <option value="" disabled selected>Select Role Assignment...</option>
-                            <option value="owner">Shop Owner (Full Admin Access)</option>
-                            <option value="chief">Chief Mechanic (Diagnostics, Repairs, Inventory)</option>
-                            <option value="sub">Sub-Mechanic (Repairs Updating Only)</option>
-                           
+                            <option value="super_admin">Super Admin (Users and system settings)</option>
+                            <option value="admin">Admin (Full shop access)</option>
+                            <option value="mechanic">Mechanic (Repairs and diagnostics)</option>
+                        </select>
                         <p class="text-xs text-slate-500 mt-2 flex items-start gap-1"><i class="ph-fill ph-info text-blue-500 mt-0.5"></i> Access is controlled strictly via Role-Based Access Control (RBAC). Reference the Permissions Matrix tab for details.</p>
                     </div>
                 </div>
@@ -3313,15 +3284,11 @@
                 <span class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl"><i class="ph-fill ph-clock-counter-clockwise"></i></span>
                 <span class="text-[11px] font-bold text-slate-600">History</span>
             </button>
-            <button data-mroles="sub" onclick="mToast('All changes synced')" class="flex flex-col items-center gap-1.5 active:scale-90 transition-transform">
-                <span class="w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl"><i class="ph-fill ph-cloud-check"></i></span>
-                <span class="text-[11px] font-bold text-slate-600">Sync</span>
-            </button>
         </div>
     </div>
 
-    <!-- Chief only: needs review -->
-    <div id="m-review-section" data-mroles="chief" class="px-4 mt-7">
+    <!-- Mechanic only: needs review -->
+    <div id="m-review-section" data-mroles="mechanic,admin" class="px-4 mt-7">
         <div class="flex items-center justify-between mb-3">
             <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-seal-check text-purple-500 text-lg"></i> Needs Your Review</h3>
         </div>
@@ -3337,8 +3304,8 @@
         <div id="m-jobs-list" class="flex flex-col gap-3"></div>
     </div>
 
-    <!-- Chief only: team workload -->
-    <div data-mroles="chief" class="px-4 mt-7">
+    <!-- Mechanic only: team workload -->
+    <div data-mroles="mechanic,admin" class="px-4 mt-7">
         <h3 class="text-sm font-extrabold text-slate-800 mb-3">Team Workload</h3>
         <div id="m-team-list" class="bg-white rounded-2xl border border-slate-100 shadow-sm divide-y divide-slate-100"></div>
     </div>
@@ -3410,6 +3377,11 @@
                     <span class="text-sm font-bold text-slate-700">User Management</span>
                     <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
                 </button>
+                <button data-mtab="settings" onclick="mNav('settings')" class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
+                    <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ph-gear"></i></span>
+                    <span class="text-sm font-bold text-slate-700">Settings</span>
+                    <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
+                </button>
             </div>
         </div>
 
@@ -3417,11 +3389,6 @@
         <div>
             <h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">System Settings</h3>
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden divide-y divide-slate-100">
-                <button data-mtab="settings" onclick="mNav('settings')" class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
-                    <span class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ph-gear"></i></span>
-                    <span class="text-sm font-bold text-slate-700">Settings</span>
-                    <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
-                </button>
                 <button data-mtab="backup" onclick="mNav('backup')" class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
                     <span class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ph-database"></i></span>
                     <span class="text-sm font-bold text-slate-700">Backup & Restore</span>
@@ -3430,8 +3397,8 @@
             </div>
         </div>
 
-        <!-- Mobile to Desktop Toggle (Owner) -->
-        <button id="m-more-desktop-toggle" data-mroles="owner" onclick="toggleOwnerMobileMode()" class="flex items-center justify-center gap-2 p-4 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm active:scale-[0.98] transition-transform">
+        <!-- Mobile to Desktop Toggle -->
+        <button id="m-more-desktop-toggle" onclick="toggleOwnerMobileMode()" class="flex items-center justify-center gap-2 p-4 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm active:scale-[0.98] transition-transform">
             <i class="ph-bold ph-desktop text-lg"></i> Switch to Desktop UI
         </button>
 
