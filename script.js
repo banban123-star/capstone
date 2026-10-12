@@ -367,6 +367,10 @@ window.switchDiagStep = function(step, fromStepper = false) {
         }
     }
 
+    if (step === 1) {
+        if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
+    }
+
     if (step === 3) {
         if (typeof renderStep3Summary === 'function') renderStep3Summary();
     }
@@ -389,6 +393,9 @@ window.switchDiagStep = function(step, fromStepper = false) {
 };
 function updateSectionNumbering() {
     let count = 1;
+    const complaintTitle = document.getElementById('title-customer-complaint');
+    if (complaintTitle) complaintTitle.textContent = `${count++}. Customer Complaint`;
+
     const setupTitle = document.getElementById('title-inspection-setup');
     if (setupTitle) setupTitle.textContent = `${count++}. Inspection Setup`;
 
@@ -404,6 +411,16 @@ function updateSectionNumbering() {
         physTitle.textContent = `${count++}. Physical Inspection Log`;
     }
 
+    const summaryTitle = document.getElementById('title-inspection-summary');
+    if (summaryTitle) {
+        summaryTitle.textContent = `${count++}. Inspection Summary`;
+    }
+
+    const findingsTitle = document.getElementById('title-final-findings');
+    if (findingsTitle) {
+        findingsTitle.textContent = `${count++}. Final Findings & Diagnosis Verification`;
+    }
+
     const intakeTitle = document.getElementById('title-vehicle-intake');
     if (intakeTitle) {
         intakeTitle.textContent = `${count++}. Vehicle Intake`;
@@ -412,6 +429,10 @@ function updateSectionNumbering() {
 
 // --- Diagnostics View Toggle Handler ---
 document.addEventListener('change', function(e) {
+    if (e.target.closest('#step-1-diagnose')) {
+        setTimeout(() => { if (typeof renderInspectionOverview === 'function') renderInspectionOverview(); }, 0);
+    }
+
     // Check if the changed element is one of our master toggles
     if (e.target.id === 'toggle-physical' || e.target.id === 'toggle-ecu') {
         const isPhysicalOn = document.getElementById('toggle-physical').checked;
@@ -509,6 +530,7 @@ async function loadView(viewName) {
 
         // Initialize Diagnostics view state
         if (viewName === 'diagnostics') {
+            isScannerConnected = false;
             const isPhysicalOn = document.getElementById('toggle-physical')?.checked;
             const isEcuOn = document.getElementById('toggle-ecu')?.checked;
             if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
@@ -519,6 +541,7 @@ async function loadView(viewName) {
             currentDiagStep = 1;
             updatePlanTotals();
             if (typeof updateDiagStepper === 'function') updateDiagStepper();
+            if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
         }
 
         // Initialize Inventory view
@@ -950,6 +973,9 @@ document.addEventListener('DOMContentLoaded', () => {
 let isScannerConnected = false;
 
 document.addEventListener('click', function(e) {
+    if (e.target.closest('#step-1-diagnose')) {
+        setTimeout(() => { if (typeof renderInspectionOverview === 'function') renderInspectionOverview(); }, 0);
+    }
     
     // 1. Diagnostics Logic
     if (e.target.closest('#btn-connect-scanner')) {
@@ -977,16 +1003,16 @@ document.addEventListener('click', function(e) {
             connectBtn.classList.replace('text-slate-700', 'text-white');
             btBadge.innerHTML = `<span class="w-2 h-2 rounded-full bg-red-500"></span> Disconnected`;
             btBadge.className = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200";
-            btnRunScan.disabled = true;
-            btnRunScan.classList.add('bg-slate-200', 'text-slate-400', 'cursor-not-allowed');
-            btnRunScan.classList.remove('bg-blue-600', 'text-white', 'hover:bg-blue-700', 'shadow-md', 'shadow-blue-500/30');
             if(dtcResultsContainer) dtcResultsContainer.classList.add('hidden');
         }
     }
 
     if (e.target.closest('#btn-run-scan')) {
         const runScanBtn = e.target.closest('#btn-run-scan');
-        if(!isScannerConnected) return;
+        if (!isScannerConnected) {
+            const connectBtn = document.getElementById('btn-connect-scanner');
+            if (connectBtn) connectBtn.click();
+        }
         runScanBtn.disabled = true;
         const dtcResultsContainer = document.getElementById('dtc-results-container');
         const originalContent = runScanBtn.innerHTML;
@@ -998,8 +1024,10 @@ document.addEventListener('click', function(e) {
             runScanBtn.innerHTML = originalContent;
             runScanBtn.disabled = false;
             runScanBtn.classList.replace('bg-blue-400', 'bg-blue-600');
+            renderDtcResults(demoScanCodes);
             dtcResultsContainer.classList.remove('hidden');
             dtcResultsContainer.classList.add('animate-[fadeIn_0.5s_ease-out]');
+            if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
         }, 1500);
     }
 
@@ -6059,6 +6087,197 @@ window.renderAutoAssignLinks = function() {
     }
 };
 
+// SAMPLE DATA for the prototype. Replace with validated Yamaha Sniper 150 V2 references.
+const dtcLibrary = {
+  P0118: { description: 'Engine Coolant Temp Sensor High', causes: ['Faulty sensor', 'Wiring open or shorted', 'Poor connector contact'], verification: ['Inspect the sensor connector and harness', 'Measure sensor resistance against engine temperature', 'Check wiring continuity to the ECU'] },
+  P0562: { description: 'System Voltage Low', causes: ['Weak or old battery', 'Charging system fault (stator or regulator)', 'Loose or corroded terminals'], verification: ['Measure battery voltage at rest and while running', 'Inspect and clean the terminals', 'Check charging output at the regulator'] },
+  P0335: { description: 'Crankshaft Position Sensor Circuit', causes: ['Faulty sensor', 'Damaged wiring or connector', 'Sensor gap or reluctor issue'], verification: ['Inspect the connector and harness', 'Test sensor resistance', 'Check the sensor gap'] }
+};
+const demoScanCodes = ['P0118', 'P0562', 'P0335'];
+
+function renderDtcResults(codes) {
+    const container = document.getElementById('dtc-results-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    (codes || []).forEach(code => {
+        const info = (typeof dtcLibrary !== 'undefined' && dtcLibrary[code]) ? dtcLibrary[code] : null;
+
+        // Potentially related parts (linkedDTCs + partsForDtc, deduplicated by id)
+        const relatedParts = [];
+        const seenPartIds = new Set();
+        mockInventory.forEach(p => {
+            if (p.linkedDTCs && p.linkedDTCs.includes(code)) {
+                if (!seenPartIds.has(p.id)) {
+                    seenPartIds.add(p.id);
+                    relatedParts.push(p);
+                }
+            }
+        });
+        if (typeof partsForDtc === 'function') {
+            const found = partsForDtc(code);
+            found.forEach(f => {
+                const p = mockInventory.find(item => item.id === f.id);
+                if (p && !seenPartIds.has(p.id)) {
+                    seenPartIds.add(p.id);
+                    relatedParts.push(p);
+                }
+            });
+        }
+
+        let partsHtml = '';
+        if (relatedParts.length === 0) {
+            partsHtml = '<p class="text-xs text-slate-400 italic">No related part recorded in inventory.</p>';
+        } else {
+            partsHtml = '<div class="flex flex-col gap-2">' + relatedParts.map(p => {
+                let stockBadge = '';
+                if (p.stock === 0) {
+                    stockBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>';
+                } else if (p.stock <= 5) {
+                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${p.stock} Available</span>`;
+                } else {
+                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${p.stock} Available</span>`;
+                }
+                return `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="font-bold text-slate-800 truncate">${escHTML(p.name)}</span>
+                            <span class="text-slate-400">·</span>
+                            <span class="font-semibold text-blue-600 shrink-0">${fmtPeso(p.price)}</span>
+                        </div>
+                        <div class="shrink-0">${stockBadge}</div>
+                    </div>
+                `;
+            }).join('') + '</div>';
+        }
+
+        let bodyHtml = '';
+        if (!info) {
+            bodyHtml = '<p class="text-xs text-slate-400 italic">No reference entry for this code yet.</p>';
+        } else {
+            const causesList = (info.causes && info.causes.length)
+                ? `<ul class="list-disc pl-4 space-y-0.5 text-xs text-slate-600">${info.causes.map(c => `<li>${escHTML(c)}</li>`).join('')}</ul>`
+                : '<p class="text-xs text-slate-400 italic">None recorded.</p>';
+
+            const verifList = (info.verification && info.verification.length)
+                ? `<ul class="list-disc pl-4 space-y-0.5 text-xs text-slate-600">${info.verification.map(v => `<li>${escHTML(v)}</li>`).join('')}</ul>`
+                : '<p class="text-xs text-slate-400 italic">None recorded.</p>';
+
+            bodyHtml = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                    <div>
+                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Possible Causes</span>
+                        ${causesList}
+                    </div>
+                    <div>
+                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Verification Guidance</span>
+                        ${verifList}
+                    </div>
+                </div>
+            `;
+        }
+
+        const cardHtml = `
+            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3" data-dtc="${escHTML(code)}">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200">${escHTML(code)}</span>
+                        <span class="text-sm font-bold text-slate-800">${escHTML(info ? info.description : 'Unrecognized DTC')}</span>
+                    </div>
+                </div>
+                ${bodyHtml}
+                <div class="pt-2 border-t border-slate-100">
+                    <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">Potentially Related Parts</span>
+                    ${partsHtml}
+                </div>
+            </div>
+        `;
+
+        container.insertAdjacentHTML('beforeend', cardHtml);
+    });
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function renderInspectionOverview() {
+    const overview = document.getElementById('inspection-overview');
+    if (!overview) return;
+    overview.innerHTML = '';
+
+    // 1. Customer complaints
+    const complaints = (inspectionState && inspectionState.intake && Array.isArray(inspectionState.intake.complaints))
+        ? inspectionState.intake.complaints
+        : [];
+    let complaintsHtml = '<span class="text-xs text-slate-400 italic">None selected</span>';
+    if (complaints.length > 0) {
+        complaintsHtml = `<div class="flex flex-wrap gap-1.5">${complaints.map(c => 
+            `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200"><i class="ph-fill ph-warning-circle text-amber-500"></i> ${escHTML(c)}</span>`
+        ).join('')}</div>`;
+    }
+
+    // 2. ECU / OBD Diagnostic
+    const isEcuOn = document.getElementById('toggle-ecu')?.checked;
+    let ecuHtml = '';
+    if (!isEcuOn) {
+        ecuHtml = '<span class="text-xs text-slate-400 italic">Not selected</span>';
+    } else {
+        const dtcNodes = document.querySelectorAll('#dtc-results-list [data-dtc]');
+        if (dtcNodes.length === 0) {
+            ecuHtml = '<span class="text-xs text-slate-400 italic">No scan run yet</span>';
+        } else {
+            const codes = Array.from(dtcNodes).map(el => (el.getAttribute('data-dtc') || el.dataset.dtc)?.trim()).filter(Boolean);
+            const count = codes.length;
+            const codeBadges = codes.map(c => `<span class="px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700 border border-red-200">${escHTML(c)}</span>`).join('');
+            ecuHtml = `<div class="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700"><span>${count} code${count === 1 ? '' : 's'} found</span>${codeBadges ? `<div class="flex flex-wrap gap-1">${codeBadges}</div>` : ''}</div>`;
+        }
+    }
+
+    // 3. Physical inspection
+    const isPhysicalOn = document.getElementById('toggle-physical')?.checked;
+    let physHtml = '';
+    if (!isPhysicalOn) {
+        physHtml = '<span class="text-xs text-slate-400 italic">Not selected</span>';
+    } else {
+        let okCount = 0, watchCount = 0, fixCount = 0;
+        if (typeof inspectionItems !== 'undefined' && typeof getInspItem === 'function') {
+            inspectionItems.forEach(item => {
+                const s = getInspItem(item.id)?.status;
+                if (s === 'ok') okCount++;
+                else if (s === 'watch') watchCount++;
+                else if (s === 'fix') fixCount++;
+            });
+        }
+        physHtml = `<div class="flex items-center gap-2 text-xs font-bold">
+            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200">OK: ${okCount}</span>
+            <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">Watch: ${watchCount}</span>
+            <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200">Fix: ${fixCount}</span>
+        </div>`;
+    }
+
+    overview.innerHTML = `
+        <div class="flex flex-col divide-y divide-slate-100 text-xs">
+            <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-600 uppercase tracking-wider shrink-0">Customer Complaints</span>
+                <div class="sm:text-right">${complaintsHtml}</div>
+            </div>
+            <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-600 uppercase tracking-wider shrink-0">ECU / OBD Diagnostic</span>
+                <div class="sm:text-right">${ecuHtml}</div>
+            </div>
+            <div class="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span class="font-bold text-slate-600 uppercase tracking-wider shrink-0">Physical Inspection</span>
+                <div class="sm:text-right">${physHtml}</div>
+            </div>
+        </div>
+    `;
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderInspectionOverview = renderInspectionOverview;
 
 function partsForDtc(code) {
     const c = String(code || '').toUpperCase();
@@ -6096,9 +6315,9 @@ window.getSuggestedParts = function(diagnosis = inspectionState) {
     // 1. ECU / OBD codes
     const dtcVisible = document.getElementById('toggle-ecu')?.checked !== false && !document.getElementById('ecu-scan-card')?.classList.contains('hidden');
     if (dtcVisible) {
-        document.querySelectorAll('#dtc-results-container tbody tr').forEach(tr => {
+        document.querySelectorAll('#dtc-results-container [data-dtc]').forEach(tr => {
             const cells = tr.querySelectorAll('td');
-            const code = cells[0]?.textContent.trim();
+            const code = (tr.dataset.dtc || cells[0]?.textContent)?.trim();
             if (!code) return;
             
             // from linkedDTCs in mockInventory
