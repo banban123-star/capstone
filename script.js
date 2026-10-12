@@ -498,7 +498,8 @@ let viewLoadToken = 0;
 
 async function loadView(viewName) {
     const allowedScreens = rolePermissions[currentRole] || [];
-    if (viewName !== 'more' && !allowedScreens.includes(viewName)) {
+    const screenAccess = typeof getAccessLevel === 'function' ? getAccessLevel(viewName) : (allowedScreens.includes(viewName) ? 'full' : 'none');
+    if (viewName !== 'more' && (!allowedScreens.includes(viewName) || screenAccess === 'none')) {
         mainContentArea.innerHTML = `
             <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
                 <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
@@ -520,7 +521,7 @@ async function loadView(viewName) {
     let useMobileView = false;
     
     try {
-        useMobileView = document.body.classList.contains('mobile-app') && mobileViews.includes(viewName);
+        useMobileView = (document.body.classList.contains('mobile-app') || viewName === 'more') && mobileViews.includes(viewName);
         const templateId = `view-${useMobileView ? 'mobile-' : ''}${viewName}`;
         const template = document.getElementById(templateId);
         
@@ -548,9 +549,13 @@ async function loadView(viewName) {
     if (isMobileMode && !primaryMobileViews.includes(viewName)) {
         const navBtn = document.querySelector(`.nav-link[data-target="${viewName}"]`);
         const titleText = navBtn ? navBtn.textContent.trim() : viewName;
+        const isReadonly = viewName === 'audit' && typeof getAccessLevel === 'function' && getAccessLevel('audit') === 'read';
         const headerHTML = `
             <div class="sticky top-0 -mt-4 sm:-mt-6 -mx-4 sm:-mx-6 mb-4 px-4 sm:px-6 py-3 bg-white border-b border-slate-200 z-50 flex items-center justify-between shadow-sm">
-                <div class="font-bold text-slate-800 text-lg">${titleText}</div>
+                <div class="font-bold text-slate-800 text-lg flex items-center gap-2">
+                    <span>${titleText}</span>
+                    <span id="mobile-audit-readonly-pill" class="${isReadonly ? '' : 'hidden'} text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">Read-only</span>
+                </div>
                 <button onclick="mNav('more')" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors">
                     <i class="ph ph-x text-lg"></i>
                 </button>
@@ -568,6 +573,10 @@ async function loadView(viewName) {
                 const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
                 backupAlert.style.display = canBackup ? 'flex' : 'none';
             }
+            document.querySelectorAll('#view-dashboard [data-target="users"], #view-dashboard [data-mtab="users"]').forEach(el => {
+                const canUsers = rolePermissions[currentRole] && rolePermissions[currentRole].includes('users');
+                el.style.display = canUsers ? '' : 'none';
+            });
         }
 
         // Initialize Diagnostics view state
@@ -699,17 +708,26 @@ const ROLES_CONFIG = {
     super_admin: {
         id: 'super_admin',
         label: 'Super Admin',
-        description: 'Users and system settings'
+        shortLabel: 'Super Admin',
+        description: 'Users and system settings',
+        defaultUI: 'desktop',
+        canSwitchUI: false
     },
     admin: {
         id: 'admin',
-        label: 'Admin',
-        description: 'Full shop access'
+        label: 'Owner/Cashier (Admin)',
+        shortLabel: 'Owner/Cashier',
+        description: 'Shop operations: owner and cashier',
+        defaultUI: 'desktop',
+        canSwitchUI: true
     },
     mechanic: {
         id: 'mechanic',
         label: 'Mechanic',
-        description: 'Repairs and diagnostics'
+        shortLabel: 'Mechanic',
+        description: 'Repairs and diagnostics',
+        defaultUI: 'mobile',
+        canSwitchUI: false
     }
 };
 
@@ -721,11 +739,74 @@ const systemUsers = {
 
 let currentRole = 'admin';
 
+function createRolePerms(screenMap) {
+    const arr = Object.keys(screenMap).filter(k => screenMap[k] && screenMap[k] !== 'none');
+    Object.assign(arr, screenMap);
+    arr.access = screenMap;
+    return arr;
+}
+
 const rolePermissions = {
-    super_admin: ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings', 'backup'],
-    admin:       ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'transactions', 'history', 'reports', 'audit', 'users', 'settings'],
-    mechanic:    ['dashboard', 'customers', 'diagnostics', 'repairs', 'inventory', 'history', 'settings']
+    super_admin: createRolePerms({
+        dashboard: 'full',
+        customers: 'full',
+        diagnostics: 'full',
+        repairs: 'full',
+        inventory: 'full',
+        transactions: 'full',
+        history: 'full',
+        reports: 'full',
+        audit: 'full',
+        users: 'full',
+        settings: 'full',
+        backup: 'full'
+    }),
+    admin: createRolePerms({
+        dashboard: 'full',
+        customers: 'full',
+        diagnostics: 'full',
+        repairs: 'full',
+        inventory: 'full',
+        transactions: 'full',
+        history: 'full',
+        reports: 'full',
+        audit: 'read',
+        settings: 'full'
+    }),
+    mechanic: createRolePerms({
+        dashboard: 'full',
+        customers: 'full',
+        diagnostics: 'full',
+        repairs: 'full',
+        inventory: 'full',
+        history: 'full',
+        settings: 'full'
+    })
 };
+window.rolePermissions = rolePermissions;
+
+function getAccessLevel(screen, role) {
+    const activeRole = role || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    const perms = rolePermissions[activeRole];
+    if (!perms) return 'none';
+    const level = perms[screen];
+    if (typeof level === 'string') return level;
+    if (perms.includes && perms.includes(screen)) return 'full';
+    return 'none';
+}
+window.getAccessLevel = getAccessLevel;
+
+function canSwitchUI(role) {
+    const activeRole = role || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    return !!(ROLES_CONFIG[activeRole] && ROLES_CONFIG[activeRole].canSwitchUI);
+}
+window.canSwitchUI = canSwitchUI;
+
+function getDefaultUI(role) {
+    const activeRole = role || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    return (ROLES_CONFIG[activeRole] && ROLES_CONFIG[activeRole].defaultUI) || 'desktop';
+}
+window.getDefaultUI = getDefaultUI;
 
 const ROLE_PERMISSIONS = {
     super_admin: {
@@ -789,6 +870,15 @@ function updateRoleLabels() {
     if (accRole && ROLES_CONFIG[currentRole]) {
         accRole.textContent = ROLES_CONFIG[currentRole].label;
     }
+    const accName = document.getElementById('acc-name');
+    if (accName && systemUsers[currentRole]) {
+        accName.textContent = systemUsers[currentRole].name;
+    }
+    const accAvatar = document.getElementById('acc-avatar');
+    if (accAvatar && systemUsers[currentRole]) {
+        accAvatar.textContent = systemUsers[currentRole].initials;
+        accAvatar.className = "w-14 h-14 rounded-full text-white flex items-center justify-center font-bold text-xl shadow-inner shrink-0 " + systemUsers[currentRole].color;
+    }
 
     // 4. Dashboard subtext under "Welcome back"
     const dashSub = document.getElementById('dashboard-subtext');
@@ -831,13 +921,16 @@ function updateRoleLabels() {
         `;
     }
 
-    // 8. Permissions Matrix headings
+    // 8. Permissions Matrix headings & table rows
     const matrixSuper = document.querySelector('.matrix-role-super_admin');
     if (matrixSuper) matrixSuper.textContent = ROLES_CONFIG.super_admin.label;
     const matrixAdmin = document.querySelector('.matrix-role-admin');
     if (matrixAdmin) matrixAdmin.textContent = ROLES_CONFIG.admin.label;
     const matrixMech = document.querySelector('.matrix-role-mechanic');
     if (matrixMech) matrixMech.textContent = ROLES_CONFIG.mechanic.label;
+    if (typeof renderPermissionsMatrix === 'function') {
+        renderPermissionsMatrix();
+    }
 
     // 9. Audit Logs role filter dropdown
     const auditFilterRole = document.getElementById('audit-filter-role');
@@ -853,11 +946,25 @@ function updateRoleLabels() {
         if (currentVal) auditFilterRole.value = currentVal;
     }
 
-    // 10. Dashboard Backup Alert
+    // 10. Dashboard Backup Alert & Shortcuts
     const backupAlert = document.getElementById('dashboard-backup-alert');
     if (backupAlert) {
         const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
         backupAlert.style.display = canBackup ? 'flex' : 'none';
+    }
+    document.querySelectorAll('#view-dashboard [data-target="users"], #view-dashboard [data-mtab="users"]').forEach(el => {
+        const canUsers = rolePermissions[currentRole] && rolePermissions[currentRole].includes('users');
+        el.style.display = canUsers ? '' : 'none';
+    });
+
+    // 11. Settings Cards Visibility (if Settings is currently rendered)
+    if (typeof updateSettingsCardsVisibility === 'function') {
+        updateSettingsCardsVisibility(currentRole);
+    }
+
+    // 12. Audit screen access update (if Audit is currently rendered)
+    if (document.querySelector('#main-content-area #view-audit') && typeof renderAudit === 'function') {
+        renderAudit();
     }
 }
 
@@ -882,7 +989,7 @@ function updateMobileMoreNav(roleId) {
 
     const deskToggle = document.getElementById('m-more-desktop-toggle');
     if (deskToggle) {
-        deskToggle.style.display = '';
+        deskToggle.style.display = canSwitchUI(roleId) ? '' : 'none';
     }
 }
 
@@ -892,6 +999,11 @@ function switchRole(roleId) {
         return;
     }
     const user = systemUsers[roleId];
+    if (roleId !== currentRole) {
+        forceOwnerMobile = false;
+        sessionStorage.removeItem('forceOwnerMobile');
+        localStorage.removeItem('forceOwnerMobile');
+    }
     currentRole = roleId;
     localStorage.setItem('activeRole', roleId);
     sessionStorage.setItem('currentUserRole', roleId);
@@ -933,7 +1045,11 @@ function switchRole(roleId) {
     const desktopMobileToggle = document.getElementById('desktop-mobile-toggle');
     
     if (adminHeader) {
-        adminHeader.style.display = (roleId === 'super_admin' || roleId === 'admin') ? 'block' : 'none';
+        const adminTargets = ['reports', 'audit', 'users', 'settings'];
+        const hasVisibleAdmin = adminTargets.some(target => 
+            rolePermissions[roleId] && rolePermissions[roleId].includes(target)
+        );
+        adminHeader.style.display = hasVisibleAdmin ? 'block' : 'none';
     }
 
     if (settingsHeader) {
@@ -946,7 +1062,7 @@ function switchRole(roleId) {
     }
 
     if (desktopMobileToggle) {
-        desktopMobileToggle.style.display = 'flex';
+        desktopMobileToggle.style.display = canSwitchUI(roleId) ? 'flex' : 'none';
     }
 
     updateRoleLabels();
@@ -956,13 +1072,19 @@ function switchRole(roleId) {
     const isCurrentlyOnBackup = !!document.querySelector('#main-content-area #view-backup') || currentActiveTarget === 'backup';
     const roleHasBackupAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('backup');
 
-    if (isCurrentlyOnBackup && !roleHasBackupAccess) {
-        document.querySelector('.nav-link[data-target="dashboard"]')?.click();
-    } else if (!isCurrentViewAllowed) {
+    const isCurrentlyOnUsers = !!document.querySelector('#main-content-area #view-users') || currentActiveTarget === 'users';
+    const roleHasUsersAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('users');
+
+    const isCurrentlyOnAudit = !!document.querySelector('#main-content-area #view-audit') || currentActiveTarget === 'audit';
+    const roleHasAuditAccess = typeof getAccessLevel === 'function' ? (getAccessLevel('audit', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('audit'));
+
+    if ((isCurrentlyOnBackup && !roleHasBackupAccess) || (isCurrentlyOnUsers && !roleHasUsersAccess) || (isCurrentlyOnAudit && !roleHasAuditAccess) || !isCurrentViewAllowed) {
         document.querySelector('.nav-link[data-target="dashboard"]')?.click();
     } else if (wasMobile || isMobile || currentActiveTarget === 'inventory') {
         // Entering/leaving mobile mode, or viewing inventory: re-render the current screen
         document.querySelector(`.nav-link[data-target="${currentActiveTarget}"]`)?.click();
+    } else if (isCurrentlyOnAudit && typeof renderAudit === 'function') {
+        renderAudit();
     }
 }
 
@@ -971,14 +1093,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const yearSpan = document.getElementById('current-year');
     if (yearSpan) yearSpan.textContent = new Date().getFullYear();
 
-    const shopName = document.getElementById('landing-shop-name');
-    if (shopName) shopName.textContent = shopConfig.name;
-    const shopAddr = document.getElementById('landing-shop-address');
-    if (shopAddr) shopAddr.textContent = shopConfig.address;
-    const shopPhone = document.getElementById('landing-shop-phone');
-    if (shopPhone) shopPhone.textContent = shopConfig.phone;
-    const shopHours = document.getElementById('landing-shop-hours');
-    if (shopHours) shopHours.textContent = shopConfig.hours;
+    if (typeof applyShopDetails === 'function') {
+        applyShopDetails();
+    } else {
+        const shopName = document.getElementById('landing-shop-name');
+        if (shopName) shopName.textContent = shopConfig.name;
+        const shopAddr = document.getElementById('landing-shop-address');
+        if (shopAddr) shopAddr.textContent = shopConfig.address;
+        const shopPhone = document.getElementById('landing-shop-phone');
+        if (shopPhone) shopPhone.textContent = shopConfig.phone;
+        const shopHours = document.getElementById('landing-shop-hours');
+        if (shopHours) shopHours.textContent = shopConfig.hours;
+    }
 
     // Reset old sessions so swapped roles don't grant mismatched access
     const ROLES_SESSION_VERSION = 'v3_swapped';
@@ -990,6 +1116,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const activeRole = localStorage.getItem('activeRole');
     if (activeRole && ROLES_CONFIG[activeRole] && systemUsers[activeRole]) {
+        if (!canSwitchUI(activeRole)) {
+            forceOwnerMobile = false;
+            sessionStorage.removeItem('forceOwnerMobile');
+            localStorage.removeItem('forceOwnerMobile');
+        } else {
+            forceOwnerMobile = sessionStorage.getItem('forceOwnerMobile') === 'true';
+        }
         switchRole(activeRole);
         const loginScreen = document.getElementById('login-screen');
         if (loginScreen) {
@@ -1108,6 +1241,9 @@ document.addEventListener('click', function(e) {
                 content.classList.toggle('hidden', content.id !== targetId);
                 content.classList.toggle('block', content.id === targetId);
             });
+            if (targetId === 'tab-user-matrix' && typeof renderPermissionsMatrix === 'function') {
+                renderPermissionsMatrix();
+            }
         }
     }
 });
@@ -1374,7 +1510,7 @@ function renderRepairPlan() {
                     <i class="ph-fill ph-info text-sm mt-0.5 shrink-0"></i>
                     <div>
                         <span class="font-bold">No part linked for:</span> ${window.unlinkedFixesList.join(', ')}.<br>
-                        Add them manually or ask an Admin to link them in Inventory.
+                        Add them manually or ask an ${ROLES_CONFIG.admin.shortLabel || 'Owner/Cashier'} to link them in Inventory.
                     </div>
                 </div>
             `;
@@ -2124,7 +2260,10 @@ function processRepairPayment(event) {
     }, 1000);
 }
 
-function openReceiptModal() { toggleModal('modal-receipt', 'receipt-backdrop', 'receipt-content', true); }
+function openReceiptModal() {
+    if (typeof applyShopDetails === 'function') applyShopDetails();
+    toggleModal('modal-receipt', 'receipt-backdrop', 'receipt-content', true);
+}
 function closeReceiptModal() { toggleModal('modal-receipt', 'receipt-backdrop', 'receipt-content', false); }
 
 // --- Service History & Audit Logic ---
@@ -3531,8 +3670,30 @@ const mockAuditData = [
 ];
 
 function renderAudit() {
+    const accessLevel = typeof getAccessLevel === 'function' ? getAccessLevel('audit') : 'full';
+
+    // Update Read-only pill visibility near title
+    const readonlyPill = document.getElementById('audit-readonly-pill');
+    if (readonlyPill) {
+        readonlyPill.classList.toggle('hidden', accessLevel !== 'read');
+    }
+    const mobileHeaderPill = document.getElementById('mobile-audit-readonly-pill');
+    if (mobileHeaderPill) {
+        mobileHeaderPill.classList.toggle('hidden', accessLevel !== 'read');
+    }
+
+    // Export CSV button & mutation actions: hide if not full access
+    const exportBtn = document.getElementById('audit-btn-export');
+    if (exportBtn) {
+        exportBtn.classList.toggle('hidden', accessLevel !== 'full');
+    }
+    document.querySelectorAll('.audit-mutation-action, [data-action="audit-delete"], [data-action="audit-clear"], [data-action="audit-edit"], [data-action="audit-restore"]').forEach(el => {
+        el.classList.toggle('hidden', accessLevel !== 'full');
+    });
+
     const tbody = document.getElementById('audit-tbody');
-    if (!tbody) return;
+    const mobileCards = document.getElementById('audit-mobile-cards');
+    if (!tbody && !mobileCards) return;
 
     // Get Active Filters
     const query = (document.getElementById('audit-search')?.value || '').toLowerCase();
@@ -3553,7 +3714,8 @@ function renderAudit() {
 
     // Render HTML
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 font-medium">No audit logs match the current filters.</td></tr>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 font-medium">No audit logs match the current filters.</td></tr>`;
+        if (mobileCards) mobileCards.innerHTML = `<div class="p-6 text-center text-slate-500 font-medium bg-white rounded-xl border border-slate-200">No audit logs match the current filters.</div>`;
         return;
     }
 
@@ -3610,6 +3772,55 @@ function renderAudit() {
         
         return rowHtml;
     }).join('');
+
+    if (mobileCards) {
+        mobileCards.innerHTML = filtered.map(log => {
+            const roleDisplay = (ROLES_CONFIG[log.roleFilter]?.label || log.userRole).toUpperCase();
+            return `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-3">
+                    <div class="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div>
+                            <span class="text-xs font-bold text-slate-700">${log.userName}</span>
+                            <span class="text-[10px] font-bold uppercase text-slate-400 block">${roleDisplay}</span>
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider shrink-0 ${log.severityClass}">
+                            <span class="w-1.5 h-1.5 rounded-full ${log.dotClass}"></span> ${log.severity}
+                        </span>
+                    </div>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">${log.action}</div>
+                        <div class="text-[11px] text-slate-500 mt-0.5 flex items-center justify-between">
+                            <span>${log.module}</span>
+                            <span class="text-slate-400">${log.date} ${log.time}</span>
+                        </div>
+                    </div>
+                    ${log.hasDetails ? `
+                        <button onclick="toggleAuditDetail('audit-detail-m-${log.id}')" class="text-xs font-bold text-blue-600 flex items-center justify-between pt-1 border-t border-slate-100">
+                            <span>View Details</span>
+                            <i class="ph-bold ph-caret-down text-slate-400 transition-transform" id="audit-icon-m-${log.id}"></i>
+                        </button>
+                        <div id="audit-detail-m-${log.id}" class="hidden bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs flex flex-col gap-2">
+                            <div>
+                                <span class="font-bold text-slate-500 uppercase text-[10px]">Target Record ID:</span>
+                                <span class="font-mono text-slate-700 bg-white px-1 border border-slate-200 rounded">${log.targetId}</span>
+                            </div>
+                            <div class="flex flex-col gap-1.5 text-xs">
+                                <div class="bg-white p-1.5 border border-slate-200 rounded shadow-sm">
+                                    <span class="text-slate-400 font-bold uppercase text-[10px]">Before:</span>
+                                    <span class="font-bold text-slate-700 ml-1">${log.beforeValue}</span>
+                                </div>
+                                <div class="p-1.5 border rounded shadow-sm ${log.afterTheme}">
+                                    <span class="font-bold uppercase text-[10px] ${log.afterLabelTheme}">After:</span>
+                                    <span class="font-bold ml-1">${log.afterValue}</span>
+                                </div>
+                            </div>
+                            ${log.reason ? `<div class="text-[11px] text-slate-500 italic">${log.reason}</div>` : ''}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 // Global Event Listeners for Audit Logs Filtering
@@ -3627,7 +3838,7 @@ document.addEventListener('change', function(e) {
 const mockUserData = [
     {
         id: 'u1', initials: 'IG', name: 'User', username: '@User.admin',
-        roleName: ROLES_CONFIG.admin.label, roleValue: 'admin', roleIcon: 'ph-crown', roleClass: 'bg-slate-800 text-white',
+        roleName: ROLES_CONFIG.admin.shortLabel || ROLES_CONFIG.admin.label, roleValue: 'admin', roleIcon: 'ph-crown', roleClass: 'bg-slate-800 text-white',
         status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
         lastLoginDate: 'Oct 24, 2026', lastLoginTime: '08:00 AM', avatarClass: 'bg-slate-800 text-white'
     },
@@ -3652,7 +3863,51 @@ const mockUserData = [
     
 ];
 
+function renderPermissionsMatrix() {
+    const tbody = document.getElementById('permissions-matrix-tbody');
+    if (!tbody) return;
+
+    const matrixRows = [
+        { key: 'customers', label: 'Customers & Motorcycles' },
+        { key: 'diagnostics', label: 'Diagnostics & Inspections' },
+        { key: 'repairs', label: 'Active Repairs', notes: { mechanic: 'Can Finalize' } },
+        { key: 'inventory', label: 'Inventory Management', notes: { super_admin: 'Full Access', admin: 'Full Access', mechanic: 'View / Request' } },
+        { key: 'transactions', label: 'Transactions & Billing' },
+        { key: 'reports', label: 'Reports & Monitoring' },
+        { key: 'audit', label: 'Audit Logs', notes: { super_admin: 'Full Access', admin: 'Read-only' } },
+        { key: 'users', label: 'User Management' },
+        { key: 'settings', label: 'Settings' },
+        { key: 'backup', label: 'Backup & Restore' }
+    ];
+
+    const iconHtml = (allowed, note) => {
+        if (allowed) {
+            return `<i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i>` +
+                (note ? `<br><span class="text-[10px] font-semibold text-slate-500">${note}</span>` : '');
+        }
+        return `<i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i>`;
+    };
+
+    tbody.innerHTML = matrixRows.map(row => {
+        const canSuper = rolePermissions.super_admin && rolePermissions.super_admin.includes(row.key);
+        const canAdmin = rolePermissions.admin && rolePermissions.admin.includes(row.key);
+        const canMech = rolePermissions.mechanic && rolePermissions.mechanic.includes(row.key);
+
+        return `
+            <tr class="hover:bg-slate-50" data-matrix-module="${row.key}">
+                <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">${row.label}</td>
+                <td class="p-4 border-r border-slate-200">${iconHtml(canSuper, row.notes?.super_admin)}</td>
+                <td class="p-4 border-r border-slate-200">${iconHtml(canAdmin, row.notes?.admin)}</td>
+                <td class="p-4">${iconHtml(canMech, row.notes?.mechanic)}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function renderUsers() {
+    if (typeof renderPermissionsMatrix === 'function') {
+        renderPermissionsMatrix();
+    }
     const tbody = document.getElementById('users-tbody');
     if (!tbody) return;
 
@@ -3701,8 +3956,8 @@ function renderUsers() {
                     </div>
                 </td>
                 <td class="p-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${u.roleClass}">
-                        <i class="ph-fill ${u.roleIcon}"></i> ${ROLES_CONFIG[u.roleValue]?.label || u.roleName}
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${u.roleClass}">
+                        <i class="ph-fill ${u.roleIcon}"></i> ${ROLES_CONFIG[u.roleValue]?.shortLabel || ROLES_CONFIG[u.roleValue]?.label || u.roleName}
                     </span>
                 </td>
                 <td class="p-4">
@@ -5053,12 +5308,26 @@ document.addEventListener('change', function(e) {
 // add the screen name to `mobileViews` once views/mobile/<name>.html exists.
 // =====================================================================
 
-const MOBILE_ROLES = ['mechanic'];
-let forceOwnerMobile = localStorage.getItem('forceOwnerMobile') === 'true'; // Tracks if admin manually toggled mobile UI
+let forceOwnerMobile = sessionStorage.getItem('forceOwnerMobile') === 'true';
+
+function isMobileForRole(roleId) {
+    const role = roleId || currentRole || 'admin';
+    if (!canSwitchUI(role)) {
+        return getDefaultUI(role) === 'mobile';
+    }
+    const hasSessionPref = sessionStorage.getItem('forceOwnerMobile');
+    if (hasSessionPref !== null) {
+        return hasSessionPref === 'true';
+    }
+    return forceOwnerMobile || (getDefaultUI(role) === 'mobile');
+}
 
 window.toggleOwnerMobileMode = function() {
-    forceOwnerMobile = !forceOwnerMobile;
-    localStorage.setItem('forceOwnerMobile', forceOwnerMobile);
+    if (!canSwitchUI(currentRole)) return;
+    const nextIsMobile = !isMobileForRole(currentRole);
+    forceOwnerMobile = nextIsMobile;
+    sessionStorage.setItem('forceOwnerMobile', nextIsMobile ? 'true' : 'false');
+    localStorage.setItem('forceOwnerMobile', nextIsMobile ? 'true' : 'false');
     switchRole(currentRole); // Re-trigger UI setup
 };
 
@@ -5088,7 +5357,8 @@ function getMobileJobs(roleId) {
 
 // Toggles mobile mode + fills the shell (app bar avatar, tab badge). Returns true if mobile.
 function applyMobileMode(roleId) {
-    const isMobile = MOBILE_ROLES.includes(roleId) || forceOwnerMobile;
+    const role = roleId || currentRole || 'admin';
+    const isMobile = isMobileForRole(role);
     document.body.classList.toggle('mobile-app', isMobile);
 
     if (!isMobile) {
@@ -5176,7 +5446,8 @@ function renderMobileHome() {
     document.getElementById('m-greeting').textContent = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
     document.getElementById('m-name').textContent = user.name;
     document.getElementById('m-date').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    document.getElementById('m-role-chip').innerHTML = `<i class="ph-fill ${roleId === 'admin' ? 'ph-crown-simple' : 'ph-wrench'}"></i> ${user.role}`;
+    const roleChipText = ROLES_CONFIG[roleId]?.shortLabel || ROLES_CONFIG[roleId]?.label || user.role;
+    document.getElementById('m-role-chip').innerHTML = `<i class="ph-fill ${roleId === 'admin' ? 'ph-crown-simple' : 'ph-wrench'}"></i> ${roleChipText}`;
 
     // Role-gated blocks inside the view
     document.querySelectorAll('#m-home [data-mroles]').forEach(el => {
@@ -7004,6 +7275,10 @@ window.submitLogin = function() {
         sessionStorage.setItem('currentUserRole', roleId);
         sessionStorage.setItem('roles_version', 'v3_swapped');
         
+        forceOwnerMobile = false;
+        sessionStorage.removeItem('forceOwnerMobile');
+        localStorage.removeItem('forceOwnerMobile');
+        
         const switcher = document.getElementById('role-switcher');
         if (switcher) switcher.value = roleId;
         
@@ -7025,9 +7300,149 @@ window.handleLogout = function() {
     showLoginForm();
     sessionStorage.removeItem('currentUserRole');
     localStorage.removeItem('activeRole');
+    forceOwnerMobile = false;
+    sessionStorage.removeItem('forceOwnerMobile');
+    localStorage.removeItem('forceOwnerMobile');
 };
 
 // --- Settings Logic ---
+const SETTINGS_CARDS_CONFIG = [
+    { id: 'settings-card-session',          roles: ['super_admin', 'admin', 'mechanic'] },
+    { id: 'settings-card-shop',             roles: ['super_admin', 'admin'] },
+    { id: 'settings-card-password',         roles: ['super_admin', 'admin', 'mechanic'] },
+    { id: 'settings-card-system',           roles: ['super_admin'] },
+    { id: 'settings-card-session-controls', roles: ['super_admin', 'admin', 'mechanic'] }
+];
+window.SETTINGS_CARDS_CONFIG = SETTINGS_CARDS_CONFIG;
+
+const SHOP_DETAILS_STORAGE_KEY = 'motocare_shop_settings';
+
+function getSavedShopDetails() {
+    try {
+        const stored = localStorage.getItem(SHOP_DETAILS_STORAGE_KEY);
+        if (stored) {
+            return JSON.parse(stored);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    return {
+        name: (typeof shopConfig !== 'undefined' && shopConfig.name) ? shopConfig.name : "MotoCare Shop",
+        address: (typeof shopConfig !== 'undefined' && shopConfig.address) ? shopConfig.address : "123 Example Street, City",
+        phone: (typeof shopConfig !== 'undefined' && shopConfig.phone) ? shopConfig.phone : "+1 (555) 123-4567",
+        receiptHeader: "JC's Motor Shop",
+        receiptFooter: "THANK YOU FOR YOUR BUSINESS!"
+    };
+}
+window.getSavedShopDetails = getSavedShopDetails;
+
+function applyShopDetails() {
+    const details = getSavedShopDetails();
+    if (typeof shopConfig !== 'undefined') {
+        shopConfig.name = details.name;
+        shopConfig.address = details.address;
+        shopConfig.phone = details.phone;
+    }
+
+    const landingName = document.getElementById('landing-shop-name');
+    if (landingName) landingName.textContent = details.name;
+    const landingAddr = document.getElementById('landing-shop-address');
+    if (landingAddr) landingAddr.textContent = details.address;
+    const landingPhone = document.getElementById('landing-shop-phone');
+    if (landingPhone) landingPhone.textContent = details.phone;
+
+    const receiptName = document.getElementById('receipt-shop-name');
+    if (receiptName) receiptName.textContent = details.receiptHeader || details.name;
+    const receiptAddr = document.getElementById('receipt-shop-address');
+    if (receiptAddr) receiptAddr.textContent = details.address;
+    const receiptPhone = document.getElementById('receipt-shop-phone');
+    if (receiptPhone) receiptPhone.textContent = details.phone ? `Tel: ${details.phone}` : '';
+    const receiptFooter = document.getElementById('receipt-footer-text');
+    if (receiptFooter) receiptFooter.textContent = details.receiptFooter;
+}
+window.applyShopDetails = applyShopDetails;
+
+function updateSettingsCardsVisibility(roleId) {
+    const activeRole = roleId || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    SETTINGS_CARDS_CONFIG.forEach(card => {
+        const el = document.getElementById(card.id);
+        if (el) {
+            const isAllowed = card.roles.includes(activeRole);
+            el.classList.toggle('hidden', !isAllowed);
+        }
+    });
+}
+window.updateSettingsCardsVisibility = updateSettingsCardsVisibility;
+
+function loadShopDetailsIntoForm() {
+    const details = getSavedShopDetails();
+    const nameIn = document.getElementById('setting-shop-name');
+    const addrIn = document.getElementById('setting-shop-address');
+    const phoneIn = document.getElementById('setting-shop-phone');
+    const headerIn = document.getElementById('setting-receipt-header');
+    const footerIn = document.getElementById('setting-receipt-footer');
+    
+    if (nameIn) nameIn.value = details.name || '';
+    if (addrIn) addrIn.value = details.address || '';
+    if (phoneIn) phoneIn.value = details.phone || '';
+    if (headerIn) headerIn.value = details.receiptHeader || '';
+    if (footerIn) footerIn.value = details.receiptFooter || '';
+}
+
+window.saveShopDetails = function() {
+    const nameIn = document.getElementById('setting-shop-name');
+    const addrIn = document.getElementById('setting-shop-address');
+    const phoneIn = document.getElementById('setting-shop-phone');
+    const headerIn = document.getElementById('setting-receipt-header');
+    const footerIn = document.getElementById('setting-receipt-footer');
+    
+    const details = {
+        name: (nameIn ? nameIn.value.trim() : '') || 'MotoCare Shop',
+        address: (addrIn ? addrIn.value.trim() : '') || '123 Example Street, City',
+        phone: (phoneIn ? phoneIn.value.trim() : '') || '+1 (555) 123-4567',
+        receiptHeader: (headerIn ? headerIn.value.trim() : '') || "JC's Motor Shop",
+        receiptFooter: (footerIn ? footerIn.value.trim() : '') || 'THANK YOU FOR YOUR BUSINESS!'
+    };
+    
+    try {
+        localStorage.setItem(SHOP_DETAILS_STORAGE_KEY, JSON.stringify(details));
+    } catch (e) {
+        console.error(e);
+    }
+    
+    applyShopDetails();
+    
+    const savedMsg = document.getElementById('setting-shop-saved-msg');
+    if (savedMsg) {
+        savedMsg.classList.remove('hidden');
+        savedMsg.classList.add('inline-flex');
+        clearTimeout(window._shopSavedTimeout);
+        window._shopSavedTimeout = setTimeout(() => {
+            savedMsg.classList.add('hidden');
+            savedMsg.classList.remove('inline-flex');
+        }, 2500);
+    }
+};
+
+window.triggerSyncNow = function() {
+    const btn = document.getElementById('btn-sync-now');
+    const msg = document.getElementById('setting-sync-msg');
+    if (btn) {
+        btn.disabled = true;
+        const origText = btn.innerHTML;
+        btn.innerHTML = '<i class="ph-bold ph-arrows-clockwise animate-spin"></i> Syncing...';
+        setTimeout(() => {
+            btn.innerHTML = origText;
+            btn.disabled = false;
+            if (msg) {
+                msg.textContent = 'Last synced: just now';
+            }
+        }, 600);
+    } else if (msg) {
+        msg.textContent = 'Last synced: just now';
+    }
+};
+
 window.initSettingsView = function() {
     const rawRole = currentRole || sessionStorage.getItem('currentUserRole');
     const roleId = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
@@ -7054,6 +7469,8 @@ window.initSettingsView = function() {
     const msg = document.getElementById('acc-pwd-msg');
     if (msg) msg.classList.add('hidden');
     
+    updateSettingsCardsVisibility(roleId);
+    loadShopDetailsIntoForm();
 };
 
 window.changePassword = function() {
