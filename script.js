@@ -8,8 +8,11 @@ const shopConfig = {
 // --- Shared Motorcycle Brands Configuration ---
 const MOTORCYCLE_BRANDS_CONFIG = [
     { id: 'yamaha', label: 'Yamaha', suggestedModels: ['Sniper'], defaultModel: 'Sniper' },
+    { id: 'honda', label: 'Honda', suggestedModels: [] },
     { id: 'rusi', label: 'Rusi', suggestedModels: [] },
-    { id: 'other_chinese', label: 'Other Chinese brand', isFreeText: true, suggestedModels: [] }
+    { id: 'kawasaki', label: 'Kawasaki', suggestedModels: [] },
+    { id: 'motoposh', label: 'Motoposh', suggestedModels: [] },
+    { id: 'other', label: 'Other', isFreeText: true, suggestedModels: [] }
 ];
 
 const DEFAULT_BRAND_ID = 'yamaha';
@@ -18,17 +21,40 @@ function getBrandLabel(vehicle) {
     if (!vehicle) return '';
     if (typeof vehicle === 'string') {
         const str = vehicle.trim();
+        if (!str || str === 'undefined') return '';
+        if (str.toLowerCase() === 'other') return 'Other';
         const matched = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === str.toLowerCase() || b.label.toLowerCase() === str.toLowerCase());
         return matched ? matched.label : str;
     }
-    const bId = vehicle.brandId || (vehicle.brand ? String(vehicle.brand).toLowerCase() : '');
-    if (bId === 'other_chinese' || bId === 'other') {
-        return (vehicle.brandText && vehicle.brandText.trim()) ? vehicle.brandText.trim() : 'Other Chinese brand';
+    if (typeof vehicle === 'object') {
+        if (vehicle.brandId && !MOTORCYCLE_BRANDS_CONFIG.some(b => b.id === vehicle.brandId)) {
+            // Any saved vehicle with an unknown brandId becomes "other" with that old name kept as brandText
+            const oldName = (vehicle.brandText && vehicle.brandText.trim()) || 
+                            (vehicle.brand && vehicle.brand.trim()) || 
+                            String(vehicle.brandId);
+            vehicle.brandId = 'other';
+            vehicle.brandText = (oldName && oldName !== 'undefined') ? oldName : '';
+        } else if (!vehicle.brandId && vehicle.brand) {
+            const matchedBrand = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === String(vehicle.brand).toLowerCase() || b.label.toLowerCase() === String(vehicle.brand).toLowerCase());
+            if (matchedBrand) {
+                vehicle.brandId = matchedBrand.id;
+            } else {
+                vehicle.brandId = 'other';
+                vehicle.brandText = String(vehicle.brand) !== 'undefined' ? String(vehicle.brand) : '';
+            }
+        }
     }
-    const matched = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === bId || b.label.toLowerCase() === bId.toLowerCase());
+    const bId = vehicle.brandId || '';
+    if (bId === 'other') {
+        if (vehicle.brandText && vehicle.brandText.trim() && vehicle.brandText.trim() !== 'undefined') {
+            return vehicle.brandText.trim();
+        }
+        return 'Other';
+    }
+    const matched = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === bId);
     if (matched) return matched.label;
-    if (vehicle.brandText && vehicle.brandText.trim()) return vehicle.brandText.trim();
-    if (vehicle.brand && vehicle.brand.trim()) return vehicle.brand.trim();
+    if (vehicle.brandText && vehicle.brandText.trim() && vehicle.brandText.trim() !== 'undefined') return vehicle.brandText.trim();
+    if (vehicle.brand && vehicle.brand.trim() && vehicle.brand.trim() !== 'undefined') return vehicle.brand.trim();
     return '';
 }
 window.getBrandLabel = getBrandLabel;
@@ -114,7 +140,7 @@ const mockCustomers = [
         lastVisit: '2023-09-05',
         totalVisits: 1,
         motorcycles: [
-            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'GHI 789' }
+            { brandId: 'honda', brandText: '', brand: 'Honda', model: 'Model TBC', plate: 'HON 555' }
         ]
     },
     { 
@@ -136,7 +162,7 @@ const mockCustomers = [
         lastVisit: '2023-10-01',
         totalVisits: 3,
         motorcycles: [
-            { brandId: 'other_chinese', brandText: 'Brand TBC', brand: 'Brand TBC', model: 'Model TBC', plate: 'MNO 345' }
+            { brandId: 'other', brandText: '', brand: 'Other', model: 'Model TBC', plate: 'QRS 445' }
         ]
     },
     { 
@@ -158,7 +184,7 @@ const mockCustomers = [
         lastVisit: '2023-09-25',
         totalVisits: 6,
         motorcycles: [
-            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'STU 901' }
+            { brandId: 'kawasaki', brandText: '', brand: 'Kawasaki', model: 'Model TBC', plate: 'KAW 666' }
         ]
     },
     { 
@@ -169,7 +195,7 @@ const mockCustomers = [
         lastVisit: '2023-08-10',
         totalVisits: 2,
         motorcycles: [
-            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'YZA 567' }
+            { brandId: 'motoposh', brandText: '', brand: 'Motoposh', model: 'Model TBC', plate: 'MOT 777' }
         ]
     }
 ];
@@ -2335,8 +2361,8 @@ function restoreRegMotoForm() {
         return `<button type="button" onclick="setRegMotoBrand('${b.id}')" class="${baseClass} ${isSelected ? selectedClass : unselectedClass}">${b.label}</button>`;
     }).join('');
     
-    // 2. Free-text brand input for 'other_chinese'
-    if (regMotoState.brandId === 'other_chinese') {
+    // 2. Free-text brand input for 'other'
+    if (regMotoState.brandId === 'other') {
         if (otherContainer) otherContainer.classList.remove('hidden');
         if (otherInput) otherInput.value = regMotoState.brandText || '';
     } else {
@@ -2349,11 +2375,11 @@ function restoreRegMotoForm() {
         if (regMotoState.brandId === 'yamaha') {
             modelInput.placeholder = 'e.g. Sniper';
             if (modelInput.value !== regMotoState.model) modelInput.value = regMotoState.model || '';
-        } else if (regMotoState.brandId === 'rusi') {
-            modelInput.placeholder = 'e.g. model name';
+        } else if (regMotoState.brandId === 'other') {
+            modelInput.placeholder = 'e.g. exact model';
             if (modelInput.value !== regMotoState.model) modelInput.value = regMotoState.model || '';
         } else {
-            modelInput.placeholder = 'e.g. exact model';
+            modelInput.placeholder = 'e.g. model name';
             if (modelInput.value !== regMotoState.model) modelInput.value = regMotoState.model || '';
         }
     }
@@ -2375,7 +2401,7 @@ function restoreRegMotoForm() {
 
 window.setRegMotoBrand = function(brandId) {
     const config = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === brandId);
-    const targetId = config ? config.id : 'other_chinese';
+    const targetId = config ? config.id : 'other';
     
     if (regMotoState.brandId !== targetId) {
         regMotoState.brandId = targetId;
@@ -2398,7 +2424,7 @@ window.selectRegModelSuggestion = function(modelName) {
 
 window.updateRegMotoField = function(field, value) {
     if (field === 'brandOther') {
-        regMotoState.brandId = 'other_chinese';
+        regMotoState.brandId = 'other';
         regMotoState.brandText = value;
     } else if (field === 'model') {
         regMotoState.model = value;
@@ -3422,7 +3448,7 @@ const mockHistoryData = [
         model: 'Sniper 155',
         vehicle: 'Yamaha Sniper 155',
         customer: 'Maria Clara',
-        mechanic: 'Leo (Mechanic)',
+        mechanic: `Leo (${ROLES_CONFIG.mechanic.label})`,
         mechanicId: 'leo',
         issueTitle: 'Throttle & Oil Maintenance',
         issueDesc: 'Throttle body cleaning and standard engine oil replacement.',
@@ -3442,6 +3468,81 @@ const mockHistoryData = [
         issueTitle: 'Engine Overheating (P0118)',
         issueDesc: 'Replaced faulty Coolant Temp Sensor and front brake pads.',
         cost: 1800.00
+    },
+    {
+        date: 'Oct 18, 2023',
+        time: '11:00 AM',
+        plate: 'HON-5555',
+        brandId: 'honda',
+        brandText: '',
+        model: 'Model TBC',
+        vehicle: 'Honda Model TBC',
+        customer: 'Jose Rizal',
+        mechanic: `Mike (${ROLES_CONFIG.mechanic.label})`,
+        mechanicId: 'mike',
+        issueTitle: 'Scheduled Maintenance',
+        issueDesc: 'General inspection and fluid check.',
+        cost: 950.00
+    },
+    {
+        date: 'Oct 15, 2023',
+        time: '16:45 PM',
+        plate: 'KAW-6666',
+        brandId: 'kawasaki',
+        brandText: '',
+        model: 'Model TBC',
+        vehicle: 'Kawasaki Model TBC',
+        customer: 'Apolinario Mabini',
+        mechanic: `Leo (${ROLES_CONFIG.mechanic.label})`,
+        mechanicId: 'leo',
+        issueTitle: 'Brake System Check',
+        issueDesc: 'Brake pad replacement and bleeding.',
+        cost: 1200.00
+    },
+    {
+        date: 'Oct 12, 2023',
+        time: '10:30 AM',
+        plate: 'MOT-7777',
+        brandId: 'motoposh',
+        brandText: '',
+        model: 'Model TBC',
+        vehicle: 'Motoposh Model TBC',
+        customer: 'Emilio Aguinaldo',
+        mechanic: `Mike (${ROLES_CONFIG.mechanic.label})`,
+        mechanicId: 'mike',
+        issueTitle: 'Carburetor Service',
+        issueDesc: 'Carburetor cleaning and fuel line check.',
+        cost: 850.00
+    },
+    {
+        date: 'Oct 08, 2023',
+        time: '13:15 PM',
+        plate: 'DEF-5678',
+        brandId: 'rusi',
+        brandText: '',
+        model: 'Model TBC',
+        vehicle: 'Rusi Model TBC',
+        customer: 'Antonio Luna',
+        mechanic: `Leo (${ROLES_CONFIG.mechanic.label})`,
+        mechanicId: 'leo',
+        issueTitle: 'Drive Chain Service',
+        issueDesc: 'Chain cleaning and tension adjustment.',
+        cost: 500.00
+    },
+    {
+        date: 'Oct 05, 2023',
+        time: '15:00 PM',
+        plate: 'QRS-4455',
+        brandId: 'other',
+        brandText: '',
+        model: 'Model TBC',
+        vehicle: 'Other Model TBC',
+        customer: 'Gabriela Silang',
+        mechanic: `Mike (${ROLES_CONFIG.mechanic.label})`,
+        mechanicId: 'mike',
+        issueTitle: 'General Tune-Up',
+        issueDesc: 'Spark plug replacement and oil change.',
+        cost: 750.00
     }
 ];
 
@@ -4375,6 +4476,106 @@ const mockRepairsData = [
             laborCost: 800,
             estimatedTotal: 800
         }
+    },
+    {
+        id: 'JOB #1043',
+        plate: 'DEF-5678',
+        brandId: 'rusi',
+        brandText: '',
+        model: 'Model TBC',
+        customer: 'Antonio Luna',
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
+        selectedMechIndex: 1,
+        diagnosis: 'Chain and sprocket set replacement.',
+        statusId: 'progress',
+        statusName: 'In Progress',
+        statusClass: 'bg-blue-50 text-blue-600 border-blue-200',
+        dotClass: 'bg-blue-500 animate-pulse',
+        repairPlan: {
+            parts: [],
+            laborCost: 600,
+            estimatedTotal: 600
+        }
+    },
+    {
+        id: 'JOB #1044',
+        plate: 'QRS-4455',
+        brandId: 'other',
+        brandText: '',
+        model: 'Model TBC',
+        customer: 'Gabriela Silang',
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
+        selectedMechIndex: 0,
+        diagnosis: 'Clutch lining replacement.',
+        statusId: 'progress',
+        statusName: 'In Progress',
+        statusClass: 'bg-blue-50 text-blue-600 border-blue-200',
+        dotClass: 'bg-blue-500 animate-pulse',
+        repairPlan: {
+            parts: [],
+            laborCost: 750,
+            estimatedTotal: 750
+        }
+    },
+    {
+        id: 'JOB #1045',
+        plate: 'HON-5555',
+        brandId: 'honda',
+        brandText: '',
+        model: 'Model TBC',
+        customer: 'Jose Rizal',
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
+        selectedMechIndex: 0,
+        diagnosis: 'Brake fluid flush and system inspection.',
+        statusId: 'progress',
+        statusName: 'In Progress',
+        statusClass: 'bg-blue-50 text-blue-600 border-blue-200',
+        dotClass: 'bg-blue-500 animate-pulse',
+        repairPlan: {
+            parts: [],
+            laborCost: 500,
+            estimatedTotal: 500
+        }
+    },
+    {
+        id: 'JOB #1046',
+        plate: 'KAW-6666',
+        brandId: 'kawasaki',
+        brandText: '',
+        model: 'Model TBC',
+        customer: 'Apolinario Mabini',
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
+        selectedMechIndex: 1,
+        diagnosis: 'Drive belt replacement.',
+        statusId: 'waiting',
+        statusName: 'Waiting for Parts',
+        statusClass: 'bg-orange-50 text-orange-600 border-orange-200',
+        dotClass: 'bg-orange-500',
+        repairPlan: {
+            parts: [],
+            laborCost: 650,
+            estimatedTotal: 650
+        }
+    },
+    {
+        id: 'JOB #1047',
+        plate: 'MOT-7777',
+        brandId: 'motoposh',
+        brandText: '',
+        model: 'Model TBC',
+        customer: 'Emilio Aguinaldo',
+        mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
+        selectedMechIndex: 0,
+        diagnosis: 'Carburetor tuning and cleaning.',
+        statusId: 'ready',
+        statusName: 'Ready for Billing',
+        statusClass: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+        dotClass: 'bg-emerald-500',
+        repairPlan: {
+            parts: [],
+            laborCost: 550,
+            estimatedTotal: 550
+        }
     }
 ];
 
@@ -5056,6 +5257,50 @@ const mockCustomersData = [
         vehicles: [
             { brandId: 'yamaha', brandText: '', model: 'Sniper', make: 'Yamaha Sniper', plate: 'DEF-5678', engine: 'ADV160-55555', status: 'Cleared', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
         ]
+    },
+    {
+        id: '3',
+        name: 'Jose Rizal',
+        joined: 'Feb 10, 2026',
+        phone: '0919-222-3333',
+        status: 'in-shop',
+        statusHtml: '<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> 1 In-Shop</span>',
+        vehicles: [
+            { brandId: 'honda', brandText: '', model: 'Model TBC', make: 'Honda Model TBC', plate: 'HON-5555', engine: 'HON-5555123', status: 'In-Repair', statusClass: 'bg-orange-50 text-orange-700 border-orange-200' }
+        ]
+    },
+    {
+        id: '4',
+        name: 'Apolinario Mabini',
+        joined: 'Feb 18, 2026',
+        phone: '0923-666-7777',
+        status: 'in-shop',
+        statusHtml: '<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> 1 In-Shop</span>',
+        vehicles: [
+            { brandId: 'kawasaki', brandText: '', model: 'Model TBC', make: 'Kawasaki Model TBC', plate: 'KAW-6666', engine: 'KAW-6666123', status: 'Waiting-Parts', statusClass: 'bg-orange-50 text-orange-700 border-orange-200' }
+        ]
+    },
+    {
+        id: '5',
+        name: 'Emilio Aguinaldo',
+        joined: 'Mar 12, 2026',
+        phone: '0924-777-8888',
+        status: 'cleared',
+        statusHtml: '<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Cleared</span>',
+        vehicles: [
+            { brandId: 'motoposh', brandText: '', model: 'Model TBC', make: 'Motoposh Model TBC', plate: 'MOT-7777', engine: 'MOT-7777123', status: 'Cleared', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+        ]
+    },
+    {
+        id: '6',
+        name: 'Gabriela Silang',
+        joined: 'Jan 28, 2026',
+        phone: '0921-444-5555',
+        status: 'in-shop',
+        statusHtml: '<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> 1 In-Shop</span>',
+        vehicles: [
+            { brandId: 'other', brandText: '', model: 'Model TBC', make: 'Other Model TBC', plate: 'QRS-4455', engine: 'OTH-4455123', status: 'In-Repair', statusClass: 'bg-orange-50 text-orange-700 border-orange-200' }
+        ]
     }
 ];
 
@@ -5081,7 +5326,10 @@ function renderCustomers() {
     }
 
     tbody.innerHTML = filtered.map(customer => {
-        const vehicleRows = customer.vehicles.map(vehicle => `
+        const vehicleRows = customer.vehicles.map(vehicle => {
+            const bLabel = getBrandLabel(vehicle);
+            const vLabel = (bLabel ? `${bLabel} ${vehicle.model || ''}`.trim() : (vehicle.make || 'Motorcycle')).trim();
+            return `
             <div class="flex items-center justify-between ml-2 py-3 px-3 hover:bg-white transition-colors">
                 <div class="flex items-center gap-4">
                     <div class="w-10 h-10 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
@@ -5089,7 +5337,7 @@ function renderCustomers() {
                     </div>
                     <div>
                         <div class="font-bold text-slate-800 flex items-center gap-2">
-                            ${vehicle.make}
+                            ${vLabel}
                             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${vehicle.statusClass}">${vehicle.status}</span>
                         </div>
                         <div class="text-xs text-slate-500 font-mono mt-0.5 flex gap-3">
@@ -5105,12 +5353,13 @@ function renderCustomers() {
                         <i class="ph-bold ph-eye"></i> View History
                     </button>
                     <!-- NEW: Create Ticket Button Action -->
-                    <button onclick="createRepairTicket('${vehicle.make}', '${vehicle.plate}')" class="text-white bg-blue-600 hover:bg-blue-700 font-bold text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
+                    <button onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="text-white bg-blue-600 hover:bg-blue-700 font-bold text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
                         <i class="ph-bold ph-wrench"></i> Create Ticket
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+        }).join('');
 
         return `
             <tr class="hover:bg-slate-50 transition-colors cursor-pointer group" onclick="toggleCustomerRow('cust-row-${customer.id}')">
@@ -5147,11 +5396,14 @@ function renderCustomers() {
     const mobileContainer = document.getElementById('customers-mobile-cards');
     if (mobileContainer) {
         mobileContainer.innerHTML = filtered.map(customer => {
-            const vehicleList = customer.vehicles.map(vehicle => `
+            const vehicleList = customer.vehicles.map(vehicle => {
+                const bLabel = getBrandLabel(vehicle);
+                const vLabel = (bLabel ? `${bLabel} ${vehicle.model || ''}`.trim() : (vehicle.make || 'Motorcycle')).trim();
+                return `
                 <div class="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-100">
                     <div class="flex justify-between items-start mb-2">
                         <div class="pr-2">
-                            <div class="font-bold text-slate-800 text-sm leading-tight">${vehicle.make}</div>
+                            <div class="font-bold text-slate-800 text-sm leading-tight">${vLabel}</div>
                             <div class="text-[10px] text-slate-500 font-mono mt-1">Plate: ${vehicle.plate} <br> Engine: ${vehicle.engine}</div>
                         </div>
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider shrink-0 ${vehicle.statusClass}">${vehicle.status}</span>
@@ -5160,12 +5412,13 @@ function renderCustomers() {
                         <button onclick="viewVehicleHistory('${vehicle.plate}')" class="flex-1 bg-white border border-slate-300 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px]">
                             <i class="ph-bold ph-eye text-base"></i> History
                         </button>
-                        <button onclick="createRepairTicket('${vehicle.make}', '${vehicle.plate}')" class="flex-1 bg-blue-600 text-white font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px] shadow-sm">
+                        <button onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="flex-1 bg-blue-600 text-white font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px] shadow-sm">
                             <i class="ph-bold ph-wrench text-base"></i> Ticket
                         </button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
             return `
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
@@ -5340,7 +5593,10 @@ const mockMobileJobs = [
     { id: 'JOB #1042', plate: 'ABC-1234', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus', progress: 45 },
     { id: 'JOB #1041', plate: 'XYZ-9876', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Throttle body cleaning & oil change', status: 'Pending Post-Scan', tone: 'purple', mechanic: 'Hiyo', progress: 90 },
     { id: 'JOB #1043', plate: 'DEF-5678', brandId: 'rusi', brandText: '', model: 'Model TBC', task: 'Chain & sprocket set', status: 'In Progress', tone: 'blue', mechanic: 'Hiyo', progress: 60 },
-    { id: 'JOB #1044', plate: 'QRS-4455', brandId: 'other_chinese', brandText: 'Brand TBC', model: 'Model TBC', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 30 }
+    { id: 'JOB #1044', plate: 'QRS-4455', brandId: 'other', brandText: '', model: 'Model TBC', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 30 },
+    { id: 'JOB #1045', plate: 'HON-5555', brandId: 'honda', brandText: '', model: 'Model TBC', task: 'Brake fluid flush and inspection', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 50 },
+    { id: 'JOB #1046', plate: 'KAW-6666', brandId: 'kawasaki', brandText: '', model: 'Model TBC', task: 'Drive belt replacement', status: 'Waiting Parts', tone: 'orange', mechanic: 'Hiyo', progress: 20 },
+    { id: 'JOB #1047', plate: 'MOT-7777', brandId: 'motoposh', brandText: '', model: 'Model TBC', task: 'Carburetor tuning and cleaning', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 80 }
 ];
 
 const mobileTones = {
@@ -5420,17 +5676,6 @@ function mToast(message) {
     mToastTimer = setTimeout(() => toast.classList.remove('is-show'), 2000);
 }
 
-function mApprove(plate, btn) {
-    btn.closest('.m-review-card')?.remove();
-    mToast(`Post-scan approved for ${plate}`);
-    if (!document.querySelector('#m-review-list .m-review-card')) {
-        document.getElementById('m-review-list').innerHTML = `
-            <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center text-xs font-semibold text-slate-400">
-                <i class="ph-fill ph-check-circle text-emerald-400 text-2xl block mb-1"></i> All caught up
-            </div>`;
-    }
-}
-
 // Fills views/mobile/dashboard.html for the current role
 function renderMobileHome() {
     const roleId = currentRole;
@@ -5487,20 +5732,8 @@ function renderMobileHome() {
             <i class="ph-fill ph-coffee text-3xl block mb-1 text-slate-300"></i> No jobs assigned to you
         </div>`;
 
-    // Approvals + team workload
+    // Team workload
     if (isLeadOrSuper) {
-        const reviews = mockMobileJobs.filter(j => j.status === 'Pending Post-Scan');
-        document.getElementById('m-review-list').innerHTML = reviews.length ? reviews.map(job => `
-            <div class="m-review-card bg-white rounded-2xl p-4 shadow-sm border border-purple-100 flex items-center gap-3">
-                <span class="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-cpu"></i></span>
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-extrabold text-slate-800">${job.plate} <span class="text-[11px] font-semibold text-slate-400">· ${job.mechanic}</span></p>
-                    <p class="text-xs text-slate-500 truncate">Post-repair scan ready for approval</p>
-                </div>
-                <button onclick="mApprove('${job.plate}', this)" class="px-3 py-2 rounded-xl bg-purple-600 text-white text-xs font-bold active:scale-95 transition-transform">Approve</button>
-            </div>`).join('') : `
-            <div class="bg-white rounded-2xl border border-slate-100 p-4 text-center text-xs font-semibold text-slate-400">All caught up</div>`;
-
         const team = [
             { name: 'Larpus', initials: 'JB', color: 'bg-purple-600', role: ROLES_CONFIG.mechanic.label },
             { name: 'Hiyo', initials: 'F', color: 'bg-slate-600', role: ROLES_CONFIG.mechanic.label }
@@ -5658,9 +5891,16 @@ function loadInspectionState() {
         const raw = localStorage.getItem(INSPECTION_STORAGE_KEY);
         if (raw) {
             const saved = JSON.parse(raw);
+            const loadedVehicle = { ...emptyInspectionState().vehicle, ...(saved.vehicle || {}) };
+            if (loadedVehicle.brandId && !MOTORCYCLE_BRANDS_CONFIG.some(b => b.id === loadedVehicle.brandId)) {
+                loadedVehicle.brandText = (loadedVehicle.brandText && loadedVehicle.brandText.trim()) || 
+                                          (loadedVehicle.brand && loadedVehicle.brand.trim()) || 
+                                          String(loadedVehicle.brandId);
+                loadedVehicle.brandId = 'other';
+            }
             return {
                 intake: { ...emptyInspectionState().intake, ...(saved.intake || {}) },
-                vehicle: { ...emptyInspectionState().vehicle, ...(saved.vehicle || {}) },
+                vehicle: loadedVehicle,
                 customer: { ...emptyInspectionState().customer, ...(saved.customer || {}) },
                 items: saved.items || {}
             };
@@ -5859,13 +6099,14 @@ function restoreMotorcycleCard() {
     const otherContainer = document.getElementById('moto-brand-other-container');
     const otherInput = document.getElementById('moto-brand-other');
     if (otherContainer && otherInput) {
-        if (activeBrandId === 'other_chinese') {
+        if (activeBrandId === 'other') {
             otherContainer.classList.remove('hidden');
             const displayVal = v.brandText || '';
             if (otherInput.value !== displayVal) otherInput.value = displayVal;
             otherInput.placeholder = 'e.g. exact brand';
         } else {
             otherContainer.classList.add('hidden');
+            otherInput.value = '';
         }
     }
 
@@ -5879,11 +6120,11 @@ function restoreMotorcycleCard() {
                 v.model = 'Sniper';
             }
             if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
-        } else if (activeBrandId === 'rusi') {
-            modelInput.placeholder = 'e.g. model name';
-            if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
-        } else if (activeBrandId === 'other_chinese') {
+        } else if (activeBrandId === 'other') {
             modelInput.placeholder = 'e.g. exact model';
+            if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
+        } else {
+            modelInput.placeholder = 'e.g. model name';
             if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
         }
     }
@@ -5946,12 +6187,12 @@ window.setMotoMode = function(mode, skipSave = false) {
 
 window.setMotoBrand = function(brandOrId) {
     const config = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === brandOrId || b.label === brandOrId);
-    const targetId = config ? config.id : 'other_chinese';
+    const targetId = config ? config.id : 'other';
     const currentId = inspectionState.vehicle.brandId;
     
     if (currentId !== targetId) {
         inspectionState.vehicle.brandId = targetId;
-        inspectionState.vehicle.brand = config ? config.label : 'Other Chinese brand';
+        inspectionState.vehicle.brand = config ? config.label : 'Other';
         inspectionState.vehicle.brandText = '';
         
         if (targetId === 'yamaha') {
@@ -5966,9 +6207,9 @@ window.setMotoBrand = function(brandOrId) {
 
 window.updateMotoField = function(field, value) {
     if (field === 'brandOther') {
-        inspectionState.vehicle.brandId = 'other_chinese';
+        inspectionState.vehicle.brandId = 'other';
         inspectionState.vehicle.brandText = value;
-        inspectionState.vehicle.brand = value || 'Other Chinese brand';
+        inspectionState.vehicle.brand = value || 'Other';
     } else if (field === 'model') {
         inspectionState.vehicle.model = value;
     } else if (field === 'plate') {
