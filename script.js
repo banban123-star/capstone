@@ -5,7 +5,36 @@ const shopConfig = {
     hours: "Mon-Fri: 8am - 6pm"
 };
 
-const MOTORCYCLE_BRANDS = ['Honda', 'Yamaha', 'Suzuki', 'Kawasaki', 'Kymco', 'SYM', 'Rusi', 'Skygo', 'Other'];
+// --- Shared Motorcycle Brands Configuration ---
+const MOTORCYCLE_BRANDS_CONFIG = [
+    { id: 'yamaha', label: 'Yamaha', suggestedModels: ['Sniper'], defaultModel: 'Sniper' },
+    { id: 'rusi', label: 'Rusi', suggestedModels: [] },
+    { id: 'other_chinese', label: 'Other Chinese brand', isFreeText: true, suggestedModels: [] }
+];
+
+const DEFAULT_BRAND_ID = 'yamaha';
+
+function getBrandLabel(vehicle) {
+    if (!vehicle) return '';
+    if (typeof vehicle === 'string') {
+        const str = vehicle.trim();
+        const matched = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === str.toLowerCase() || b.label.toLowerCase() === str.toLowerCase());
+        return matched ? matched.label : str;
+    }
+    const bId = vehicle.brandId || (vehicle.brand ? String(vehicle.brand).toLowerCase() : '');
+    if (bId === 'other_chinese' || bId === 'other') {
+        return (vehicle.brandText && vehicle.brandText.trim()) ? vehicle.brandText.trim() : 'Other Chinese brand';
+    }
+    const matched = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === bId || b.label.toLowerCase() === bId.toLowerCase());
+    if (matched) return matched.label;
+    if (vehicle.brandText && vehicle.brandText.trim()) return vehicle.brandText.trim();
+    if (vehicle.brand && vehicle.brand.trim()) return vehicle.brand.trim();
+    return '';
+}
+window.getBrandLabel = getBrandLabel;
+window.MOTORCYCLE_BRANDS_CONFIG = MOTORCYCLE_BRANDS_CONFIG;
+
+const MOTORCYCLE_BRANDS = MOTORCYCLE_BRANDS_CONFIG.map(b => b.label);
 
 // --- Mock Inventory Data for Diagnostics Autocomplete ---
 const mockInventory = [
@@ -62,8 +91,8 @@ const mockCustomers = [
         lastVisit: '2023-10-15',
         totalVisits: 4,
         motorcycles: [
-            { brand: 'Honda', model: 'Click 125i', plate: 'ABC 123' },
-            { brand: 'Yamaha', model: 'NMAX', plate: 'XYZ 987' }
+            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'ABC 123' },
+            { brandId: 'rusi', brandText: '', brand: 'Rusi', model: 'Model TBC', plate: 'XYZ 987' }
         ]
     },
     { 
@@ -74,7 +103,7 @@ const mockCustomers = [
         lastVisit: '2023-10-10',
         totalVisits: 2,
         motorcycles: [
-            { brand: 'Suzuki', model: 'Raider 150', plate: 'DEF 456' }
+            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'DEF 456' }
         ]
     },
     { 
@@ -85,7 +114,7 @@ const mockCustomers = [
         lastVisit: '2023-09-05',
         totalVisits: 1,
         motorcycles: [
-            { brand: 'Kawasaki', model: 'Barako', plate: 'GHI 789' }
+            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'GHI 789' }
         ]
     },
     { 
@@ -96,7 +125,7 @@ const mockCustomers = [
         lastVisit: '2023-08-20',
         totalVisits: 5,
         motorcycles: [
-            { brand: 'Yamaha', model: 'Mio Sporty', plate: 'JKL 012' }
+            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'JKL 012' }
         ]
     },
     { 
@@ -107,7 +136,7 @@ const mockCustomers = [
         lastVisit: '2023-10-01',
         totalVisits: 3,
         motorcycles: [
-            { brand: 'Honda', model: 'PCX 160', plate: 'MNO 345' }
+            { brandId: 'other_chinese', brandText: 'Brand TBC', brand: 'Brand TBC', model: 'Model TBC', plate: 'MNO 345' }
         ]
     },
     { 
@@ -118,7 +147,7 @@ const mockCustomers = [
         lastVisit: '2023-07-15',
         totalVisits: 1,
         motorcycles: [
-            { brand: 'Kymco', model: 'Like 150i', plate: 'PQR 678' }
+            { brandId: 'rusi', brandText: '', brand: 'Rusi', model: 'Model TBC', plate: 'PQR 678' }
         ]
     },
     { 
@@ -129,8 +158,7 @@ const mockCustomers = [
         lastVisit: '2023-09-25',
         totalVisits: 6,
         motorcycles: [
-            { brand: 'SYM', model: 'Bonus 110', plate: 'STU 901' },
-            { brand: 'Honda', model: 'Beat', plate: 'VWX 234' }
+            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'STU 901' }
         ]
     },
     { 
@@ -141,7 +169,7 @@ const mockCustomers = [
         lastVisit: '2023-08-10',
         totalVisits: 2,
         motorcycles: [
-            { brand: 'Rusi', model: 'Macho 175', plate: 'YZA 567' }
+            { brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: 'YZA 567' }
         ]
     }
 ];
@@ -179,7 +207,7 @@ document.addEventListener('input', function(e) {
         if (matches.length > 0) {
             dropdown.innerHTML = matches.map(c => {
                 const motoText = c.motorcycles && c.motorcycles.length > 0 
-                    ? `${c.motorcycles[0].brand} ${c.motorcycles[0].model || ''}`.trim()
+                    ? `${getBrandLabel(c.motorcycles[0])} ${c.motorcycles[0].model || ''}`.trim()
                     : 'No motorcycle registered';
                 return `
                 <div class="p-3 border-b border-slate-100 hover:bg-slate-50 cursor-pointer cust-autocomplete-item" data-id="${c.id}">
@@ -263,6 +291,19 @@ document.addEventListener('click', function(e) {
             inspectionState.customer.phone = customer.phone || '';
             inspectionState.customer.email = customer.email || '';
             inspectionState.customer.selectedCustomerId = customer.id;
+            
+            if (customer.motorcycles && customer.motorcycles.length > 0) {
+                const m = customer.motorcycles[0];
+                if (!inspectionState.vehicle.plate || inspectionState.vehicle.mode === 'walk-in') {
+                    inspectionState.vehicle.mode = 'identified';
+                    inspectionState.vehicle.brandId = m.brandId || 'yamaha';
+                    inspectionState.vehicle.brandText = m.brandText || '';
+                    inspectionState.vehicle.brand = getBrandLabel(m);
+                    inspectionState.vehicle.model = m.model || '';
+                    inspectionState.vehicle.plate = m.plate || '';
+                    if (typeof restoreMotorcycleCard === 'function') restoreMotorcycleCard();
+                }
+            }
             
             saveInspectionState();
             if (typeof restoreCustomerCard === 'function') restoreCustomerCard();
@@ -368,6 +409,7 @@ window.switchDiagStep = function(step, fromStepper = false) {
     }
 
     if (step === 1) {
+        if (typeof restoreMotorcycleCard === 'function') restoreMotorcycleCard();
         if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
     }
 
@@ -2130,8 +2172,155 @@ function toggleCustomerRow(rowId) {
 function openCustomerModal() { toggleModal('modal-customer', 'customer-backdrop', 'customer-content', true); }
 function closeCustomerModal() { toggleModal('modal-customer', 'customer-backdrop', 'customer-content', false); }
 
-function openMotorcycleModal() { toggleModal('modal-motorcycle', 'motorcycle-backdrop', 'motorcycle-content', true); }
-function closeMotorcycleModal() { toggleModal('modal-motorcycle', 'motorcycle-backdrop', 'motorcycle-content', false); }
+let regMotoState = {
+    brandId: 'yamaha',
+    brandText: '',
+    model: 'Sniper'
+};
+
+function restoreRegMotoForm() {
+    const chipsContainer = document.getElementById('reg-moto-brand-chips');
+    const otherContainer = document.getElementById('reg-moto-brand-other-container');
+    const otherInput = document.getElementById('reg-moto-brand-other');
+    const modelInput = document.getElementById('reg-moto-model');
+    const suggestionsContainer = document.getElementById('reg-moto-model-suggestions');
+    
+    if (!chipsContainer) return;
+    
+    // 1. Render brand chips
+    chipsContainer.innerHTML = MOTORCYCLE_BRANDS_CONFIG.map(b => {
+        const isSelected = regMotoState.brandId === b.id;
+        const baseClass = "px-3 py-1.5 rounded-lg text-xs font-bold border transition-all cursor-pointer";
+        const selectedClass = "bg-blue-600 text-white border-blue-600 shadow-sm";
+        const unselectedClass = "bg-white text-slate-600 border-slate-200 hover:bg-slate-50";
+        return `<button type="button" onclick="setRegMotoBrand('${b.id}')" class="${baseClass} ${isSelected ? selectedClass : unselectedClass}">${b.label}</button>`;
+    }).join('');
+    
+    // 2. Free-text brand input for 'other_chinese'
+    if (regMotoState.brandId === 'other_chinese') {
+        if (otherContainer) otherContainer.classList.remove('hidden');
+        if (otherInput) otherInput.value = regMotoState.brandText || '';
+    } else {
+        if (otherContainer) otherContainer.classList.add('hidden');
+        if (otherInput) otherInput.value = '';
+    }
+    
+    // 3. Model input & suggestions
+    if (modelInput) {
+        if (regMotoState.brandId === 'yamaha') {
+            modelInput.placeholder = 'e.g. Sniper';
+            if (modelInput.value !== regMotoState.model) modelInput.value = regMotoState.model || '';
+        } else if (regMotoState.brandId === 'rusi') {
+            modelInput.placeholder = 'e.g. model name';
+            if (modelInput.value !== regMotoState.model) modelInput.value = regMotoState.model || '';
+        } else {
+            modelInput.placeholder = 'e.g. exact model';
+            if (modelInput.value !== regMotoState.model) modelInput.value = regMotoState.model || '';
+        }
+    }
+    
+    // Suggestions
+    if (suggestionsContainer) {
+        const curConfig = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === regMotoState.brandId);
+        if (curConfig && curConfig.suggestedModels && curConfig.suggestedModels.length > 0) {
+            suggestionsContainer.classList.remove('hidden');
+            suggestionsContainer.innerHTML = curConfig.suggestedModels.map(s => 
+                `<button type="button" onclick="selectRegModelSuggestion('${s}')" class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 hover:bg-blue-50 hover:text-blue-600 transition-colors">${s}</button>`
+            ).join('');
+        } else {
+            suggestionsContainer.classList.add('hidden');
+            suggestionsContainer.innerHTML = '';
+        }
+    }
+}
+
+window.setRegMotoBrand = function(brandId) {
+    const config = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === brandId);
+    const targetId = config ? config.id : 'other_chinese';
+    
+    if (regMotoState.brandId !== targetId) {
+        regMotoState.brandId = targetId;
+        regMotoState.brandText = '';
+        if (targetId === 'yamaha') {
+            regMotoState.model = (config && config.defaultModel) ? config.defaultModel : 'Sniper';
+        } else {
+            regMotoState.model = '';
+        }
+    }
+    restoreRegMotoForm();
+};
+
+window.selectRegModelSuggestion = function(modelName) {
+    regMotoState.model = modelName;
+    const modelInput = document.getElementById('reg-moto-model');
+    if (modelInput) modelInput.value = modelName;
+    restoreRegMotoForm();
+};
+
+window.updateRegMotoField = function(field, value) {
+    if (field === 'brandOther') {
+        regMotoState.brandId = 'other_chinese';
+        regMotoState.brandText = value;
+    } else if (field === 'model') {
+        regMotoState.model = value;
+    }
+};
+
+window.openMotorcycleModal = function() {
+    regMotoState = {
+        brandId: 'yamaha',
+        brandText: '',
+        model: 'Sniper'
+    };
+    const plateInput = document.getElementById('reg-moto-plate');
+    if (plateInput) plateInput.value = '';
+    const engineInput = document.getElementById('reg-moto-engine');
+    if (engineInput) engineInput.value = '';
+    restoreRegMotoForm();
+    toggleModal('modal-motorcycle', 'motorcycle-backdrop', 'motorcycle-content', true);
+};
+
+function openMotorcycleModal() {
+    window.openMotorcycleModal();
+}
+
+window.closeMotorcycleModal = function() {
+    toggleModal('modal-motorcycle', 'motorcycle-backdrop', 'motorcycle-content', false);
+};
+
+function closeMotorcycleModal() {
+    window.closeMotorcycleModal();
+}
+
+window.submitRegisterMotorcycle = function() {
+    const brandName = getBrandLabel(regMotoState);
+    const model = regMotoState.model || '';
+    const plateInput = document.getElementById('reg-moto-plate');
+    const engineInput = document.getElementById('reg-moto-engine');
+    const plate = plateInput ? plateInput.value.trim() : '';
+    const engine = engineInput ? engineInput.value.trim() : '';
+    
+    const make = `${brandName} ${model}`.trim();
+    
+    if (typeof mockCustomersData !== 'undefined' && mockCustomersData.length > 0) {
+        mockCustomersData[0].vehicles.push({
+            brandId: regMotoState.brandId,
+            brandText: regMotoState.brandText,
+            model: model,
+            make: make,
+            plate: plate || 'TBC',
+            engine: engine || 'N/A',
+            status: 'Cleared',
+            statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        });
+        if (typeof renderCustomers === 'function') renderCustomers();
+    }
+    
+    closeMotorcycleModal();
+    if (typeof showToast === 'function') {
+        showToast(`Vehicle ${make} registered successfully!`);
+    }
+};
 
 document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
@@ -2957,7 +3146,7 @@ const mockTxnData = [
         typeClass: 'text-orange-600 bg-orange-50 border-orange-100',
         typeIcon: 'ph-wrench',
         customer: 'Juan Dela Cruz',
-        details: 'Honda Click 125i (ABC-1234)',
+        details: 'Yamaha Sniper 150 (ABC-1234)',
         amount: 1800.00,
         amountSuffix: '<span class="text-[10px] font-normal text-slate-400 ml-1">(Est.)</span>',
         status: 'Unpaid',
@@ -2975,7 +3164,7 @@ const mockTxnData = [
         typeClass: 'text-blue-600 bg-blue-50 border-blue-100',
         typeIcon: 'ph-wrench',
         customer: 'Maria Clara',
-        details: 'Yamaha NMAX (XYZ-9876)',
+        details: 'Yamaha Sniper 155 (XYZ-9876)',
         amount: 2500.00,
         amountSuffix: '<span class="text-[10px] font-normal text-slate-400 ml-1">(Final)</span>',
         status: 'Partial/Adv Paid (\u20B1500)',
@@ -3089,7 +3278,10 @@ const mockHistoryData = [
         date: 'Oct 24, 2023',
         time: '14:30 PM',
         plate: 'XYZ-9876',
-        vehicle: 'Yamaha NMAX',
+        brandId: 'yamaha',
+        brandText: '',
+        model: 'Sniper 155',
+        vehicle: 'Yamaha Sniper 155',
         customer: 'Maria Clara',
         mechanic: 'Leo (Mechanic)',
         mechanicId: 'leo',
@@ -3101,7 +3293,10 @@ const mockHistoryData = [
         date: 'Oct 20, 2023',
         time: '09:15 AM',
         plate: 'ABC-1234',
-        vehicle: 'Honda Click 125i',
+        brandId: 'yamaha',
+        brandText: '',
+        model: 'Sniper 150',
+        vehicle: 'Yamaha Sniper 150',
         customer: 'Juan Dela Cruz',
         mechanic: `Mike (${ROLES_CONFIG.mechanic.label})`,
         mechanicId: 'mike',
@@ -3120,9 +3315,12 @@ function renderHistory() {
 
     // Filter the Data
     const filtered = mockHistoryData.filter(record => {
+        const brand = getBrandLabel(record);
         const matchesSearch = record.plate.toLowerCase().includes(query) || 
                               record.customer.toLowerCase().includes(query) ||
-                              record.date.toLowerCase().includes(query);
+                              record.date.toLowerCase().includes(query) ||
+                              (record.vehicle && record.vehicle.toLowerCase().includes(query)) ||
+                              (brand && brand.toLowerCase().includes(query));
                               
         const matchesMech = mechFilter === 'all' || record.mechanicId === mechFilter;
 
@@ -3135,14 +3333,17 @@ function renderHistory() {
     }
 
     // Render HTML
-    tbody.innerHTML = filtered.map(record => `
+    tbody.innerHTML = filtered.map(record => {
+        const brand = getBrandLabel(record);
+        const vehicleLabel = brand ? `${brand} ${record.model || ''}`.trim() : (record.vehicle || '');
+        return `
         <tr class="hover:bg-blue-50/30 transition-colors">
             <td class="p-4 text-slate-600 font-medium">${record.date} <br><span class="text-xs text-slate-400">${record.time}</span></td>
             <td class="p-4">
-                <button onclick="openTimelineModal('${record.plate}', '${record.vehicle}')" class="font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 transition-colors">
+                <button onclick="openTimelineModal('${record.plate}', '${vehicleLabel}')" class="font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 transition-colors">
                     ${record.plate} <i class="ph-bold ph-clock-counter-clockwise text-xs"></i>
                 </button>
-                <div class="text-xs text-slate-500 mt-0.5">${record.vehicle}</div>
+                <div class="text-xs text-slate-500 mt-0.5">${vehicleLabel}</div>
                 <div class="text-xs font-semibold text-slate-700 mt-1">${record.customer}</div>
             </td>
             <td class="p-4 text-slate-700 font-medium">${record.mechanic}</td>
@@ -3157,7 +3358,8 @@ function renderHistory() {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Attach Event Listeners for History View
@@ -3863,7 +4065,9 @@ const mockRepairsData = [
     {
         id: 'JOB #1042',
         plate: 'ABC-1234',
-        model: 'Honda Click 125i',
+        brandId: 'yamaha',
+        brandText: '',
+        model: 'Sniper',
         customer: 'Juan Dela Cruz',
         mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
         selectedMechIndex: 0,
@@ -3900,7 +4104,9 @@ const mockRepairsData = [
     {
         id: 'JOB #1041',
         plate: 'XYZ-9876',
-        model: 'Yamaha NMAX',
+        brandId: 'yamaha',
+        brandText: '',
+        model: 'Sniper',
         customer: 'Maria Clara',
         mechanicOptions: [`Mike (${ROLES_CONFIG.mechanic.label})`, `Leo (${ROLES_CONFIG.mechanic.label})`],
         selectedMechIndex: 1,
@@ -4246,9 +4452,12 @@ function renderRepairs() {
 
     // Filter Data
     const filtered = mockRepairsData.filter(job => {
+        const brand = getBrandLabel(job);
         const matchesSearch = job.plate.toLowerCase().includes(query) || 
                               job.customer.toLowerCase().includes(query) || 
-                              job.id.toLowerCase().includes(query);
+                              job.id.toLowerCase().includes(query) ||
+                              (job.model && job.model.toLowerCase().includes(query)) ||
+                              (brand && brand.toLowerCase().includes(query));
                               
         const matchesStatus = currentRepairFilter === 'all' ? job.statusId !== 'paid' : job.statusId === currentRepairFilter;
 
@@ -4290,6 +4499,7 @@ function renderRepairs() {
     // Render HTML Cards
     grid.innerHTML = resultCountHTML + filtered.map(job => {
         const opacityClass = (job.statusId !== 'progress' && job.statusId !== 'waiting') ? 'opacity-80' : '';
+        const vehicleLabel = (getBrandLabel(job) ? `${getBrandLabel(job)} ${job.model || ''}`.trim() : (job.model || '')).trim();
         
         // Build mechanic select options
         const mechOptions = job.mechanicOptions.map((mech, idx) => 
@@ -4451,7 +4661,7 @@ function renderRepairs() {
                         <div class="flex items-center justify-between gap-2">
                             <div class="flex items-baseline gap-2 min-w-0">
                                 <span class="font-bold text-slate-800 text-lg whitespace-nowrap">${job.plate}</span>
-                                <span class="text-xs text-slate-500 truncate">${job.model}</span>
+                                <span class="text-xs text-slate-500 truncate">${vehicleLabel}</span>
                             </div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">${job.id}</span>
                         </div>
@@ -4506,7 +4716,7 @@ function renderRepairs() {
                 <div class="bg-slate-50 border-b border-slate-200 p-3.5 flex justify-between items-center">
                     <div>
                         <span class="font-bold text-slate-800 text-sm">${job.plate}</span>
-                        <span class="text-[11px] text-slate-500 ml-1.5">${job.model}</span>
+                        <span class="text-[11px] text-slate-500 ml-1.5">${vehicleLabel}</span>
                     </div>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">${job.id}</span>
                 </div>
@@ -4577,8 +4787,8 @@ const mockCustomersData = [
         status: 'in-shop',
         statusHtml: '<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> 1 In-Shop</span>',
         vehicles: [
-            { make: 'Honda Click 125i (2023)', plate: 'ABC-1234', engine: 'K59A-1234567', status: 'In-Repair', statusClass: 'bg-orange-50 text-orange-700 border-orange-200' },
-            { make: 'Yamaha NMAX V2 (2021)', plate: 'XYZ-9876', engine: 'B6H-9876543', status: 'Cleared', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+            { brandId: 'yamaha', brandText: '', model: 'Sniper', make: 'Yamaha Sniper', plate: 'ABC-1234', engine: 'K59A-1234567', status: 'In-Repair', statusClass: 'bg-orange-50 text-orange-700 border-orange-200' },
+            { brandId: 'rusi', brandText: '', model: 'Model TBC', make: 'Rusi Model TBC', plate: 'XYZ-9876', engine: 'B6H-9876543', status: 'Cleared', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
         ]
     },
     {
@@ -4589,7 +4799,7 @@ const mockCustomersData = [
         status: 'cleared',
         statusHtml: '<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Cleared</span>',
         vehicles: [
-            { make: 'Honda ADV 160 (2024)', plate: 'DEF-5678', engine: 'ADV160-55555', status: 'Cleared', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+            { brandId: 'yamaha', brandText: '', model: 'Sniper', make: 'Yamaha Sniper', plate: 'DEF-5678', engine: 'ADV160-55555', status: 'Cleared', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
         ]
     }
 ];
@@ -4603,7 +4813,7 @@ function renderCustomers() {
 
     const filtered = mockCustomersData.filter(customer => {
         const matchesSearch = customer.name.toLowerCase().includes(query) || 
-                              customer.vehicles.some(v => v.plate.toLowerCase().includes(query));
+                              customer.vehicles.some(v => v.plate.toLowerCase().includes(query) || (v.make && v.make.toLowerCase().includes(query)) || (v.model && v.model.toLowerCase().includes(query)) || (getBrandLabel(v) && getBrandLabel(v).toLowerCase().includes(query)));
         const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -4858,10 +5068,10 @@ const mobileViews = ['dashboard', 'more'];
 // Short app-bar titles (the sidebar labels are too long for a phone)
 // Mock jobs for the mobile Home screen (mechanic names match systemUsers)
 const mockMobileJobs = [
-    { id: 'JOB #1042', plate: 'ABC-1234', model: 'Honda Click 125i', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus', progress: 45 },
-    { id: 'JOB #1041', plate: 'XYZ-9876', model: 'Yamaha NMAX', task: 'Throttle body cleaning & oil change', status: 'Pending Post-Scan', tone: 'purple', mechanic: 'Hiyo', progress: 90 },
-    { id: 'JOB #1043', plate: 'DEF-5678', model: 'Honda ADV 160', task: 'Chain & sprocket set', status: 'In Progress', tone: 'blue', mechanic: 'Hiyo', progress: 60 },
-    { id: 'JOB #1044', plate: 'QRS-4455', model: 'Suzuki Raider R150', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 30 }
+    { id: 'JOB #1042', plate: 'ABC-1234', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus', progress: 45 },
+    { id: 'JOB #1041', plate: 'XYZ-9876', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Throttle body cleaning & oil change', status: 'Pending Post-Scan', tone: 'purple', mechanic: 'Hiyo', progress: 90 },
+    { id: 'JOB #1043', plate: 'DEF-5678', brandId: 'rusi', brandText: '', model: 'Model TBC', task: 'Chain & sprocket set', status: 'In Progress', tone: 'blue', mechanic: 'Hiyo', progress: 60 },
+    { id: 'JOB #1044', plate: 'QRS-4455', brandId: 'other_chinese', brandText: 'Brand TBC', model: 'Model TBC', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 30 }
 ];
 
 const mobileTones = {
@@ -4990,7 +5200,7 @@ function renderMobileHome() {
                             <span class="font-extrabold text-slate-800">${job.plate}</span>
                             <span class="text-[10px] font-bold text-slate-400">${job.id}</span>
                         </div>
-                        <p class="text-xs text-slate-500 mt-0.5 truncate">${job.model}</p>
+                        <p class="text-xs text-slate-500 mt-0.5 truncate">${getBrandLabel(job)} ${job.model}</p>
                     </div>
                     <span class="px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap ${tone.chip}">${job.status}</span>
                 </div>
@@ -5166,7 +5376,7 @@ const inspectionItemMap = Object.fromEntries(inspectionItems.map(item => [item.i
 function emptyInspectionState() {
     return { 
         intake: { odo: '', fuel: '', complaints: [] }, 
-        vehicle: { mode: 'identified', brand: '', model: '', plate: '' },
+        vehicle: { mode: 'identified', brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: '' },
         customer: { mode: 'walk-in', name: '', phone: '', email: '', selectedCustomerId: null },
         items: {} 
     };
@@ -5357,37 +5567,89 @@ function restoreMotorcycleCard() {
 
     setMotoMode(v.mode, true);
 
+    if (!v.brandId) {
+        v.brandId = DEFAULT_BRAND_ID;
+        v.brand = 'Yamaha';
+        if (v.model === undefined || v.model === null || v.model === '') {
+            v.model = 'Sniper';
+        }
+    }
+
+    const activeBrandId = v.brandId;
+    const brandConfig = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === activeBrandId) || MOTORCYCLE_BRANDS_CONFIG[0];
+
     const chipsContainer = document.getElementById('moto-brand-chips');
     if (chipsContainer) {
-        const isOther = v.brand && !MOTORCYCLE_BRANDS.includes(v.brand);
-        chipsContainer.innerHTML = MOTORCYCLE_BRANDS.map(brand => 
-            `<button type="button" onclick="setMotoBrand('${brand}')" class="insp-chip ${v.brand === brand || (isOther && brand === 'Other') ? 'is-active' : ''}">${brand}</button>`
+        chipsContainer.innerHTML = MOTORCYCLE_BRANDS_CONFIG.map(b => 
+            `<button type="button" onclick="setMotoBrand('${b.id}')" class="insp-chip ${activeBrandId === b.id ? 'is-active' : ''}">${b.label}</button>`
         ).join('');
     }
 
     const otherContainer = document.getElementById('moto-brand-other-container');
     const otherInput = document.getElementById('moto-brand-other');
     if (otherContainer && otherInput) {
-        const isCustomBrand = v.brand && !MOTORCYCLE_BRANDS.includes(v.brand);
-        if (isCustomBrand || v.brand === 'Other') {
+        if (activeBrandId === 'other_chinese') {
             otherContainer.classList.remove('hidden');
-            if (isCustomBrand && otherInput.value !== v.brand) otherInput.value = v.brand;
-            if (v.brand === 'Other') otherInput.value = ''; // clear if just clicked Other
+            const displayVal = v.brandText || '';
+            if (otherInput.value !== displayVal) otherInput.value = displayVal;
+            otherInput.placeholder = 'e.g. exact brand';
         } else {
             otherContainer.classList.add('hidden');
         }
     }
 
     const modelInput = document.getElementById('moto-model');
-    if (modelInput && modelInput.value !== v.model) modelInput.value = v.model || '';
+    const suggContainer = document.getElementById('moto-model-suggestions');
+
+    if (modelInput) {
+        if (activeBrandId === 'yamaha') {
+            modelInput.placeholder = 'e.g. Sniper';
+            if (v.model === undefined || v.model === null) {
+                v.model = 'Sniper';
+            }
+            if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
+        } else if (activeBrandId === 'rusi') {
+            modelInput.placeholder = 'e.g. model name';
+            if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
+        } else if (activeBrandId === 'other_chinese') {
+            modelInput.placeholder = 'e.g. exact model';
+            if (modelInput.value !== (v.model || '')) modelInput.value = v.model || '';
+        }
+    }
+
+    if (suggContainer) {
+        if (activeBrandId === 'yamaha' && brandConfig.suggestedModels && brandConfig.suggestedModels.length > 0) {
+            suggContainer.innerHTML = brandConfig.suggestedModels.map(m => 
+                `<button type="button" onclick="selectModelSuggestion('${m}')" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 hover:bg-blue-50 hover:text-blue-600 border border-slate-200 transition-colors cursor-pointer">${m}</button>`
+            ).join('');
+            suggContainer.classList.remove('hidden');
+        } else {
+            suggContainer.innerHTML = '';
+            suggContainer.classList.add('hidden');
+        }
+    }
 
     const plateInput = document.getElementById('moto-plate');
-    if (plateInput && plateInput.value !== v.plate) plateInput.value = v.plate || '';
+    if (plateInput && plateInput.value !== (v.plate || '')) plateInput.value = v.plate || '';
 }
+
+window.selectModelSuggestion = function(modelName) {
+    if (!inspectionState.vehicle) return;
+    inspectionState.vehicle.model = modelName;
+    const modelInput = document.getElementById('moto-model');
+    if (modelInput) modelInput.value = modelName;
+    saveInspectionState();
+};
 
 window.setMotoMode = function(mode, skipSave = false) {
     if (!skipSave) {
         inspectionState.vehicle.mode = mode;
+        if (mode === 'identified' && !inspectionState.vehicle.brandId) {
+            inspectionState.vehicle.brandId = DEFAULT_BRAND_ID;
+            inspectionState.vehicle.brand = 'Yamaha';
+            inspectionState.vehicle.brandText = '';
+            inspectionState.vehicle.model = 'Sniper';
+        }
         saveInspectionState();
     }
     
@@ -5407,25 +5669,42 @@ window.setMotoMode = function(mode, skipSave = false) {
         btnWalkin.className = 'px-3 py-1 text-[11px] font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all';
         fieldsIdentified.classList.remove('hidden');
         fieldsWalkin.classList.add('hidden');
+        if (!skipSave) restoreMotorcycleCard();
     }
-}
+};
 
-window.setMotoBrand = function(brand) {
-    inspectionState.vehicle.brand = brand;
+window.setMotoBrand = function(brandOrId) {
+    const config = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === brandOrId || b.label === brandOrId);
+    const targetId = config ? config.id : 'other_chinese';
+    const currentId = inspectionState.vehicle.brandId;
+    
+    if (currentId !== targetId) {
+        inspectionState.vehicle.brandId = targetId;
+        inspectionState.vehicle.brand = config ? config.label : 'Other Chinese brand';
+        inspectionState.vehicle.brandText = '';
+        
+        if (targetId === 'yamaha') {
+            inspectionState.vehicle.model = (config && config.defaultModel) ? config.defaultModel : 'Sniper';
+        } else {
+            inspectionState.vehicle.model = '';
+        }
+    }
     saveInspectionState();
     restoreMotorcycleCard();
-}
+};
 
 window.updateMotoField = function(field, value) {
     if (field === 'brandOther') {
-        inspectionState.vehicle.brand = value;
+        inspectionState.vehicle.brandId = 'other_chinese';
+        inspectionState.vehicle.brandText = value;
+        inspectionState.vehicle.brand = value || 'Other Chinese brand';
     } else if (field === 'model') {
         inspectionState.vehicle.model = value;
     } else if (field === 'plate') {
         inspectionState.vehicle.plate = value;
     }
     saveInspectionState();
-}
+};
 
 function restoreCustomerCard() {
     const c = inspectionState.customer;
@@ -5450,7 +5729,10 @@ function restoreCustomerCard() {
             if (customer) {
                 const dateStr = customer.lastVisit || 'First visit';
                 const visitStr = customer.totalVisits ? `${customer.totalVisits} visits` : '0 visits';
-                stats.textContent = `Last visit: ${dateStr} · ${visitStr}`;
+                const motoStr = (customer.motorcycles && customer.motorcycles.length > 0)
+                    ? ` · Motorcycle: ${getBrandLabel(customer.motorcycles[0])} ${customer.motorcycles[0].model || ''}`.trim()
+                    : '';
+                stats.textContent = `Last visit: ${dateStr} · ${visitStr}${motoStr}`;
                 badge.classList.remove('hidden');
                 badge.classList.add('flex');
             } else {
@@ -6476,7 +6758,7 @@ window.updateStep3Summaries = function() {
     const motoSum = document.getElementById('step3-motorcycle-summary');
     if (motoSum) {
         if (v && v.mode === 'identified') {
-            const brand = v.brand || 'Not provided';
+            const brand = getBrandLabel(v) || 'Not provided';
             const model = v.model || 'Not provided';
             const plate = v.plate || 'Not provided';
             motoSum.innerHTML = `<span class="block"><span class="text-slate-400">Brand:</span> ${escHTML(brand)}</span>
@@ -6622,7 +6904,8 @@ function confirmStep3Push() {
             
             let motoLabel = 'Walk-in';
             if (v && v.mode === 'identified') {
-                motoLabel = v.brand || 'Unidentified';
+                const b = getBrandLabel(v);
+                motoLabel = b ? (v.model ? `${b} ${v.model}` : b) : (v.brand || 'Unidentified');
             }
             
             successDetails.innerHTML = `For ${escHTML(custLabel)} &bull; ${escHTML(motoLabel)}`;

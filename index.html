@@ -640,25 +640,26 @@
                         </div>
                     </div>
                     
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Make / Brand</label>
-                        <select class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
-                            <option value="" disabled selected>Select Brand</option>
-                            <option>Honda</option>
-                            <option>Yamaha</option>
-                            <option>Suzuki</option>
-                            <option>Kawasaki</option>
-                            <option>Kymco</option>
-                        </select>
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Brand <span class="normal-case font-medium text-slate-400">(tap one)</span></label>
+                        <div class="flex flex-wrap gap-1.5" id="reg-moto-brand-chips">
+                            <!-- Injected from MOTORCYCLE_BRANDS_CONFIG -->
+                        </div>
+                        <div id="reg-moto-brand-other-container" class="mt-2.5 hidden">
+                            <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Brand Name</label>
+                            <input type="text" id="reg-moto-brand-other" oninput="updateRegMotoField('brandOther', this.value)" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm" placeholder="e.g. exact brand">
+                            <p class="text-xs text-slate-400 mt-1">Please list the exact brand so it can be recorded correctly.</p>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Model & Year</label>
-                        <input type="text" placeholder="e.g. Click 125i 2023" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                    <div class="sm:col-span-2">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Model</label>
+                        <input type="text" id="reg-moto-model" oninput="updateRegMotoField('model', this.value)" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm" placeholder="e.g. Sniper">
+                        <div id="reg-moto-model-suggestions" class="flex flex-wrap gap-1.5 mt-1.5"></div>
                     </div>
                     
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Plate Number <span class="text-red-500">*</span></label>
-                        <input type="text" placeholder="e.g. ABC-1234" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono font-bold uppercase">
+                        <input type="text" id="reg-moto-plate" placeholder="e.g. ABC-1234" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono font-bold uppercase">
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Color</label>
@@ -666,7 +667,7 @@
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Engine / Chassis Number</label>
-                        <input type="text" placeholder="CRITICAL for accurate part matching" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono uppercase">
+                        <input type="text" id="reg-moto-engine" placeholder="CRITICAL for accurate part matching" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono uppercase">
                         <p class="text-[10px] text-slate-500 mt-1 flex items-start gap-1"><i class="ph-fill ph-info text-blue-500 mt-0.5"></i> Entering this ensures the OBD Diagnostic System recommends the exact correct OEM parts.</p>
                     </div>
                 </div>
@@ -674,7 +675,7 @@
             
             <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
                 <button onclick="closeMotorcycleModal()" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2 transition-colors" onclick="alert('Motorcycle Registered successfully!'); closeMotorcycleModal();">
+                <button class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md flex items-center gap-2 transition-colors" onclick="submitRegisterMotorcycle()">
                     <i class="ph-bold ph-floppy-disk"></i> Register Vehicle
                 </button>
             </div>
@@ -859,14 +860,17 @@
                 <div class="flex flex-wrap gap-1.5" id="moto-brand-chips">
                     <!-- Javascript will inject MOTORCYCLE_BRANDS here -->
                 </div>
-                <div id="moto-brand-other-container" class="mt-2 hidden">
-                    <input type="text" id="moto-brand-other" oninput="updateMotoField('brandOther', this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="Type brand name">
+                <div id="moto-brand-other-container" class="mt-2.5 hidden">
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Brand Name</label>
+                    <input type="text" id="moto-brand-other" oninput="updateMotoField('brandOther', this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="e.g. exact brand">
+                    <p class="text-xs text-slate-400 mt-1">Please list the exact brand so it can be recorded correctly.</p>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Model <span class="normal-case font-medium text-slate-400">(optional)</span></label>
-                    <input type="text" id="moto-model" oninput="updateMotoField('model', this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="e.g. NMAX">
+                    <input type="text" id="moto-model" oninput="updateMotoField('model', this.value)" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors" placeholder="e.g. Sniper">
+                    <div id="moto-model-suggestions" class="flex flex-wrap gap-1.5 mt-1.5"></div>
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">Plate Number <span class="normal-case font-medium text-slate-400">(optional)</span></label>
@@ -1550,8 +1554,8 @@
                 <div class="relative">
                     <input type="text" id="step3-motorcycle-select" list="step3-motorcycle-list" placeholder="Search or select a registered motorcycle..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-medium">
                     <datalist id="step3-motorcycle-list">
-                        <option value="Juan Dela Cruz - Honda Click 125i (ABC-123)"></option>
-                        <option value="Maria Clara - Yamaha NMAX (XYZ-987)"></option>
+                        <option value="Juan Dela Cruz - Yamaha Sniper 150 (ABC-1234)"></option>
+                        <option value="Maria Clara - Yamaha Sniper 155 (XYZ-9876)"></option>
                         <option value="Walk-in / Unregistered Motorcycle"></option>
                     </datalist>
                     <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
@@ -1573,7 +1577,7 @@
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-100 pt-4">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Brand &amp; Model *</label>
-                        <input type="text" id="step3-new-veh-model" placeholder="e.g. Honda Click 125i" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
+                        <input type="text" id="step3-new-veh-model" placeholder="e.g. Sniper" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Plate Number *</label>
@@ -1680,7 +1684,7 @@
                         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                             Comprehensive Service Record <span class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase tracking-wide">SR-2023-1041</span>
                         </h2>
-                        <p class="text-xs font-medium text-slate-500 mt-0.5">Oct 24, 2023 | Yamaha NMAX (XYZ-9876) | Maria Clara</p>
+                        <p class="text-xs font-medium text-slate-500 mt-0.5">Oct 24, 2023 | Yamaha Sniper 155 (XYZ-9876) | Maria Clara</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
@@ -1806,7 +1810,7 @@
                     <h2 class="text-lg font-bold flex items-center gap-2">
                         <i class="ph-fill ph-clock-counter-clockwise text-blue-400"></i> Service Timeline
                     </h2>
-                    <p class="text-xs text-slate-300 mt-1" id="timeline-vehicle-details">XYZ-9876 | Yamaha NMAX</p>
+                    <p class="text-xs text-slate-300 mt-1" id="timeline-vehicle-details">XYZ-9876 | Yamaha Sniper 155</p>
                 </div>
                 <button onclick="closeTimelineModal()" class="p-1.5 text-slate-400 hover:text-white rounded-lg transition-colors bg-slate-700"><i class="ph ph-x text-lg"></i></button>
             </div>
@@ -1965,7 +1969,7 @@
                     </div>
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Compatible Motorcycles</label>
-                        <input type="text" id="add-part-comp" placeholder="e.g. Honda Click 125i, Honda ADV 150..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <input type="text" id="add-part-comp" placeholder="e.g. Yamaha Sniper 150, Yamaha Sniper 155..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                     </div>
                     
                       <div class="sm:col-span-2">
@@ -2218,7 +2222,7 @@
                         <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
                             Manage Repair <span class="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded uppercase tracking-wide">Job #1042</span>
                         </h2>
-                        <p class="text-xs font-medium text-slate-500 mt-0.5">ABC-1234 | Honda Click 125i | Juan Dela Cruz</p>
+                        <p class="text-xs font-medium text-slate-500 mt-0.5">ABC-1234 | Yamaha Sniper 150 | Juan Dela Cruz</p>
                     </div>
                 </div>
                 <button onclick="closeRepairModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
@@ -2889,7 +2893,7 @@
                     <div class="flex justify-between"><span>Date:</span> <span>Oct 24, 2023 14:30</span></div>
                     <div class="flex justify-between"><span>TXN No:</span> <span>TXN-103</span></div>
                     <div class="flex justify-between"><span>Customer:</span> <span>Maria Clara</span></div>
-                    <div class="flex justify-between"><span>Vehicle:</span> <span>Yamaha NMAX (XYZ-9876)</span></div>
+                    <div class="flex justify-between"><span>Vehicle:</span> <span>Yamaha Sniper 155 (XYZ-9876)</span></div>
                     <div class="flex justify-between"><span>Mechanic:</span> <span>Leo (Mechanic)</span></div>
                 </div>
                 <div class="border-b border-dashed border-slate-300 pb-4">
