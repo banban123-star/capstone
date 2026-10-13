@@ -541,6 +541,7 @@ async function loadView(viewName) {
     const allowedScreens = rolePermissions[currentRole] || [];
     const screenAccess = typeof getAccessLevel === 'function' ? getAccessLevel(viewName) : (allowedScreens.includes(viewName) ? 'full' : 'none');
     if (viewName !== 'more' && (!allowedScreens.includes(viewName) || screenAccess === 'none')) {
+        const backBtnText = currentRole === 'cashier' ? 'Back to Home' : 'Back to Dashboard';
         mainContentArea.innerHTML = `
             <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
                 <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
@@ -549,7 +550,7 @@ async function loadView(viewName) {
                 <h2 class="text-slate-800 font-bold text-lg mb-2">Access Denied</h2>
                 <p class="text-slate-500 text-sm mb-6">You do not have access to this screen.</p>
                 <button onclick="document.querySelector('.nav-link[data-target=\\'dashboard\\']')?.click()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm">
-                    Back to Dashboard
+                    ${backBtnText}
                 </button>
             </div>
         `;
@@ -563,7 +564,11 @@ async function loadView(viewName) {
     
     try {
         useMobileView = (document.body.classList.contains('mobile-app') || viewName === 'more') && mobileViews.includes(viewName);
-        const templateId = `view-${useMobileView ? 'mobile-' : ''}${viewName}`;
+        let templateId = `view-${useMobileView ? 'mobile-' : ''}${viewName}`;
+        if (viewName === 'dashboard' && currentRole === 'cashier') {
+            templateId = 'view-cashier-home';
+            useMobileView = false;
+        }
         const template = document.getElementById(templateId);
         
         if (!template) {
@@ -571,10 +576,19 @@ async function loadView(viewName) {
         }
         html = template.innerHTML;
     } catch (error) {
-        mainContentArea.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-red-200">
-            <h2 class="text-red-500 font-bold text-lg mb-2">Error loading view: ${viewName}</h2>
-            <p class="text-slate-500 text-sm">Could not find the embedded template.</p>
-        </div>`;
+        console.error(error);
+        mainContentArea.innerHTML = `
+            <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                    <i class="ph-bold ph-warning"></i>
+                </div>
+                <h2 class="text-slate-800 font-bold text-lg mb-2">This screen failed to load.</h2>
+                <p class="text-slate-500 text-sm mb-6">Could not find the embedded template.</p>
+                <button onclick="loadView('${viewName}')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm">
+                    Reload screen
+                </button>
+            </div>
+        `;
         return;
     }
 
@@ -609,15 +623,19 @@ async function loadView(viewName) {
         if (useMobileView && viewName === 'dashboard') renderMobileHome();
 
         if (viewName === 'dashboard') {
-            const backupAlert = document.getElementById('dashboard-backup-alert');
-            if (backupAlert) {
-                const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
-                backupAlert.style.display = canBackup ? 'flex' : 'none';
+            if (currentRole === 'cashier') {
+                renderCashierHome();
+            } else {
+                const backupAlert = document.getElementById('dashboard-backup-alert');
+                if (backupAlert) {
+                    const canBackup = rolePermissions[currentRole] && rolePermissions[currentRole].includes('backup');
+                    backupAlert.style.display = canBackup ? 'flex' : 'none';
+                }
+                document.querySelectorAll('#view-dashboard [data-target="users"], #view-dashboard [data-mtab="users"]').forEach(el => {
+                    const canUsers = rolePermissions[currentRole] && rolePermissions[currentRole].includes('users');
+                    el.style.display = canUsers ? '' : 'none';
+                });
             }
-            document.querySelectorAll('#view-dashboard [data-target="users"], #view-dashboard [data-mtab="users"]').forEach(el => {
-                const canUsers = rolePermissions[currentRole] && rolePermissions[currentRole].includes('users');
-                el.style.display = canUsers ? '' : 'none';
-            });
         }
 
         // Initialize Diagnostics view state
@@ -683,9 +701,18 @@ async function loadView(viewName) {
 
     } catch (error) {
         console.error(error);
-        mainContentArea.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-red-200">
-            <h2 class="text-red-500 font-bold text-lg mb-2">This screen failed to load: ${error.message}</h2>
-        </div>`;
+        mainContentArea.innerHTML = `
+            <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
+                <div class="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
+                    <i class="ph-bold ph-warning"></i>
+                </div>
+                <h2 class="text-slate-800 font-bold text-lg mb-2">This screen failed to load.</h2>
+                <p class="text-slate-500 text-sm mb-6">${error && error.message ? error.message : 'An error occurred while initializing this screen.'}</p>
+                <button onclick="loadView('${viewName}')" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition-colors shadow-sm">
+                    Reload screen
+                </button>
+            </div>
+        `;
     }
 }
 
@@ -712,33 +739,42 @@ sidebarToggle.addEventListener('click', () => toggleSidebar(true));
 mobileCloseBtn.addEventListener('click', () => toggleSidebar(false));
 mobileOverlay.addEventListener('click', () => toggleSidebar(false));
 
+function setActiveNavLink(targetId) {
+    const allLinks = document.querySelectorAll('.nav-link[data-target]');
+    allLinks.forEach(nav => {
+        nav.classList.remove('active', 'bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-900/20');
+        nav.classList.add('hover:bg-slate-800', 'hover:text-white');
+        const icon = nav.querySelector('i');
+        if (icon && icon.classList.contains('ph-fill')) {
+            icon.classList.remove('ph-fill');
+            icon.classList.add('ph');
+        }
+    });
+
+    const activeLink = document.querySelector(`.nav-link[data-target="${targetId}"]`);
+    if (activeLink) {
+        activeLink.classList.add('active', 'bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-900/20');
+        activeLink.classList.remove('hover:bg-slate-800');
+        const icon = activeLink.querySelector('i');
+        if (icon) {
+            icon.classList.remove('ph');
+            icon.classList.add('ph-fill');
+        }
+    }
+
+    const isMobileMode = document.body.classList.contains('mobile-app');
+    if (isMobileMode && typeof syncMobileNav === 'function') {
+        syncMobileNav(targetId);
+    }
+}
+window.setActiveNavLink = setActiveNavLink;
+
 navLinks.forEach(link => {
     link.addEventListener('click', function() {
         const targetId = this.getAttribute('data-target');
         if(!targetId) return;
 
-        // UI Reset
-        navLinks.forEach(nav => {
-            nav.classList.remove('active', 'bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-900/20');
-            nav.classList.add('hover:bg-slate-800', 'hover:text-white');
-            const icon = nav.querySelector('i');
-            if(icon && icon.classList.contains('ph-fill')) {
-                icon.classList.remove('ph-fill');
-                icon.classList.add('ph');
-            }
-        });
-
-        // Activate clicked
-        this.classList.add('active', 'bg-blue-600', 'text-white', 'shadow-md', 'shadow-blue-900/20');
-        this.classList.remove('hover:bg-slate-800');
-        const activeIcon = this.querySelector('i');
-        if(activeIcon) {
-            activeIcon.classList.remove('ph');
-            activeIcon.classList.add('ph-fill');
-        }
-
-        const isMobileMode = document.body.classList.contains('mobile-app');
-                if (isMobileMode) syncMobileNav(targetId);
+        setActiveNavLink(targetId);
         loadView(targetId); // FETCH THE HTML FILE
 
         if(window.innerWidth < 1024) toggleSidebar(false);
@@ -752,6 +788,7 @@ const ROLES_CONFIG = {
         label: 'Super Admin',
         shortLabel: 'Super Admin',
         description: 'Users and system settings',
+        demoEmail: 'superadmin@gmail.com',
         defaultUI: 'desktop',
         canSwitchUI: false
     },
@@ -760,14 +797,25 @@ const ROLES_CONFIG = {
         label: 'Owner/Cashier (Admin)',
         shortLabel: 'Owner/Cashier',
         description: 'Shop operations: owner and cashier',
+        demoEmail: 'ownercashier@gmail.com',
         defaultUI: 'desktop',
         canSwitchUI: true
+    },
+    cashier: {
+        id: 'cashier',
+        label: 'Cashier',
+        shortLabel: 'Cashier',
+        description: 'Sales, billing and stock lookup',
+        demoEmail: 'cashier@gmail.com',
+        defaultUI: 'desktop',
+        canSwitchUI: false
     },
     mechanic: {
         id: 'mechanic',
         label: 'Mechanic',
         shortLabel: 'Mechanic',
         description: 'Repairs and diagnostics',
+        demoEmail: 'mechanic@gmail.com',
         defaultUI: 'mobile',
         canSwitchUI: false
     }
@@ -776,6 +824,7 @@ const ROLES_CONFIG = {
 const systemUsers = {
     super_admin: { name: 'System Admin', role: ROLES_CONFIG.super_admin.label, initials: 'SA', color: 'bg-slate-800', password: 'admin123' },
     admin: { name: 'User', role: ROLES_CONFIG.admin.label, initials: 'IG', color: 'bg-blue-600', password: 'admin123' },
+    cashier: { name: 'Cashier', role: ROLES_CONFIG.cashier.label, initials: 'CS', color: 'bg-emerald-600', password: 'cashier123' },
     mechanic: { name: 'Larpus', role: ROLES_CONFIG.mechanic.label, initials: 'JB', color: 'bg-purple-600', password: 'mech123' }
 };
 
@@ -815,6 +864,13 @@ const rolePermissions = {
         audit: 'read',
         settings: 'full'
     }),
+    cashier: createRolePerms({
+        dashboard: 'full',
+        inventory: 'full',
+        transactions: 'full',
+        history: 'full',
+        settings: 'full'
+    }),
     mechanic: createRolePerms({
         dashboard: 'full',
         customers: 'full',
@@ -828,7 +884,8 @@ const rolePermissions = {
 window.rolePermissions = rolePermissions;
 
 function getAccessLevel(screen, role) {
-    const activeRole = role || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    const rawRole = role || currentRole || sessionStorage.getItem('currentUserRole');
+    const activeRole = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
     const perms = rolePermissions[activeRole];
     if (!perms) return 'none';
     const level = perms[screen];
@@ -839,69 +896,107 @@ function getAccessLevel(screen, role) {
 window.getAccessLevel = getAccessLevel;
 
 function canSwitchUI(role) {
-    const activeRole = role || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    const rawRole = role || currentRole || sessionStorage.getItem('currentUserRole');
+    const activeRole = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
     return !!(ROLES_CONFIG[activeRole] && ROLES_CONFIG[activeRole].canSwitchUI);
 }
 window.canSwitchUI = canSwitchUI;
 
 function getDefaultUI(role) {
-    const activeRole = role || currentRole || sessionStorage.getItem('currentUserRole') || 'admin';
+    const rawRole = role || currentRole || sessionStorage.getItem('currentUserRole');
+    const activeRole = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
     return (ROLES_CONFIG[activeRole] && ROLES_CONFIG[activeRole].defaultUI) || 'desktop';
 }
 window.getDefaultUI = getDefaultUI;
 
-const ROLE_PERMISSIONS = {
+function getRoleByEmail(email) {
+    if (!email || typeof email !== 'string') return null;
+    const normalized = email.trim().toLowerCase();
+    for (const roleId in ROLES_CONFIG) {
+        if (ROLES_CONFIG[roleId].demoEmail && ROLES_CONFIG[roleId].demoEmail.toLowerCase() === normalized) {
+            return roleId;
+        }
+    }
+    return null;
+}
+window.getRoleByEmail = getRoleByEmail;
+
+function getDemoAccounts() {
+    const order = ['super_admin', 'admin', 'cashier', 'mechanic'];
+    return order
+        .filter(roleId => ROLES_CONFIG[roleId])
+        .map(roleId => ({
+            roleId: ROLES_CONFIG[roleId].id,
+            email: ROLES_CONFIG[roleId].demoEmail,
+            label: ROLES_CONFIG[roleId].label
+        }));
+}
+window.getDemoAccounts = getDemoAccounts;
+
+// --- Role Features Configuration (Inventory RBAC) ---
+const roleFeatures = {
     super_admin: {
-        'inventory.view': true,
-        'inventory.search': true,
-        'inventory.restock': true,
-        'inventory.addPart': true,
-        'inventory.editPart': true,
-        'inventory.walkInSale': true,
-        'inventory.autoAssign': true
+        viewStock: true,
+        walkInSale: true,
+        addPart: true,
+        editPart: true,
+        restock: true,
+        autoAssign: true,
+        viewMovements: true
     },
     admin: {
-        'inventory.view': true,
-        'inventory.search': true,
-        'inventory.restock': true,
-        'inventory.addPart': true,
-        'inventory.editPart': true,
-        'inventory.walkInSale': true,
-        'inventory.autoAssign': true
+        viewStock: true,
+        walkInSale: true,
+        addPart: true,
+        editPart: true,
+        restock: true,
+        autoAssign: true,
+        viewMovements: true
+    },
+    cashier: {
+        viewStock: true,
+        walkInSale: true,
+        addPart: false,
+        editPart: false,
+        restock: false,
+        autoAssign: false,
+        viewMovements: true
     },
     mechanic: {
-        'inventory.view': true,
-        'inventory.search': true,
-        'inventory.restock': false,
-        'inventory.addPart': false,
-        'inventory.editPart': false,
-        'inventory.walkInSale': false,
-        'inventory.autoAssign': false
+        viewStock: true,
+        walkInSale: true,
+        addPart: true,
+        editPart: true,
+        restock: true,
+        autoAssign: true,
+        viewMovements: true
     }
 };
+window.roleFeatures = roleFeatures;
+
+function hasFeature(featureName) {
+    const role = (typeof currentRole !== 'undefined' && currentRole) ? currentRole : 'admin';
+    return !!(roleFeatures[role] && roleFeatures[role][featureName]);
+}
+window.hasFeature = hasFeature;
 
 window.can = function(role, permission) {
     if (!permission) {
         permission = role;
         role = currentRole;
     }
-    return !!(ROLE_PERMISSIONS[role] && ROLE_PERMISSIONS[role][permission]);
+    const prefix = 'inventory.';
+    if (typeof permission === 'string' && permission.startsWith(prefix)) {
+        const feat = permission.slice(prefix.length);
+        if (feat === 'view') return hasFeature('viewStock');
+        if (feat === 'search') return true;
+        return hasFeature(feat);
+    }
+    return hasFeature(permission);
 };
 
 function updateRoleLabels() {
-    // 1. Login role cards (titles & descriptions)
-    document.querySelectorAll('#role-selector .role-card[data-role]').forEach(card => {
-        const rId = card.getAttribute('data-role');
-        const cfg = ROLES_CONFIG[rId];
-        if (cfg) {
-            const titleEl = card.querySelector('.role-card-title');
-            if (titleEl) titleEl.textContent = cfg.label;
-            const descEl = card.querySelector('.role-card-desc');
-            if (descEl) descEl.textContent = cfg.description;
-        }
-    });
-
-    // 2. Sidebar role label
+    // 1. Sidebar role label
     const userRoleText = document.getElementById('user-role-text');
     if (userRoleText && ROLES_CONFIG[currentRole]) {
         userRoleText.textContent = ROLES_CONFIG[currentRole].label;
@@ -929,10 +1024,16 @@ function updateRoleLabels() {
         dashSub.textContent = `${roleLabel} | Thursday, September 24, 2026`;
     }
 
+    // Update Dashboard nav link label (reads "Home" for Cashier only)
+    const dashNavLink = document.querySelector('.nav-link[data-target="dashboard"]');
+    if (dashNavLink) {
+        dashNavLink.innerHTML = `<i class="ph-fill ph-squares-four text-lg w-6"></i> ${currentRole === 'cashier' ? 'Home' : 'Dashboard'}`;
+    }
+
     // 5. "Simulate Login As" dropdown
     const roleSwitcher = document.getElementById('role-switcher');
     if (roleSwitcher) {
-        const suffixes = { super_admin: ' (System)', admin: ' (User)', mechanic: ' (Larpus)' };
+        const suffixes = { super_admin: ' (System)', admin: ' (User)', cashier: ' (Cashier)', mechanic: ' (Larpus)' };
         roleSwitcher.innerHTML = Object.values(ROLES_CONFIG).map(r => 
             `<option value="${r.id}">${r.label}${suffixes[r.id] || ''}</option>`
         ).join('');
@@ -947,6 +1048,7 @@ function updateRoleLabels() {
             <option value="all">Filter by Role: All</option>
             <option value="super_admin">${ROLES_CONFIG.super_admin.label}</option>
             <option value="admin">${ROLES_CONFIG.admin.label}</option>
+            <option value="cashier">${ROLES_CONFIG.cashier.label}</option>
             <option value="mechanic">${ROLES_CONFIG.mechanic.label}</option>
         `;
         if (currentVal) userFilterRole.value = currentVal;
@@ -959,6 +1061,7 @@ function updateRoleLabels() {
             <option value="" disabled selected>Select Role Assignment...</option>
             <option value="super_admin">${ROLES_CONFIG.super_admin.label} (${ROLES_CONFIG.super_admin.description})</option>
             <option value="admin">${ROLES_CONFIG.admin.label} (${ROLES_CONFIG.admin.description})</option>
+            <option value="cashier">${ROLES_CONFIG.cashier.label} (${ROLES_CONFIG.cashier.description})</option>
             <option value="mechanic">${ROLES_CONFIG.mechanic.label} (${ROLES_CONFIG.mechanic.description})</option>
         `;
     }
@@ -968,6 +1071,8 @@ function updateRoleLabels() {
     if (matrixSuper) matrixSuper.textContent = ROLES_CONFIG.super_admin.label;
     const matrixAdmin = document.querySelector('.matrix-role-admin');
     if (matrixAdmin) matrixAdmin.textContent = ROLES_CONFIG.admin.label;
+    const matrixCashier = document.querySelector('.matrix-role-cashier');
+    if (matrixCashier) matrixCashier.textContent = ROLES_CONFIG.cashier.label;
     const matrixMech = document.querySelector('.matrix-role-mechanic');
     if (matrixMech) matrixMech.textContent = ROLES_CONFIG.mechanic.label;
     if (typeof renderPermissionsMatrix === 'function') {
@@ -982,6 +1087,7 @@ function updateRoleLabels() {
             <option value="all">User Role: All</option>
             <option value="super_admin">${ROLES_CONFIG.super_admin.label}</option>
             <option value="admin">${ROLES_CONFIG.admin.label}</option>
+            <option value="cashier">${ROLES_CONFIG.cashier.label}</option>
             <option value="mechanic">${ROLES_CONFIG.mechanic.label}</option>
             <option value="automated">Automated (System)</option>
         `;
@@ -1035,7 +1141,7 @@ function updateMobileMoreNav(roleId) {
     }
 }
 
-function switchRole(roleId) {
+function switchRole(roleId, isLogin) {
     if (!roleId || !ROLES_CONFIG[roleId] || !systemUsers[roleId]) {
         handleLogout();
         return;
@@ -1049,6 +1155,7 @@ function switchRole(roleId) {
     currentRole = roleId;
     localStorage.setItem('activeRole', roleId);
     sessionStorage.setItem('currentUserRole', roleId);
+    sessionStorage.setItem('roles_version', 'v4_cashier');
 
     // 0. Mechanic runs in the mobile-app UI; every other role keeps the desktop UI
     const wasMobile = document.body.classList.contains('mobile-app');
@@ -1087,7 +1194,7 @@ function switchRole(roleId) {
     const desktopMobileToggle = document.getElementById('desktop-mobile-toggle');
     
     if (adminHeader) {
-        const adminTargets = ['reports', 'audit', 'users', 'settings'];
+        const adminTargets = ['reports', 'audit', 'users'];
         const hasVisibleAdmin = adminTargets.some(target => 
             rolePermissions[roleId] && rolePermissions[roleId].includes(target)
         );
@@ -1110,6 +1217,8 @@ function switchRole(roleId) {
     updateRoleLabels();
     updateMobileMoreNav(roleId);
 
+    if (isLogin) return;
+
     // 4. Force redirect to Dashboard if the user is currently on a restricted page
     const isCurrentlyOnBackup = !!document.querySelector('#main-content-area #view-backup') || currentActiveTarget === 'backup';
     const roleHasBackupAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('backup');
@@ -1120,11 +1229,28 @@ function switchRole(roleId) {
     const isCurrentlyOnAudit = !!document.querySelector('#main-content-area #view-audit') || currentActiveTarget === 'audit';
     const roleHasAuditAccess = typeof getAccessLevel === 'function' ? (getAccessLevel('audit', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('audit'));
 
+    const isCurrentlyOnInventory = !!document.querySelector('#main-content-area #view-inventory') || currentActiveTarget === 'inventory';
+
     if ((isCurrentlyOnBackup && !roleHasBackupAccess) || (isCurrentlyOnUsers && !roleHasUsersAccess) || (isCurrentlyOnAudit && !roleHasAuditAccess) || !isCurrentViewAllowed) {
-        document.querySelector('.nav-link[data-target="dashboard"]')?.click();
-    } else if (wasMobile || isMobile || currentActiveTarget === 'inventory') {
-        // Entering/leaving mobile mode, or viewing inventory: re-render the current screen
-        document.querySelector(`.nav-link[data-target="${currentActiveTarget}"]`)?.click();
+        setActiveNavLink('dashboard');
+        loadView('dashboard');
+    } else if (wasMobile !== isMobile) {
+        const targetView = currentActiveTarget || 'dashboard';
+        setActiveNavLink(targetView);
+        loadView(targetView);
+    } else if (isCurrentlyOnInventory) {
+        const aaView = document.getElementById('view-autoassign');
+        if (aaView && !aaView.classList.contains('hidden') && !hasFeature('autoAssign')) {
+            aaView.classList.add('hidden');
+            const invView = document.querySelector('#main-content-area #view-inventory');
+            if (invView) invView.classList.remove('hidden');
+        }
+        if (!hasFeature('restock')) closeRestockModal();
+        if (!hasFeature('addPart') && !hasFeature('editPart')) closeAddPartModal();
+        renderInventory();
+    } else if (currentActiveTarget === 'dashboard') {
+        setActiveNavLink('dashboard');
+        loadView('dashboard');
     } else if (isCurrentlyOnAudit && typeof renderAudit === 'function') {
         renderAudit();
     }
@@ -1149,14 +1275,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Reset old sessions so swapped roles don't grant mismatched access
-    const ROLES_SESSION_VERSION = 'v3_swapped';
+    const ROLES_SESSION_VERSION = 'v4_cashier';
     if (sessionStorage.getItem('roles_version') !== ROLES_SESSION_VERSION) {
         sessionStorage.clear();
         localStorage.removeItem('activeRole');
         sessionStorage.setItem('roles_version', ROLES_SESSION_VERSION);
     }
 
-    const activeRole = localStorage.getItem('activeRole');
+    const activeRole = localStorage.getItem('activeRole') || sessionStorage.getItem('currentUserRole');
     if (activeRole && ROLES_CONFIG[activeRole] && systemUsers[activeRole]) {
         if (!canSwitchUI(activeRole)) {
             forceOwnerMobile = false;
@@ -1165,13 +1291,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             forceOwnerMobile = sessionStorage.getItem('forceOwnerMobile') === 'true';
         }
-        switchRole(activeRole);
+        switchRole(activeRole, true);
         const loginScreen = document.getElementById('login-screen');
         if (loginScreen) {
             loginScreen.classList.add('hidden');
             loginScreen.classList.remove('flex');
         }
-        document.querySelector('.nav-link[data-target="dashboard"]')?.click();
+        setActiveNavLink('dashboard');
+        loadView('dashboard');
     } else {
         localStorage.removeItem('activeRole');
         sessionStorage.removeItem('currentUserRole');
@@ -1872,37 +1999,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function clearAddPartForm() {
-    const form = document.getElementById('modal-add-part');
-    const expiryInput = form ? form.querySelector('.part-expiry-input') : null;
+    const form = document.querySelector('#main-content-area #modal-add-part') || document.getElementById('modal-add-part');
+    if (!form) return;
+    const expiryInput = form.querySelector('.part-expiry-input');
     if (expiryInput) expiryInput.value = '';
     // Container visibility is now handled by updatePartExpiryVisibility() at the end
-    document.getElementById('add-part-name').value = '';
-    document.getElementById('add-part-sku').value = '';
-    document.getElementById('add-part-category').value = '';
-    document.getElementById('add-part-comp').value = '';
-    document.getElementById('add-part-price').value = '';
-    document.getElementById('add-part-stock').value = '';
-    document.getElementById('add-part-minstock').value = '';
-    document.getElementById('add-part-dtc').value = '';
-    document.getElementById('add-part-name-error').classList.add('hidden');
-    document.getElementById('add-part-stock-error').classList.add('hidden');
+    const nameEl = form.querySelector('#add-part-name') || document.getElementById('add-part-name');
+    if (nameEl) nameEl.value = '';
+    const skuEl = form.querySelector('#add-part-sku') || document.getElementById('add-part-sku');
+    if (skuEl) skuEl.value = '';
+    const catEl = form.querySelector('#add-part-category') || document.getElementById('add-part-category');
+    if (catEl) catEl.value = '';
+    const compEl = form.querySelector('#add-part-comp') || document.getElementById('add-part-comp');
+    if (compEl) compEl.value = '';
+    const priceEl = form.querySelector('#add-part-price') || document.getElementById('add-part-price');
+    if (priceEl) priceEl.value = '';
+    const stockEl = form.querySelector('#add-part-stock') || document.getElementById('add-part-stock');
+    if (stockEl) stockEl.value = '';
+    const minStockEl = form.querySelector('#add-part-minstock') || document.getElementById('add-part-minstock');
+    if (minStockEl) minStockEl.value = '';
+    const dtcEl = form.querySelector('#add-part-dtc') || document.getElementById('add-part-dtc');
+    if (dtcEl) dtcEl.value = '';
+    const nameErr = form.querySelector('#add-part-name-error') || document.getElementById('add-part-name-error');
+    if (nameErr) nameErr.classList.add('hidden');
+    const stockErr = form.querySelector('#add-part-stock-error') || document.getElementById('add-part-stock-error');
+    if (stockErr) stockErr.classList.add('hidden');
     
     currentPartDtcTags = [];
     renderDtcChips();
     
     // Reset title and button
-    const title = document.querySelector('#modal-add-part h2');
+    const title = form.querySelector('h2');
     if (title) title.innerHTML = '<i class="ph-fill ph-plus-circle text-blue-600"></i> Add New Part';
-    const btnText = document.getElementById('btn-save-part-text');
+    const btnText = form.querySelector('#btn-save-part-text') || document.getElementById('btn-save-part-text');
     if (btnText) btnText.textContent = 'Save Part';
     currentEditingPartId = null;
     
-    const formElement = document.getElementById('modal-add-part');
-    if (formElement) updatePartExpiryVisibility(formElement);
+    updatePartExpiryVisibility(form);
 }
 
 function openAddPartModal() { 
-    if (!window.can('inventory.addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
+    if (!hasFeature('addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
     clearAddPartForm();
     const isMobile = document.body.classList.contains('mobile-app');
     const activeCatFilter = isMobile ? (currentCategoryFilter || document.getElementById('inv-filter-category')?.value) : '';
@@ -1929,7 +2066,7 @@ function closeAddPartModal() {
 let currentRestockPartId = null;
 
 function openRestockModal(partId = null) { 
-    if (!window.can('inventory.restock')) { closeRestockModal(); showToast("You don't have permission to do this."); return; }
+    if (!hasFeature('restock')) { closeRestockModal(); showToast("You don't have permission to do this."); return; }
     
     currentRestockPartId = null;
     const input = document.getElementById('restock-search-input');
@@ -2064,6 +2201,10 @@ window.clearRestockSelection = function() {
 };
 
 window.confirmRestock = function() {
+    if (!hasFeature('restock')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     if (!currentRestockPartId) {
         showToast('Please select a part to restock.');
         return;
@@ -2115,7 +2256,7 @@ window.confirmRestock = function() {
 };
 
 function openEditPartModal(partId) {
-    if (!window.can('inventory.editPart')) { showToast("You don't have permission to do this."); return; }
+    if (!hasFeature('editPart')) { showToast("You don't have permission to do this."); return; }
     
     const part = fullInventoryData.find(p => p.id === partId);
     if (!part) return;
@@ -2123,26 +2264,36 @@ function openEditPartModal(partId) {
     clearAddPartForm();
     currentEditingPartId = partId;
     
-    const title = document.querySelector('#modal-add-part h2');
+    const form = document.querySelector('#main-content-area #modal-add-part') || document.getElementById('modal-add-part');
+    if (!form) return;
+
+    const title = form.querySelector('h2');
     if (title) title.innerHTML = '<i class="ph-fill ph-pencil text-blue-600"></i> Edit Part';
-    const btnText = document.getElementById('btn-save-part-text');
+    const btnText = form.querySelector('#btn-save-part-text') || document.getElementById('btn-save-part-text');
     if (btnText) btnText.textContent = 'Save Changes';
 
-    document.getElementById('add-part-name').value = part.name || '';
-    document.getElementById('add-part-sku').value = part.sku || '';
-    document.getElementById('add-part-category').value = part.category || '';
-    const form = document.getElementById('modal-add-part');
-    if (form) updatePartExpiryVisibility(form);
+    const nameEl = form.querySelector('#add-part-name') || document.getElementById('add-part-name');
+    if (nameEl) nameEl.value = part.name || '';
+    const skuEl = form.querySelector('#add-part-sku') || document.getElementById('add-part-sku');
+    if (skuEl) skuEl.value = part.sku || '';
+    const catEl = form.querySelector('#add-part-category') || document.getElementById('add-part-category');
+    if (catEl) catEl.value = part.category || '';
+    updatePartExpiryVisibility(form);
     
     if (part.expiryDate) {
-        const expiryInput = form ? form.querySelector('.part-expiry-input') : null;
+        const expiryInput = form.querySelector('.part-expiry-input');
         if (expiryInput) expiryInput.value = part.expiryDate;
     }
-    document.getElementById('add-part-comp').value = part.comp || '';
-    document.getElementById('add-part-price').value = part.price || '';
-    document.getElementById('add-part-stock').value = part.stock || '';
-    document.getElementById('add-part-minstock').value = part.minStock || '';
-    document.getElementById('add-part-dtc').value = ''; // Chips input is empty
+    const compEl = form.querySelector('#add-part-comp') || document.getElementById('add-part-comp');
+    if (compEl) compEl.value = part.comp || '';
+    const priceEl = form.querySelector('#add-part-price') || document.getElementById('add-part-price');
+    if (priceEl) priceEl.value = part.price || '';
+    const stockEl = form.querySelector('#add-part-stock') || document.getElementById('add-part-stock');
+    if (stockEl) stockEl.value = part.stock || '';
+    const minStockEl = form.querySelector('#add-part-minstock') || document.getElementById('add-part-minstock');
+    if (minStockEl) minStockEl.value = part.minStock || '';
+    const dtcEl = form.querySelector('#add-part-dtc') || document.getElementById('add-part-dtc');
+    if (dtcEl) dtcEl.value = ''; // Chips input is empty
     
     // Set up chips
     if (part.linkedDTCs && part.linkedDTCs.length > 0) {
@@ -2158,6 +2309,14 @@ function openEditPartModal(partId) {
 }
 
 function savePartForm() {
+    if (currentEditingPartId && !hasFeature('editPart')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
+    if (!currentEditingPartId && !hasFeature('addPart')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const nameEl = document.getElementById('add-part-name');
     const nameErr = document.getElementById('add-part-name-error');
     const stockEl = document.getElementById('add-part-stock');
@@ -2265,7 +2424,7 @@ function savePartForm() {
 let currentWalkInPartName = '';
 
 function openWalkInModalInv(itemName, itemPrice) {
-    if (!window.can('inventory.walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
+    if (!hasFeature('walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     currentWalkInPartName = itemName || '';
     document.getElementById('walkin-inv-item-name').textContent = itemName;
     document.getElementById('walkin-inv-item-price').textContent = "\u20B1" + itemPrice;
@@ -2273,6 +2432,7 @@ function openWalkInModalInv(itemName, itemPrice) {
 }
 function closeWalkInModalInv() { toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', false); }
 function confirmWalkInSaleInv(event) {
+    if (!hasFeature('walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Processing...`;
@@ -2297,7 +2457,31 @@ function confirmWalkInSaleInv(event) {
                     reference: `Walk-in sale ${txnId}`
                 });
             }
+            if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+                mockTxnData.unshift({
+                    id: txnId,
+                    category: 'completed',
+                    type: 'Walk-in Sale',
+                    typeClass: 'text-slate-500 bg-slate-100 border-slate-200',
+                    typeIcon: 'ph-shopping-bag',
+                    customer: 'Walk-in Customer',
+                    details: `Purchased: ${part.name} (x1)`,
+                    amount: part.price,
+                    amountSuffix: '',
+                    status: 'Fully Paid',
+                    statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    statusDot: 'bg-emerald-500',
+                    btnText: 'View Receipt',
+                    btnClass: 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300',
+                    btnIcon: 'ph-receipt',
+                    btnAction: 'openReceiptModal()',
+                    date: new Date().toISOString()
+                });
+            }
             renderInventory();
+            if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+            if (typeof renderCashierHome === 'function') renderCashierHome();
+            if (typeof renderTransactions === 'function') renderTransactions();
         }
         showToast("Payment Confirmed! Stock has been deducted automatically.");
     }, 800);
@@ -2338,6 +2522,9 @@ function processWalkinPayment(event) {
         closeWalkInCheckout();
         if (Array.isArray(walkinCart) && walkinCart.length > 0) {
             const txnId = 'TXN-' + Math.floor(100 + Math.random() * 900);
+            const totalDue = (typeof walkinTotalDue !== 'undefined' && walkinTotalDue > 0) ? walkinTotalDue : walkinCart.reduce((acc, c) => acc + (c.price * c.qty), 0);
+            const cartDetails = 'Purchased: ' + walkinCart.map(c => `${c.name} (x${c.qty})`).join(', ');
+
             walkinCart.forEach(cartItem => {
                 const part = fullInventoryData.find(p => p.id === cartItem.id);
                 if (part && part.stock > 0) {
@@ -2357,8 +2544,52 @@ function processWalkinPayment(event) {
                     }
                 }
             });
+
+            if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+                mockTxnData.unshift({
+                    id: txnId,
+                    category: 'completed',
+                    type: 'Walk-in Sale',
+                    typeClass: 'text-slate-500 bg-slate-100 border-slate-200',
+                    typeIcon: 'ph-shopping-bag',
+                    customer: 'Walk-in Customer',
+                    details: cartDetails,
+                    amount: totalDue,
+                    amountSuffix: '',
+                    status: 'Fully Paid',
+                    statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                    statusDot: 'bg-emerald-500',
+                    btnText: 'View Receipt',
+                    btnClass: 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300',
+                    btnIcon: 'ph-receipt',
+                    btnAction: 'openReceiptModal()',
+                    date: new Date().toISOString()
+                });
+            }
+
             walkinCart = [];
             renderInventory();
+            if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+            if (typeof renderCashierHome === 'function') renderCashierHome();
+            if (typeof renderReports === 'function') renderReports(typeof currentReportRange !== 'undefined' ? currentReportRange : 'today');
+            if (typeof renderTransactions === 'function') renderTransactions();
+        } else if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+            const unpaidWalkin = mockTxnData.find(t => t.id === 'TXN-101' || (t.category === 'walkin' && t.status === 'Unpaid'));
+            if (unpaidWalkin) {
+                unpaidWalkin.status = 'Fully Paid';
+                unpaidWalkin.category = 'completed';
+                unpaidWalkin.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                unpaidWalkin.statusDot = 'bg-emerald-500';
+                unpaidWalkin.btnText = 'View Receipt';
+                unpaidWalkin.btnClass = 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300';
+                unpaidWalkin.btnIcon = 'ph-receipt';
+                unpaidWalkin.btnAction = 'openReceiptModal()';
+                unpaidWalkin.date = new Date().toISOString();
+                if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+                if (typeof renderCashierHome === 'function') renderCashierHome();
+                if (typeof renderReports === 'function') renderReports(typeof currentReportRange !== 'undefined' ? currentReportRange : 'today');
+                if (typeof renderTransactions === 'function') renderTransactions();
+            }
         }
         openReceiptModal();
     }, 800);
@@ -2406,6 +2637,23 @@ function processRepairPayment(event) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeRepairCheckout();
+        if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+            const settleTxn = mockTxnData.find(t => t.id === 'TXN-103' || t.category === 'settle');
+            if (settleTxn) {
+                settleTxn.category = 'completed';
+                settleTxn.status = 'Fully Paid';
+                settleTxn.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                settleTxn.statusDot = 'bg-emerald-500';
+                settleTxn.btnText = 'View Receipt';
+                settleTxn.btnClass = 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300';
+                settleTxn.btnIcon = 'ph-receipt';
+                settleTxn.btnAction = 'openReceiptModal()';
+                settleTxn.date = new Date().toISOString();
+            }
+        }
+        if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+        if (typeof renderCashierHome === 'function') renderCashierHome();
+        if (typeof renderTransactions === 'function') renderTransactions();
         openReceiptModal();
     }, 1000);
 }
@@ -2655,7 +2903,26 @@ function confirmAdvancePayment(event) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeAdvanceModal();
-        alert("Advance Payment successfully recorded!");
+        if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+            const advTxn = mockTxnData.find(t => t.id === 'TXN-102' || t.category === 'advance');
+            const advanceVal = parseFloat(document.getElementById('advance-amount')?.value) || 500;
+            if (advTxn) {
+                advTxn.status = `Partial/Adv Paid (\u20B1${advanceVal.toFixed(0)})`;
+                advTxn.statusClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+                advTxn.statusDot = 'bg-yellow-500';
+                advTxn.btnText = 'Settle Balance';
+                advTxn.btnClass = 'bg-blue-600 hover:bg-blue-700 text-white shadow-md';
+                advTxn.btnAction = 'openRepairCheckout(true)';
+                advTxn.category = 'settle';
+                advTxn.date = new Date().toISOString();
+            }
+        }
+        if (typeof showToast === 'function') {
+            showToast("Advance Payment successfully recorded!", "success");
+        }
+        if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+        if (typeof renderCashierHome === 'function') renderCashierHome();
+        if (typeof renderTransactions === 'function') renderTransactions();
     }, 800);
 }
 
@@ -2996,6 +3263,12 @@ function recordMovement(params = {}) {
         if (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) {
             inventoryMovements.unshift(entry);
         }
+        if (typeof updateDashboardWidgets === 'function') {
+            updateDashboardWidgets();
+        }
+        if (typeof renderReports === 'function' && typeof currentReportRange !== 'undefined') {
+            renderReports(currentReportRange);
+        }
 
         return entry;
     } catch (err) {
@@ -3015,6 +3288,12 @@ function recordMovement(params = {}) {
         if (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) {
             inventoryMovements.unshift(fallbackEntry);
         }
+        if (typeof updateDashboardWidgets === 'function') {
+            updateDashboardWidgets();
+        }
+        if (typeof renderReports === 'function' && typeof currentReportRange !== 'undefined') {
+            renderReports(currentReportRange);
+        }
         return fallbackEntry;
     }
 }
@@ -3026,6 +3305,8 @@ let currentInventoryTab = 'stock';
 window.currentInventoryTab = currentInventoryTab;
 
 function switchInventoryTab(tab) {
+    if (tab === 'movements' && !hasFeature('viewMovements')) return;
+    if (tab === 'stock' && !hasFeature('viewStock')) return;
     currentInventoryTab = tab || 'stock';
     window.currentInventoryTab = currentInventoryTab;
 
@@ -3626,16 +3907,25 @@ function renderInventory() {
     const isMobile = document.body.classList.contains('mobile-app');
     
     // Check Permissions
-    const canRestock = window.can('inventory.restock');
-    const canAdd = window.can('inventory.addPart');
-    const canEdit = window.can('inventory.editPart');
-    const canWalkIn = window.can('inventory.walkInSale');
+    const canRestock = hasFeature('restock');
+    const canAdd = hasFeature('addPart');
+    const canEdit = hasFeature('editPart');
+    const canWalkIn = hasFeature('walkInSale');
+    const canAutoAssign = hasFeature('autoAssign');
     const showActions = canEdit || canWalkIn;
+
+    const tabMvBtn = document.getElementById('tab-inv-movements');
+    if (tabMvBtn) {
+        tabMvBtn.classList.toggle('hidden', !hasFeature('viewMovements'));
+    }
+    const tabStockBtn = document.getElementById('tab-inv-stock');
+    if (tabStockBtn) {
+        tabStockBtn.classList.toggle('hidden', !hasFeature('viewStock'));
+    }
 
     // Apply Permissions to top bar
     const btnWrap = document.getElementById('inv-btn-wrap');
     if (btnWrap) {
-        const canAutoAssign = window.can('inventory.autoAssign');
         let html = '';
         
         if (isMobile) {
@@ -4008,6 +4298,26 @@ function renderInventory() {
     }
 }
 
+function getTopSellingList() {
+    const counts = {
+        'Motul 7100 10W-40 1L': 45,
+        'Yamaha Brake Pad Set': 28,
+        'NGK Spark Plug CPR8EA-9': 18
+    };
+    if (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) {
+        inventoryMovements.forEach(m => {
+            if (m && m.type === 'out' && m.partName) {
+                const qty = Number(m.quantity) || 0;
+                counts[m.partName] = (counts[m.partName] || 0) + qty;
+            }
+        });
+    }
+    const list = Object.keys(counts).map(name => ({ name, sold: counts[name] }));
+    list.sort((a, b) => b.sold - a.sold);
+    return list;
+}
+window.getTopSellingList = getTopSellingList;
+
 function updateDashboardWidgets() {
     const lowStockParts = mockInventory.filter(p => getStockStatus(p) === 'low');
     const outOfStockParts = mockInventory.filter(p => getStockStatus(p) === 'out');
@@ -4073,7 +4383,7 @@ function updateDashboardWidgets() {
     if (reportsTbody) {
         const allAlertParts = [...outOfStockParts, ...lowStockParts];
         if (allAlertParts.length === 0) {
-            reportsTbody.innerHTML = `<tr><td colspan="2" class="p-3 text-center text-slate-500">No low stock items</td></tr>`;
+            reportsTbody.innerHTML = `<tr><td colspan="2" class="p-4 text-center text-slate-400 text-xs italic">No low stock items in this period</td></tr>`;
         } else {
             reportsTbody.innerHTML = allAlertParts.map(p => `
                 <tr class="hover:bg-slate-50 transition-colors">
@@ -4088,17 +4398,23 @@ function updateDashboardWidgets() {
 
     const topSelling = document.getElementById('reports-top-selling');
     if (topSelling) {
-        const topParts = mockInventory.slice(0, 3);
-        const percentages = [100, 65, 40];
-        const colors = ['bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'];
-        const sold = [45, 28, 18];
-        
-        topSelling.innerHTML = topParts.map((p, i) => `
-            <div>
-                <div class="flex justify-between text-xs mb-1"><span class="font-semibold text-slate-700">${i+1}. ${p.name}</span><span class="font-bold text-slate-500">${sold[i]} sold</span></div>
-                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div class="${colors[i]} h-2.5 rounded-full" style="width: ${percentages[i]}%"></div></div>
-            </div>
-        `).join('');
+        const topParts = getTopSellingList();
+        if (!topParts.length || topParts.every(p => !p.sold)) {
+            topSelling.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs italic">No fast-moving items in this period</div>`;
+        } else {
+            const maxSold = Math.max(...topParts.map(p => p.sold), 1);
+            const colors = ['bg-emerald-500', 'bg-emerald-400', 'bg-emerald-300'];
+            topSelling.innerHTML = topParts.slice(0, 3).map((p, i) => `
+                <div>
+                    <div class="flex justify-between text-xs mb-1"><span class="font-semibold text-slate-700">${i+1}. ${p.name}</span><span class="font-bold text-slate-500">${p.sold} sold</span></div>
+                    <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden"><div class="${colors[i] || 'bg-emerald-300'} h-2.5 rounded-full" style="width: ${Math.round((p.sold / maxSold) * 100)}%"></div></div>
+                </div>
+            `).join('');
+        }
+    }
+
+    if (document.getElementById('view-cashier-home') && typeof renderCashierHome === 'function') {
+        renderCashierHome();
     }
 }
 
@@ -4289,6 +4605,12 @@ window.openWalkInCheckout = function() {
     toggleModal('modal-txn-walkin', 'txn-walkin-backdrop', 'txn-walkin-content', true); 
 };
 
+// Dynamic sample transaction dates calculated relative to today
+const _initTxnDate = new Date();
+const _txnTodayMorning = new Date(_initTxnDate.getFullYear(), _initTxnDate.getMonth(), _initTxnDate.getDate(), 9, 30).toISOString();
+const _txnTodayMidday = new Date(_initTxnDate.getFullYear(), _initTxnDate.getMonth(), _initTxnDate.getDate(), 11, 0).toISOString();
+const _txnYesterday = new Date(_initTxnDate.getFullYear(), _initTxnDate.getMonth(), _initTxnDate.getDate() - 1, 14, 15).toISOString();
+
 // --- Interactive Transactions Queue & Filter Logic ---
 let currentTxnFilter = 'all';
 const mockTxnData = [
@@ -4308,7 +4630,8 @@ const mockTxnData = [
         btnText: 'Process Payment',
         btnClass: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200',
         btnIcon: 'ph-wallet',
-        btnAction: 'openWalkInCheckout()'
+        btnAction: 'openWalkInCheckout()',
+        date: _txnTodayMidday
     },
     {
         id: 'TXN-102',
@@ -4326,7 +4649,8 @@ const mockTxnData = [
         btnText: 'Advance Payment',
         btnClass: 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200',
         btnIcon: 'ph-hand-coins',
-        btnAction: 'openAdvanceModal()'
+        btnAction: 'openAdvanceModal()',
+        date: _txnTodayMorning
     },
     {
         id: 'TXN-103',
@@ -4344,7 +4668,8 @@ const mockTxnData = [
         btnText: 'Settle Balance',
         btnClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md',
         btnIcon: 'ph-check-circle',
-        btnAction: 'openRepairCheckout(true)'
+        btnAction: 'openRepairCheckout(true)',
+        date: _txnYesterday
     },
     {
         id: 'TXN-104',
@@ -4362,7 +4687,8 @@ const mockTxnData = [
         btnText: 'View Receipt',
         btnClass: 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300',
         btnIcon: 'ph-receipt',
-        btnAction: 'openReceiptModal()'
+        btnAction: 'openReceiptModal()',
+        date: _txnTodayMorning
     }
 ];
 
@@ -4442,6 +4768,206 @@ document.addEventListener('click', function(e) {
         renderTransactions();
     }
 });
+
+// --- Cashier Home Dashboard Logic ---
+function cashierReceivePayment() {
+    const navBtn = document.querySelector('.nav-link[data-target="transactions"]');
+    if (navBtn) {
+        navBtn.click();
+    } else if (typeof loadView === 'function') {
+        loadView('transactions');
+    }
+    setTimeout(() => {
+        const filterBtn = document.querySelector('.txn-filter-btn[data-filter="all"]');
+        if (filterBtn) filterBtn.click();
+    }, 50);
+}
+window.cashierReceivePayment = cashierReceivePayment;
+
+function renderCashierHome() {
+    const root = document.getElementById('view-cashier-home');
+    if (!root) return;
+
+    // 1. Welcome Header (User name, Role label, Today's local date)
+    const userObj = (typeof systemUsers !== 'undefined' && systemUsers[currentRole]) ? systemUsers[currentRole] : null;
+    const userName = (userObj && userObj.name) ? userObj.name : 'Cashier';
+    const userRoleLabel = (typeof ROLES_CONFIG !== 'undefined' && ROLES_CONFIG[currentRole] && ROLES_CONFIG[currentRole].label) ? ROLES_CONFIG[currentRole].label : 'Cashier';
+
+    const now = new Date();
+    const dateFormatted = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+
+    const userEl = document.getElementById('cashier-home-user');
+    if (userEl) userEl.textContent = userName;
+
+    const dateEl = document.getElementById('cashier-home-date');
+    if (dateEl) dateEl.textContent = `${userRoleLabel} | ${dateFormatted}`;
+
+    const isSameDay = (d1, d2) => {
+        if (!d1 || !d2) return false;
+        const a = new Date(d1);
+        const b = new Date(d2);
+        return a.getFullYear() === b.getFullYear() &&
+               a.getMonth() === b.getMonth() &&
+               a.getDate() === b.getDate();
+    };
+
+    // 2. Stat 1: Today's Sales (total in pesos of today's transactions)
+    let todaySalesTotal = 0;
+    let todayCompletedCount = 0;
+    mockTxnData.forEach(t => {
+        if (isSameDay(t.date, now)) {
+            if (t.status === 'Fully Paid' || t.category === 'completed') {
+                todaySalesTotal += (Number(t.amount) || 0);
+                todayCompletedCount++;
+            } else if (t.status && t.status.includes('Partial/Adv Paid')) {
+                const match = t.status.match(/\u20B1(\d+(\.\d+)?)/);
+                if (match) todaySalesTotal += Number(match[1]);
+            }
+        }
+    });
+    const statSalesEl = document.getElementById('cashier-stat-today-sales');
+    if (statSalesEl) {
+        statSalesEl.textContent = `\u20B1${todaySalesTotal.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    // 3. Stat 2: Pending Payments (count and total amount waiting)
+    const pendingTxns = mockTxnData.filter(t => t.category !== 'completed' && t.status !== 'Fully Paid');
+    let pendingWaitingAmount = 0;
+    pendingTxns.forEach(t => {
+        if (t.status && t.status.includes('Partial/Adv Paid')) {
+            const match = t.status.match(/\u20B1(\d+(\.\d+)?)/);
+            const advPaid = match ? Number(match[1]) : 500;
+            const remaining = Math.max(0, (Number(t.amount) || 0) - advPaid);
+            pendingWaitingAmount += remaining;
+        } else {
+            pendingWaitingAmount += (Number(t.amount) || 0);
+        }
+    });
+    const statPendingEl = document.getElementById('cashier-stat-pending-payments');
+    if (statPendingEl) {
+        statPendingEl.innerHTML = `${pendingTxns.length} <span class="text-xs font-medium text-slate-500 ml-1" id="cashier-stat-pending-amount">(\u20B1${pendingWaitingAmount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</span>`;
+    }
+
+    // 4. Stat 3: Walk-in Sales Today (count)
+    const walkinTodayTxns = mockTxnData.filter(t => (t.category === 'walkin' || t.type === 'Walk-in Sale') && isSameDay(t.date, now));
+    const statWalkinEl = document.getElementById('cashier-stat-walkin-today');
+    if (statWalkinEl) {
+        const orderWord = walkinTodayTxns.length === 1 ? 'Order' : 'Orders';
+        statWalkinEl.innerHTML = `${walkinTodayTxns.length} <span class="text-xs font-medium text-slate-500 ml-1" id="cashier-stat-walkin-sub">${orderWord}</span>`;
+    }
+
+    // 5. Stat 4: Stock Alerts (low stock plus out of stock, using getStockStatus)
+    const lowStockParts = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory.filter(p => getStockStatus(p) === 'low') : [];
+    const outOfStockParts = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory.filter(p => getStockStatus(p) === 'out') : [];
+    const totalStockAlerts = lowStockParts.length + outOfStockParts.length;
+    const statStockEl = document.getElementById('cashier-stat-stock-alerts');
+    if (statStockEl) {
+        statStockEl.innerHTML = `${totalStockAlerts} <span class="text-xs font-medium text-slate-500 ml-1" id="cashier-stat-stock-alerts-sub">${lowStockParts.length} Low · ${outOfStockParts.length} Out</span>`;
+    }
+
+    // 6. Recent Transactions (last 5)
+    const recentTxns = mockTxnData.slice(0, 5);
+    const tbody = document.getElementById('cashier-recent-transactions-tbody');
+    if (tbody) {
+        if (recentTxns.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-500 text-sm font-medium">No transactions yet.</td></tr>`;
+        } else {
+            tbody.innerHTML = recentTxns.map(txn => {
+                const isCompleted = txn.category === 'completed' || txn.status === 'Fully Paid';
+                const rowClass = isCompleted ? 'hover:bg-blue-50/30 transition-colors opacity-75 cursor-pointer' : 'hover:bg-blue-50/30 transition-colors cursor-pointer';
+                const statusIndicator = isCompleted ?
+                    `<i class="ph-bold ph-check"></i> ${txn.status}` :
+                    `<span class="w-1.5 h-1.5 rounded-full ${txn.statusDot}"></span> ${txn.status}`;
+                return `
+                    <tr class="${rowClass}" onclick="document.querySelector('.nav-link[data-target=\\'transactions\\']')?.click() || loadView('transactions')">
+                        <td class="p-3">
+                            <div class="font-bold text-slate-800 text-xs sm:text-sm">${txn.id}</div>
+                            <div class="inline-flex items-center gap-1 mt-0.5 text-[10px] font-bold uppercase tracking-wider ${txn.typeClass} px-2 py-0.5 rounded">
+                                <i class="ph-fill ${txn.typeIcon}"></i> ${txn.type}
+                            </div>
+                        </td>
+                        <td class="p-3">
+                            <div class="font-semibold text-slate-700 text-xs sm:text-sm">${txn.customer}</div>
+                            <div class="text-[11px] text-slate-500 truncate max-w-[140px] sm:max-w-[200px]">${txn.details}</div>
+                        </td>
+                        <td class="p-3 font-bold text-slate-800 text-xs sm:text-sm whitespace-nowrap">\u20B1${(Number(txn.amount) || 0).toFixed(2)} ${txn.amountSuffix || ''}</td>
+                        <td class="p-3 text-right whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${txn.statusClass}">
+                                ${statusIndicator}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // 7. Stock Alerts widget (up to 5 low/out, plus expired/soon, read-only)
+    const alertsContainer = document.getElementById('cashier-stock-alerts-list');
+    if (alertsContainer) {
+        const lowOrOut = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory.filter(p => {
+            const s = getStockStatus(p);
+            return s === 'low' || s === 'out';
+        }).slice(0, 5) : [];
+
+        const expParts = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory) && typeof getExpiryStatus === 'function') ? mockInventory.filter(p => {
+            const st = getExpiryStatus(p);
+            return st && (st.status === 'expired' || st.status === 'soon');
+        }) : [];
+
+        const combinedAlertParts = [...lowOrOut];
+        expParts.forEach(ep => {
+            if (!combinedAlertParts.some(p => p.id === ep.id)) {
+                combinedAlertParts.push(ep);
+            }
+        });
+
+        if (combinedAlertParts.length === 0) {
+            alertsContainer.innerHTML = `<div class="p-6 text-center text-slate-500 text-sm font-medium">All stock levels are fine.</div>`;
+        } else {
+            alertsContainer.innerHTML = combinedAlertParts.map(part => {
+                const stockSt = getStockStatus(part);
+                let stockBadge = '';
+                if (stockSt === 'out') {
+                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> 0 Left</span>`;
+                } else if (stockSt === 'low') {
+                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"></span> ${part.stock} Left</span>`;
+                } else {
+                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> ${part.stock} Left</span>`;
+                }
+
+                let expBadge = '';
+                if (typeof getExpiryStatus === 'function') {
+                    const st = getExpiryStatus(part);
+                    if (st && st.status === 'expired') {
+                        expBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 border border-red-200 bg-red-50 px-1.5 py-0.5 rounded"><i class="ph ph-calendar"></i> Expired</span>`;
+                    } else if (st && st.status === 'soon') {
+                        expBadge = `<span class="inline-flex items-center gap-1 text-[10px] font-bold text-orange-600 border border-orange-200 bg-orange-50 px-1.5 py-0.5 rounded"><i class="ph ph-calendar"></i> ${st.days}d left</span>`;
+                    }
+                }
+
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                        <div class="min-w-0 flex-1 mr-3">
+                            <p class="text-sm font-bold text-slate-800 truncate">${part.name}</p>
+                            <p class="text-[11px] text-slate-500 font-medium">SKU: ${part.sku} · \u20B1${(Number(part.price) || 0).toFixed(2)}</p>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+                            ${stockBadge}
+                            ${expBadge}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+
+    // 8. Icon initialization
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderCashierHome = renderCashierHome;
 
 // --- Interactive Service History Logic ---
 const mockHistoryData = [
@@ -4626,7 +5152,24 @@ const mockReportData = {
         alertTotal: '8', alertLow: '5', alertOut: '3',
         scanTotal: '15', scanIssue: '8', scanClear: '7',
         chartParts: '5,940', chartRepair: '8,910',
-        sumAdv: '3,500.00', sumOut: '4,200.00', sumSet: '11,350.00'
+        sumAdv: '3,500.00', sumOut: '4,200.00', sumSet: '11,350.00',
+        accuracy: '88%',
+        dtcs: [
+            { code: 'P0118', name: 'Engine Coolant Temp Sensor High', count: 4 },
+            { code: 'P0562', name: 'Charging System Voltage Low', count: 3 },
+            { code: 'P0120', name: 'Throttle Position Sensor Circuit', count: 1 }
+        ],
+        mechanics: [
+            { name: 'Mike', count: 5 },
+            { name: 'Leo', count: 4 }
+        ],
+        trend: [
+            { label: '9 AM', amount: '₱1.8k', pct: 25 },
+            { label: '11 AM', amount: '₱3.2k', pct: 45 },
+            { label: '1 PM', amount: '₱4.5k', pct: 65 },
+            { label: '3 PM', amount: '₱2.6k', pct: 35 },
+            { label: '5 PM', amount: '₱2.75k', pct: 40 }
+        ]
     },
     week: {
         revTotal: '84,200.00', revParts: '45,100', revLabor: '39,100',
@@ -4634,7 +5177,26 @@ const mockReportData = {
         alertTotal: '12', alertLow: '8', alertOut: '4',
         scanTotal: '75', scanIssue: '42', scanClear: '33',
         chartParts: '33,680', chartRepair: '50,520',
-        sumAdv: '12,500.00', sumOut: '8,400.00', sumSet: '63,300.00'
+        sumAdv: '12,500.00', sumOut: '8,400.00', sumSet: '63,300.00',
+        accuracy: '86%',
+        dtcs: [
+            { code: 'P0118', name: 'Engine Coolant Temp Sensor High', count: 12 },
+            { code: 'P0562', name: 'Charging System Voltage Low', count: 8 },
+            { code: 'P0120', name: 'Throttle Position Sensor Circuit', count: 5 }
+        ],
+        mechanics: [
+            { name: 'Mike', count: 24 },
+            { name: 'Leo', count: 18 }
+        ],
+        trend: [
+            { label: 'Mon', amount: '₱2.1k', pct: 30 },
+            { label: 'Tue', amount: '₱3.5k', pct: 45 },
+            { label: 'Wed', amount: '₱1.8k', pct: 25 },
+            { label: 'Thu', amount: '₱4.8k', pct: 60 },
+            { label: 'Fri', amount: '₱6.2k', pct: 80 },
+            { label: 'Sat', amount: '₱3.9k', pct: 50 },
+            { label: 'Sun', amount: '₱7.5k', pct: 95 }
+        ]
     },
     month: {
         revTotal: '342,500.00', revParts: '185,000', revLabor: '157,500',
@@ -4642,7 +5204,24 @@ const mockReportData = {
         alertTotal: '18', alertLow: '11', alertOut: '7',
         scanTotal: '310', scanIssue: '180', scanClear: '130',
         chartParts: '137,000', chartRepair: '205,500',
-        sumAdv: '45,000.00', sumOut: '22,500.00', sumSet: '275,000.00'
+        sumAdv: '45,000.00', sumOut: '22,500.00', sumSet: '275,000.00',
+        accuracy: '89%',
+        dtcs: [
+            { code: 'P0118', name: 'Engine Coolant Temp Sensor High', count: 48 },
+            { code: 'P0562', name: 'Charging System Voltage Low', count: 32 },
+            { code: 'P0120', name: 'Throttle Position Sensor Circuit', count: 21 },
+            { code: 'P0105', name: 'MAP Sensor Malfunction', count: 14 }
+        ],
+        mechanics: [
+            { name: 'Mike', count: 110 },
+            { name: 'Leo', count: 85 }
+        ],
+        trend: [
+            { label: 'Week 1', amount: '₱68.5k', pct: 65 },
+            { label: 'Week 2', amount: '₱82.1k', pct: 80 },
+            { label: 'Week 3', amount: '₱95.4k', pct: 92 },
+            { label: 'Week 4', amount: '₱96.5k', pct: 95 }
+        ]
     }
 };
 
@@ -4650,6 +5229,161 @@ let activeReportTab = 'financial';
 window.activeReportTab = activeReportTab;
 let currentReportRange = 'today';
 window.currentReportRange = currentReportRange;
+
+function getReportData(range = 'today') {
+    const raw = (mockReportData && mockReportData[range]) ? mockReportData[range] : null;
+    return {
+        revTotal: (raw && raw.revTotal) || '0.00',
+        revParts: (raw && raw.revParts) || '0.00',
+        revLabor: (raw && raw.revLabor) || '0.00',
+        repTotal: (raw && raw.repTotal) || '0',
+        repComp: (raw && raw.repComp) || '0',
+        repProg: (raw && raw.repProg) || '0',
+        alertTotal: (raw && raw.alertTotal) || '0',
+        alertLow: (raw && raw.alertLow) || '0',
+        alertOut: (raw && raw.alertOut) || '0',
+        scanTotal: (raw && raw.scanTotal) || '0',
+        scanIssue: (raw && raw.scanIssue) || '0',
+        scanClear: (raw && raw.scanClear) || '0',
+        chartParts: (raw && raw.chartParts) || '0.00',
+        chartRepair: (raw && raw.chartRepair) || '0.00',
+        sumAdv: (raw && raw.sumAdv) || '0.00',
+        sumOut: (raw && raw.sumOut) || '0.00',
+        sumSet: (raw && raw.sumSet) || '0.00',
+        accuracy: (raw && raw.accuracy) || '0%',
+        dtcs: (raw && Array.isArray(raw.dtcs)) ? raw.dtcs : [],
+        mechanics: (raw && Array.isArray(raw.mechanics)) ? raw.mechanics : [],
+        trend: (raw && Array.isArray(raw.trend)) ? raw.trend : []
+    };
+}
+window.getReportData = getReportData;
+
+function getDtcAnalyticsList(range = 'today') {
+    const data = getReportData(range);
+    const list = data.dtcs.map(d => ({ ...d }));
+
+    // Add live scanned codes
+    if (typeof dtcScanState !== 'undefined' && Array.isArray(dtcScanState.scanned) && dtcScanState.scanned.length > 0) {
+        dtcScanState.scanned.forEach(s => {
+            const code = String(s.code || '').trim().toUpperCase();
+            if (!code) return;
+            const existing = list.find(b => b.code.toUpperCase() === code);
+            if (existing) {
+                existing.count = (Number(existing.count) || 0) + 1;
+            } else {
+                const entry = (typeof getDtcEntryById === 'function' && s.id) ? getDtcEntryById(s.id) : (typeof findDtcEntry === 'function' ? findDtcEntry(code) : null);
+                const desc = entry ? (entry.component || entry.desc || code) : code;
+                list.push({ code: code, name: desc, count: 1 });
+            }
+        });
+    }
+    list.sort((a, b) => b.count - a.count);
+    return list;
+}
+window.getDtcAnalyticsList = getDtcAnalyticsList;
+
+function renderDtcAnalytics(range = 'today') {
+    const listEl = document.getElementById('reports-dtc-freq-list');
+    const accuracyEl = document.getElementById('reports-dtc-accuracy');
+    const data = getReportData(range);
+
+    if (accuracyEl) {
+        accuracyEl.textContent = data.accuracy || '0%';
+    }
+
+    if (listEl) {
+        const dtcs = getDtcAnalyticsList(range);
+        if (!dtcs.length || dtcs.every(d => !d.count || d.count === 0)) {
+            listEl.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs italic">No DTC issues logged in this period</div>';
+        } else {
+            const maxCount = Math.max(...dtcs.map(d => Number(d.count) || 0), 1);
+            listEl.innerHTML = dtcs.map(d => `
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-10 bg-purple-100 rounded flex items-center justify-center font-bold text-purple-700 border border-purple-200 text-xs shrink-0">${d.code}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="font-bold text-slate-700 truncate mr-2">${d.name}</span>
+                            <span class="font-bold text-slate-500 shrink-0">${d.count} Log${d.count === 1 ? '' : 's'}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div class="bg-purple-500 h-1.5 rounded-full transition-all" style="width: ${Math.round(((Number(d.count) || 0) / maxCount) * 100)}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+}
+window.renderDtcAnalytics = renderDtcAnalytics;
+
+function renderOperationsPerformance(range = 'today') {
+    const chartEl = document.getElementById('reports-ops-mech-chart');
+    if (!chartEl) return;
+    const data = getReportData(range);
+    const mechs = data.mechanics;
+
+    if (!mechs.length || mechs.every(m => !m.count || m.count === 0)) {
+        chartEl.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-400 text-xs italic">No completed jobs in this period</div>';
+    } else {
+        const maxCompleted = Math.max(...mechs.map(m => Number(m.count) || 0), 1);
+        chartEl.innerHTML = mechs.map((m, i) => {
+            const count = Number(m.count) || 0;
+            const heightPx = Math.max(24, Math.round((count / maxCompleted) * 120));
+            const isTop = i === 0;
+            return `
+                <div class="w-16 flex flex-col items-center gap-2">
+                    <span class="text-xs font-bold ${isTop ? 'text-blue-600 bg-blue-50' : 'text-slate-600 bg-slate-100'} px-2 py-1 rounded">${count}</span>
+                    <div class="w-full ${isTop ? 'bg-blue-500' : 'bg-slate-400'} rounded-t-sm transition-all" style="height: ${heightPx}px;"></div>
+                    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center truncate w-full">${m.name}</span>
+                </div>
+            `;
+        }).join('');
+    }
+}
+window.renderOperationsPerformance = renderOperationsPerformance;
+
+function renderFinancialCharts(range = 'today') {
+    const data = getReportData(range);
+
+    const barsEl = document.getElementById('reports-rev-trend-bars');
+    const labelsEl = document.getElementById('reports-rev-trend-labels');
+    if (barsEl && labelsEl) {
+        const trend = data.trend;
+        if (!trend.length || trend.every(t => !t.pct || t.pct === 0)) {
+            barsEl.innerHTML = '<div class="w-full h-full flex items-center justify-center text-slate-400 text-xs italic">No revenue data in this period</div>';
+            labelsEl.innerHTML = '';
+        } else {
+            barsEl.innerHTML = trend.map(t => `
+                <div class="w-[10%] bg-blue-500 rounded-t-sm relative group cursor-pointer transition-all hover:bg-blue-400" style="height: ${t.pct}%">
+                    <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">${t.amount}</div>
+                </div>
+            `).join('');
+            labelsEl.innerHTML = trend.map(t => `<span>${t.label}</span>`).join('');
+        }
+    }
+
+    const partsBar = document.getElementById('reports-rev-parts-bar');
+    const repairBar = document.getElementById('reports-rev-repair-bar');
+    if (partsBar && repairBar) {
+        const partsNum = parseFloat(String(data.chartParts || data.revParts || '0').replace(/,/g, '')) || 0;
+        const repairNum = parseFloat(String(data.chartRepair || data.revLabor || '0').replace(/,/g, '')) || 0;
+        const total = partsNum + repairNum;
+        if (total <= 0) {
+            partsBar.style.width = '50%';
+            partsBar.textContent = '0%';
+            repairBar.style.width = '50%';
+            repairBar.textContent = '0%';
+        } else {
+            const partsPct = Math.round((partsNum / total) * 100);
+            const repairPct = 100 - partsPct;
+            partsBar.style.width = `${partsPct}%`;
+            partsBar.textContent = `${partsPct}%`;
+            repairBar.style.width = `${repairPct}%`;
+            repairBar.textContent = `${repairPct}%`;
+        }
+    }
+}
+window.renderFinancialCharts = renderFinancialCharts;
 
 window.setReportTab = function(id) {
     if (!id) id = 'financial';
@@ -4692,7 +5426,6 @@ window.setReportTab = function(id) {
         }
     });
 
-    // Requirement 3: If a panel is missing, create an empty one with placeholder
     if (!matchedPanel) {
         const parent = container.querySelector('.report-tab-content')?.parentElement;
         if (parent) {
@@ -4704,10 +5437,17 @@ window.setReportTab = function(id) {
         }
     }
 
-    // Requirement 5: Re-run chart drawing when a panel becomes visible
-    if (typeof updateDashboardWidgets === 'function') {
-        updateDashboardWidgets();
+    // Re-draw charts when a panel opens
+    if (id === 'financial') {
+        renderFinancialCharts(currentReportRange);
+    } else if (id === 'inventory') {
+        if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+    } else if (id === 'dtc' || id === 'diagnostics') {
+        renderDtcAnalytics(currentReportRange);
+    } else if (id === 'operations') {
+        renderOperationsPerformance(currentReportRange);
     }
+
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
     }
@@ -4716,44 +5456,48 @@ window.setReportTab = function(id) {
 function renderReports(range = 'today') {
     currentReportRange = range;
     window.currentReportRange = currentReportRange;
-    const data = mockReportData[range];
-    if (!data) return;
+    const data = getReportData(range);
 
-    // Simulate network fetch indicator
     const syncText = document.getElementById('report-sync-time');
     if (syncText) {
         syncText.textContent = "Syncing...";
         setTimeout(() => syncText.textContent = "Synced: Just now", 500);
     }
 
-    // Update KPI Cards
-    const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-    
+    const safeSet = (id, val, prefix = '') => {
+        const el = document.getElementById(id);
+        if (el) {
+            const cleanVal = (val !== undefined && val !== null && val !== '' && !Number.isNaN(val)) ? val : '0';
+            el.textContent = prefix ? `${prefix}${cleanVal}` : cleanVal;
+        }
+    };
+
     safeSet('kpi-rev-total', data.revTotal);
     safeSet('kpi-rev-parts', data.revParts);
     safeSet('kpi-rev-labor', data.revLabor);
-    
+
     safeSet('kpi-rep-total', data.repTotal);
     safeSet('kpi-rep-comp', data.repComp);
     safeSet('kpi-rep-prog', data.repProg);
-    
+
     safeSet('kpi-alert-total', data.alertTotal);
     safeSet('kpi-alert-low', data.alertLow);
     safeSet('kpi-alert-out', data.alertOut);
-    
-    safeSet('kpi-scan-total', data.scanTotal);
-    safeSet('kpi-scan-issue', data.scanIssue);
-    safeSet('kpi-scan-clear', data.scanClear);
 
-    // Update Breakdown Charts & Tables
-    safeSet('chart-rev-parts', `\u20B1${data.chartParts}`);
-    safeSet('chart-rev-repair', `\u20B1${data.chartRepair}`);
-    
-    safeSet('summary-adv', `\u20B1${data.sumAdv}`);
-    safeSet('summary-out', `\u20B1${data.sumOut}`);
-    safeSet('summary-set', `\u20B1${data.sumSet}`);
+    const liveScannedCount = (typeof dtcScanState !== 'undefined' && Array.isArray(dtcScanState.scanned)) ? dtcScanState.scanned.length : 0;
+    const baseScanTotal = Number(data.scanTotal) || 0;
+    const baseScanIssue = Number(data.scanIssue) || 0;
+    safeSet('kpi-scan-total', String(baseScanTotal + liveScannedCount));
+    safeSet('kpi-scan-issue', String(baseScanIssue + liveScannedCount));
+    safeSet('kpi-scan-clear', data.scanClear || '0');
 
-    // Sync date range button styling
+    safeSet('chart-rev-parts', data.chartParts, '₱');
+    safeSet('chart-rev-repair', data.chartRepair, '₱');
+
+    safeSet('summary-adv', data.sumAdv, '₱');
+    safeSet('summary-out', data.sumOut, '₱');
+    safeSet('summary-set', data.sumSet, '₱');
+
     const dateBtns = document.querySelectorAll('.report-date-btn');
     dateBtns.forEach(btn => {
         const isMatch = btn.getAttribute('data-range') === currentReportRange;
@@ -4764,10 +5508,152 @@ function renderReports(range = 'today') {
         }
     });
 
+    renderFinancialCharts(range);
     if (typeof updateDashboardWidgets === 'function') {
         updateDashboardWidgets();
     }
+    renderDtcAnalytics(range);
+    renderOperationsPerformance(range);
 }
+window.renderReports = renderReports;
+
+window.exportReportsCSV = function() {
+    const tab = activeReportTab || 'financial';
+    const range = currentReportRange || 'today';
+    const data = getReportData(range);
+
+    const csvRows = [];
+    const sanitize = (val) => {
+        const str = String(val === undefined || val === null ? '' : val);
+        return `"${str.replace(/"/g, '""')}"`;
+    };
+    const addRow = (...cols) => csvRows.push(cols.map(sanitize).join(','));
+
+    const rangeLabels = { today: 'Today', week: 'This Week', month: 'This Month' };
+    const tabLabels = {
+        financial: 'Financial & Sales',
+        inventory: 'Inventory Movement',
+        dtc: 'DTC Analytics',
+        operations: 'Operations Performance'
+    };
+
+    addRow('Report', tabLabels[tab] || tab);
+    addRow('Period', rangeLabels[range] || range);
+    addRow('Generated', new Date().toLocaleString());
+    addRow('');
+
+    if (tab === 'financial') {
+        addRow('Metric', 'Amount (PHP)');
+        addRow('Total Gross Revenue', data.revTotal || '0.00');
+        addRow('Parts Revenue', data.revParts || '0.00');
+        addRow('Labor Revenue', data.revLabor || '0.00');
+        addRow('Walk-in Parts Sales', data.chartParts || '0.00');
+        addRow('Repair Services (Parts + Labor)', data.chartRepair || '0.00');
+        addRow('Total Advance Payments', data.sumAdv || '0.00');
+        addRow('Total Outstanding Pending', data.sumOut || '0.00');
+        addRow('Total Settled Balances', data.sumSet || '0.00');
+    } else if (tab === 'inventory') {
+        addRow('FAST-MOVING SPARE PARTS');
+        addRow('Rank', 'Part Name', 'Units Sold');
+        const topParts = typeof getTopSellingList === 'function' ? getTopSellingList() : [];
+        if (!topParts.length || topParts.every(p => !p.sold)) {
+            addRow('No fast-moving items in this period');
+        } else {
+            topParts.forEach((p, i) => addRow(i + 1, p.name, p.sold));
+        }
+        addRow('');
+        addRow('REORDER / STOCKOUT ALERTS');
+        addRow('Part Name', 'Remaining Stock', 'Status');
+        const alertParts = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory))
+            ? mockInventory.filter(p => (typeof getStockStatus === 'function') && (getStockStatus(p) === 'low' || getStockStatus(p) === 'out'))
+            : [];
+        if (alertParts.length === 0) {
+            addRow('No low stock items in this period');
+        } else {
+            alertParts.forEach(p => addRow(p.name, p.stock, p.stock === 0 ? 'Out of Stock' : 'Low Stock'));
+        }
+        addRow('');
+        addRow('RECENT INVENTORY MOVEMENTS');
+        addRow('Timestamp', 'Part Name', 'SKU', 'Type', 'Quantity', 'Stock Before', 'Stock After', 'Reference', 'Performed By');
+        const movements = (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) ? inventoryMovements.slice(0, 50) : [];
+        movements.forEach(m => addRow(
+            m.timestamp ? new Date(m.timestamp).toLocaleString() : '',
+            m.partName || '',
+            m.sku || '',
+            m.type || '',
+            m.quantity || 0,
+            m.stockBefore || 0,
+            m.stockAfter || 0,
+            m.reference || '',
+            m.performedBy || ''
+        ));
+    } else if (tab === 'dtc' || tab === 'diagnostics') {
+        addRow('Metric', 'Value');
+        const liveScannedCount = (typeof dtcScanState !== 'undefined' && Array.isArray(dtcScanState.scanned)) ? dtcScanState.scanned.length : 0;
+        const scanTotal = (Number(data.scanTotal) || 0) + liveScannedCount;
+        const scanIssue = (Number(data.scanIssue) || 0) + liveScannedCount;
+        addRow('Total ECU Scans', scanTotal);
+        addRow('Issues Detected', scanIssue);
+        addRow('Clear Scans', data.scanClear || '0');
+        addRow('Diagnostic Accuracy', data.accuracy || '0%');
+        addRow('');
+        addRow('MOST FREQUENT DTCS LOGGED');
+        addRow('DTC Code', 'Component / Issue', 'Logs Count');
+        const dtcs = typeof getDtcAnalyticsList === 'function' ? getDtcAnalyticsList(range) : [];
+        if (!dtcs.length || dtcs.every(d => !d.count || d.count === 0)) {
+            addRow('No DTC issues logged in this period');
+        } else {
+            dtcs.forEach(d => addRow(d.code, d.name, d.count));
+        }
+    } else if (tab === 'operations') {
+        addRow('Metric', 'Value');
+        addRow('Total Repair Services', data.repTotal || '0');
+        addRow('Completed Services', data.repComp || '0');
+        addRow('In Progress Services', data.repProg || '0');
+        addRow('');
+        addRow('JOBS COMPLETED PER MECHANIC');
+        addRow('Mechanic Name', 'Jobs Completed');
+        const mechs = data.mechanics || [];
+        if (!mechs.length || mechs.every(m => !m.count || m.count === 0)) {
+            addRow('No completed jobs in this period');
+        } else {
+            mechs.forEach(m => addRow(m.name, m.count));
+        }
+    }
+
+    const csvContent = '\uFEFF' + csvRows.join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const fileName = `motocare_${tab}_${range}.csv`;
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', fileName);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+window.exportReportsPDF = function() {
+    const tab = activeReportTab || 'financial';
+    const range = currentReportRange || 'today';
+    const originalTitle = document.title;
+    document.title = `motocare_${tab}_${range}`;
+    document.body.classList.add('printing-report');
+
+    let cleaned = false;
+    const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        document.body.classList.remove('printing-report');
+        document.title = originalTitle;
+        window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+    setTimeout(cleanup, 1000);
+};
 
 // Attach Event Listener for Date Range Filters
 document.addEventListener('click', function(e) {
@@ -5044,6 +5930,12 @@ const mockUserData = [
         roleName: ROLES_CONFIG.mechanic.label, roleValue: 'mechanic', roleIcon: 'ph-wrench', roleClass: 'bg-blue-50 text-blue-700 border border-blue-200',
         status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
         lastLoginDate: 'Oct 24, 2026', lastLoginTime: '07:50 AM', avatarClass: 'bg-blue-100 text-blue-700'
+    },
+    {
+        id: 'u5', initials: 'CS', name: 'Cashier', username: '@Cashier.staff',
+        roleName: ROLES_CONFIG.cashier.label, roleValue: 'cashier', roleIcon: 'ph-storefront', roleClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap',
+        status: 'Active', statusValue: 'active', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', statusDot: 'bg-emerald-500',
+        lastLoginDate: 'Oct 24, 2026', lastLoginTime: '08:05 AM', avatarClass: 'bg-emerald-100 text-emerald-700'
     }
     
 ];
@@ -5056,8 +5948,8 @@ function renderPermissionsMatrix() {
         { key: 'customers', label: 'Customers & Motorcycles' },
         { key: 'diagnostics', label: 'Diagnostics & Inspections' },
         { key: 'repairs', label: 'Active Repairs', notes: { mechanic: 'Can Finalize' } },
-        { key: 'inventory', label: 'Inventory Management', notes: { super_admin: 'Full Access', admin: 'Full Access', mechanic: 'View / Request' } },
-        { key: 'transactions', label: 'Transactions & Billing' },
+        { key: 'inventory', label: 'Inventory Management', notes: { super_admin: 'Full Access', admin: 'Full Access', cashier: 'Stock Lookup', mechanic: 'View / Request' } },
+        { key: 'transactions', label: 'Transactions & Billing', notes: { cashier: 'Full Access' } },
         { key: 'reports', label: 'Reports & Monitoring' },
         { key: 'audit', label: 'Audit Logs', notes: { super_admin: 'Full Access', admin: 'Read-only' } },
         { key: 'users', label: 'User Management' },
@@ -5076,6 +5968,7 @@ function renderPermissionsMatrix() {
     tbody.innerHTML = matrixRows.map(row => {
         const canSuper = rolePermissions.super_admin && rolePermissions.super_admin.includes(row.key);
         const canAdmin = rolePermissions.admin && rolePermissions.admin.includes(row.key);
+        const canCashier = rolePermissions.cashier && rolePermissions.cashier.includes(row.key);
         const canMech = rolePermissions.mechanic && rolePermissions.mechanic.includes(row.key);
 
         return `
@@ -5083,6 +5976,7 @@ function renderPermissionsMatrix() {
                 <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">${row.label}</td>
                 <td class="p-4 border-r border-slate-200">${iconHtml(canSuper, row.notes?.super_admin)}</td>
                 <td class="p-4 border-r border-slate-200">${iconHtml(canAdmin, row.notes?.admin)}</td>
+                <td class="p-4 border-r border-slate-200">${iconHtml(canCashier, row.notes?.cashier)}</td>
                 <td class="p-4">${iconHtml(canMech, row.notes?.mechanic)}</td>
             </tr>
         `;
@@ -5356,11 +6250,11 @@ window.handleLogin = function(roleId, btn) {
         if (switcher) switcher.value = roleId;
         
         // Run your existing role-switching permissions logic
-        switchRole(roleId);
+        switchRole(roleId, true);
         
         // Force navigate the user back to the Dashboard upon successful login
-        const dashLink = document.querySelector('.nav-link[data-target="dashboard"]');
-        if (dashLink) dashLink.click();
+        setActiveNavLink('dashboard');
+        loadView('dashboard');
         
     }, 800);
 };
@@ -5455,7 +6349,10 @@ function updatePinDisplay() {
 window.submitLogin = function() {
     const roleId = document.getElementById('login-selected-role').value;
     const roleErrorMsg = document.getElementById('login-role-error');
-    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    if (roleErrorMsg) {
+        roleErrorMsg.textContent = 'Please choose an account.';
+        roleErrorMsg.classList.add('hidden');
+    }
     
     if (!roleId) {
         if (roleErrorMsg) roleErrorMsg.classList.remove('hidden');
@@ -5489,11 +6386,11 @@ window.submitLogin = function() {
         sessionStorage.setItem('currentUserRole', targetRole);
         
         // Run existing role-switching permissions logic
-        switchRole(targetRole);
+        switchRole(targetRole, true);
         
         // Navigate back to Dashboard
-        const dashLink = document.querySelector('.nav-link[data-target="dashboard"]');
-        if (dashLink) dashLink.click();
+        setActiveNavLink('dashboard');
+        loadView('dashboard');
         
     }, 800);
 };
@@ -6770,6 +7667,7 @@ function renderMobileHome() {
 
     // Hero (role-coloured) + greeting
     const hero = document.getElementById('m-hero');
+    if (!hero) return;
     hero.classList.remove('from-purple-600', 'to-indigo-700', 'from-sky-600', 'to-blue-700');
     hero.classList.add(...(isLeadOrSuper ? ['from-purple-600', 'to-indigo-700'] : ['from-sky-600', 'to-blue-700']));
     document.getElementById('m-greeting').textContent = hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
@@ -6873,9 +7771,9 @@ window.toggleMobileJobCard = function(index) {
 
 // =====================================================================
 // --- Physical Inspection Log (Diagnostics) ---
-// Grouped checklist with big OK / Watch / Fix buttons, measurement
-// steppers that auto-grade, defect tags, notes, photos, parts suggestions
-// and a one-tap "Add to Final Findings". Draft is auto-saved on the device.
+// Grouped checklist with big OK / Watch / Fix buttons, defect tags,
+// notes, photos, parts suggestions and a one-tap "Add to Final Findings".
+// Draft is auto-saved on the device.
 // =====================================================================
 
 const INSPECTION_STORAGE_KEY = 'motocare_physical_inspection_draft';
@@ -6888,24 +7786,18 @@ const inspectionStatuses = [
 ];
 const inspectionStatusLabels = { ok: 'OK', watch: 'Watch', fix: 'Fix', na: 'N/A' };
 
-// measure.type 'below': Watch when under `soon`, Fix when at/under `fix`
-// measure.type 'range': OK inside [min, max], Watch just outside, Fix far outside
 // part: id from mockInventory to suggest when the item is flagged
 const inspectionSections = [
     {
         id: 'tires', title: 'Tires & Wheels', short: 'Tires', icon: 'ph-circle-notch',
         items: [
             { id: 'tire_f', label: 'Front Tire', hint: 'Tread depth, cracks, sidewall bulges',
-              measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.6, help: 'OK ≥ 3 mm · Fix ≤ 1.6 mm' },
               tags: ['Worn tread', 'Cracked sidewall', 'Puncture / nail', 'Uneven wear', 'Bulge'] },
             { id: 'tire_r', label: 'Rear Tire', hint: 'Tread depth, cracks, sidewall bulges',
-              measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.6, help: 'OK ≥ 3 mm · Fix ≤ 1.6 mm' },
               tags: ['Worn tread', 'Cracked sidewall', 'Puncture / nail', 'Uneven wear', 'Bulge'] },
             { id: 'psi_f', label: 'Front Tire Pressure', hint: 'Check cold, set to spec',
-              measure: { type: 'range', unit: 'PSI', start: 30, step: 1, min: 28, max: 33, help: 'OK 28–33 PSI' },
               tags: ['Too low', 'Too high', 'Slow leak'] },
             { id: 'psi_r', label: 'Rear Tire Pressure', hint: 'Check cold, set to spec',
-              measure: { type: 'range', unit: 'PSI', start: 32, step: 1, min: 30, max: 36, help: 'OK 30–36 PSI' },
               tags: ['Too low', 'Too high', 'Slow leak'] },
             { id: 'wheels', label: 'Wheels / Rims', hint: 'Bends, cracks, loose spokes, bearing play',
               tags: ['Bent rim', 'Loose spokes', 'Bearing play', 'Cracked'] }
@@ -6915,10 +7807,8 @@ const inspectionSections = [
         id: 'brakes', title: 'Brakes', short: 'Brakes', icon: 'ph-stop-circle',
         items: [
             { id: 'pad_f', label: 'Front Brake Pads', hint: 'Pad thickness and even wear',
-              measure: { type: 'below', unit: 'mm', start: 4, step: 0.5, soon: 4, fix: 2, help: 'OK ≥ 4 mm · Fix ≤ 2 mm' },
               tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'], part: 'PROTO-B01' },
             { id: 'pad_r', label: 'Rear Pads / Shoes', hint: 'Lining thickness and even wear',
-              measure: { type: 'below', unit: 'mm', start: 3, step: 0.5, soon: 3, fix: 1.5, help: 'OK ≥ 3 mm · Fix ≤ 1.5 mm' },
               tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'] },
             { id: 'brake_fluid', label: 'Brake Fluid', hint: 'Level and colour (change every 1–2 years)',
               tags: ['Low level', 'Dark / dirty', 'Contaminated', 'Leak'] },
@@ -6947,7 +7837,6 @@ const inspectionSections = [
         id: 'drive', title: 'Drivetrain', short: 'Drive', icon: 'ph-link',
         items: [
             { id: 'chain', label: 'Chain / CVT Belt', hint: 'Chain slack, rust, belt cracks',
-              measure: { type: 'range', unit: 'mm', start: 25, step: 1, min: 20, max: 35, help: 'Chain slack OK 20–35 mm (skip for CVT belt)' },
               tags: ['Too loose', 'Too tight', 'Dry / rusty', 'Cracked belt', 'Stretched'], part: 'p3' },
             { id: 'sprocket', label: 'Sprockets / CVT Rollers', hint: 'Hooked teeth, flat-spotted rollers',
               tags: ['Hooked teeth', 'Worn rollers', 'Noise', 'Flat spots'] },
@@ -6959,10 +7848,8 @@ const inspectionSections = [
         id: 'electrical', title: 'Electrical', short: 'Electrical', icon: 'ph-lightning',
         items: [
             { id: 'battery', label: 'Battery Voltage', hint: 'Engine off, battery rested',
-              measure: { type: 'below', unit: 'V', start: 12.6, step: 0.1, soon: 12.4, fix: 12, help: 'OK ≥ 12.4 V · Fix ≤ 12.0 V' },
               tags: ['Weak', 'Corroded terminals', 'Swollen', 'Old (2+ years)'] },
             { id: 'charging', label: 'Charging Voltage', hint: 'Engine running at ~3,000 rpm',
-              measure: { type: 'range', unit: 'V', start: 14, step: 0.1, min: 13.5, max: 14.8, help: 'OK 13.5–14.8 V' },
               tags: ['Undercharging', 'Overcharging', 'Bad regulator', 'Stator issue'] },
             { id: 'lights', label: 'Lights & Signals', hint: 'Head, brake, tail, turn signals',
               tags: ['Headlight out', 'Brake light out', 'Signal out', 'Dim'] },
@@ -7068,7 +7955,7 @@ const isInspectionCollapsed = id => inspectionCollapsed[id] !== false;
 
 function getInspItem(id) {
     if (!inspectionState.items[id]) {
-        inspectionState.items[id] = { status: null, manual: false, value: '', tags: [], note: '' };
+        inspectionState.items[id] = { status: null, manual: false, tags: [], note: '' };
     }
     return inspectionState.items[id];
 }
@@ -7077,43 +7964,11 @@ function inspEsc(text) {
     return String(text ?? '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Grades a measurement against the item's thresholds
-function evaluateInspectionMeasure(measure, raw) {
-    const value = parseFloat(raw);
-    if (isNaN(value)) return null;
-    if (measure.type === 'below') {
-        return value <= measure.fix ? 'fix' : value < measure.soon ? 'watch' : 'ok';
-    }
-    if (value >= measure.min && value <= measure.max) return 'ok';
-    const gap = value < measure.min ? measure.min - value : value - measure.max;
-    return gap > (measure.max - measure.min) * 0.5 ? 'fix' : 'watch';
-}
-
-function inspectionAutoText(item, st) {
-    if (!item.measure) return '';
-    const graded = st.value !== '' && !st.manual && st.status;
-    return item.measure.help + (graded ? ` · Auto: ${inspectionStatusLabels[st.status]}` : '');
-}
-
 // --- Rendering ---
 function renderInspectionItem(item) {
     const st = getInspItem(item.id);
-    const m = item.measure;
     const showDetail = st.status === 'watch' || st.status === 'fix';
     const part = item.part ? mockInventory.find(p => p.id === item.part) : null;
-
-    const measureHtml = m ? `
-        <div class="flex items-center justify-between gap-3 flex-wrap">
-            <div class="flex items-center gap-1.5">
-                <button type="button" data-insp="step" data-item="${item.id}" data-dir="-1" class="insp-step" aria-label="Decrease"><i class="ph-bold ph-minus"></i></button>
-                <div class="relative">
-                    <input type="number" inputmode="decimal" step="${m.step}" value="${inspEsc(st.value)}" placeholder="${m.start}" data-insp-input="measure" data-item="${item.id}" class="insp-num">
-                    <span class="insp-unit">${m.unit}</span>
-                </div>
-                <button type="button" data-insp="step" data-item="${item.id}" data-dir="1" class="insp-step" aria-label="Increase"><i class="ph-bold ph-plus"></i></button>
-            </div>
-            <p class="text-[10px] font-semibold text-slate-400 flex-1 min-w-[120px] text-right leading-snug" data-auto="${item.id}">${inspectionAutoText(item, st)}</p>
-        </div>` : '';
 
     const partHtml = !part ? '' : (part.stock > 0
         ? `<button type="button" data-insp="addpart" data-part="${part.id}" class="insp-part-btn"><i class="ph-bold ph-plus"></i> ${part.name} <span class="font-semibold opacity-70">· ${part.stock} in stock</span></button>`
@@ -7126,7 +7981,6 @@ function renderInspectionItem(item) {
                     <p class="text-sm font-extrabold text-slate-800 leading-tight">${item.label}</p>
                     <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">${item.hint}</p>
                 </div>
-                ${measureHtml}
                 <div class="grid grid-cols-4 gap-1.5">
                     ${inspectionStatuses.map(s => `
                         <button type="button" data-insp="status" data-item="${item.id}" data-status="${s.key}" class="insp-btn ${s.key} ${st.status === s.key ? 'is-active' : ''}">
@@ -7448,27 +8302,23 @@ function renderInspectionThumbs(id) {
         </div>`).join('');
 }
 
-// Patches one row in place (keeps keyboard focus while typing a measurement)
+// Patches one row in place
 function refreshInspectionRow(id) {
     const row = document.querySelector(`.insp-item[data-item="${id}"]`);
     if (!row) return;
     const st = getInspItem(id);
-    const item = inspectionItemMap[id];
 
     row.dataset.status = st.status || 'none';
     row.querySelectorAll('.insp-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.status === st.status));
     row.querySelector('.insp-detail').classList.toggle('hidden', !(st.status === 'watch' || st.status === 'fix'));
     row.querySelectorAll('.insp-chip[data-tag]').forEach(chip => chip.classList.toggle('is-active', st.tags.includes(chip.dataset.tag)));
-    const auto = row.querySelector(`[data-auto="${id}"]`);
-    if (auto) auto.textContent = inspectionAutoText(item, st);
 
     refreshInspectionSummary();
 }
 
 function inspectionFormatEntry(item) {
     const st = getInspItem(item.id);
-    const value = item.measure && st.value !== '' ? `${st.value} ${item.measure.unit}` : '';
-    return `• ${item.label}${value ? ` (${value})` : ''}${st.tags.length ? ` — ${st.tags.join(', ')}` : ''}${st.note ? ` [${st.note}]` : ''}`;
+    return `• ${item.label}${st.tags.length ? ` — ${st.tags.join(', ')}` : ''}${st.note ? ` [${st.note}]` : ''}`;
 }
 
 function buildInspectionFindings() {
@@ -7550,12 +8400,11 @@ function refreshInspectionSummary() {
 
     const entry = (item, tone) => {
         const st = getInspItem(item.id);
-        const value = item.measure && st.value !== '' ? `${st.value} ${item.measure.unit}` : '';
         return `
             <li class="flex items-start gap-2.5 p-2.5 rounded-lg ${tone === 'fix' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}">
                 <i class="ph-fill ${tone === 'fix' ? 'ph-wrench text-red-500' : 'ph-warning text-amber-500'} text-lg mt-0.5 shrink-0"></i>
                 <div class="min-w-0 flex-1">
-                    <p class="text-sm font-bold text-slate-800">${item.label}${value ? ` <span class="text-xs font-semibold text-slate-500">· ${value}</span>` : ''}</p>
+                    <p class="text-sm font-bold text-slate-800">${item.label}</p>
                     ${(st.tags.length || st.note) ? `<p class="text-xs text-slate-600 mt-0.5">${[...st.tags, st.note ? `“${inspEsc(st.note)}”` : ''].filter(Boolean).join(' · ')}</p>` : ''}
                 </div>
                 ${(inspectionPhotos[item.id] || []).length ? `<span class="text-[10px] font-bold text-slate-500 flex items-center gap-1 shrink-0"><i class="ph-bold ph-camera"></i>${inspectionPhotos[item.id].length}</span>` : ''}
@@ -7601,25 +8450,6 @@ function setInspectionStatus(id, status) {
     saveInspectionState();
     refreshInspectionRow(id);
 
-}
-
-function applyInspectionMeasure(id, raw) {
-    const item = inspectionItemMap[id];
-    const st = getInspItem(id);
-    st.value = raw === '' ? '' : String(raw);
-    if (!st.manual) st.status = evaluateInspectionMeasure(item.measure, st.value);   // auto-grade unless the mechanic overrode it
-    saveInspectionState();
-    refreshInspectionRow(id);
-
-}
-
-function stepInspectionMeasure(id, dir) {
-    const m = inspectionItemMap[id].measure;
-    const current = parseFloat(getInspItem(id).value);
-    const next = isNaN(current) ? m.start : Math.max(0, Math.round((current + dir * m.step) * 10) / 10);
-    const input = document.querySelector(`.insp-item[data-item="${id}"] [data-insp-input="measure"]`);
-    if (input) input.value = next;
-    applyInspectionMeasure(id, next);
 }
 
 function handleInspectionPhoto(input) {
@@ -7681,9 +8511,6 @@ document.addEventListener('click', function(e) {
         st.tags = st.tags.includes(tag) ? st.tags.filter(t => t !== tag) : [...st.tags, tag];
         saveInspectionState();
         refreshInspectionRow(el.dataset.item);
-
-    } else if (action === 'step') {
-        stepInspectionMeasure(el.dataset.item, parseInt(el.dataset.dir, 10));
 
     } else if (action === 'section-ok') {
         const sec = inspectionSections.find(s => s.id === el.dataset.section);
@@ -7771,9 +8598,7 @@ document.addEventListener('input', function(e) {
             }
         });
     }
-    if (target.dataset && target.dataset.inspInput === 'measure') {
-        applyInspectionMeasure(target.dataset.item, target.value);
-    } else if (target.dataset && target.dataset.inspInput === 'note') {
+    if (target.dataset && target.dataset.inspInput === 'note') {
         getInspItem(target.dataset.item).note = target.value;
         saveInspectionState();
     }
@@ -7809,6 +8634,10 @@ window.toggleInvPartCard = function(id) {
 
 // AUTO-ASSIGN LINKS SCREEN LOGIC
 window.openAutoAssignLinks = function() {
+    if (!hasFeature('autoAssign')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     document.getElementById('view-inventory').classList.add('hidden');
     document.getElementById('view-autoassign').classList.remove('hidden');
     window.autoAssignOpenGroups = window.autoAssignOpenGroups || new Set();
@@ -7836,6 +8665,10 @@ window.toggleAutoAssignGroup = function(groupId) {
 window.activeAASearch = null;
 
 window.showAutoAssignSearch = function(itemId) {
+    if (!hasFeature('autoAssign')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     window.activeAASearch = itemId;
     renderAutoAssignLinks();
     setTimeout(() => {
@@ -7850,6 +8683,7 @@ window.closeAutoAssignSearch = function() {
 };
 
 window.performAutoAssignSearch = function(itemId, query) {
+    if (!hasFeature('autoAssign')) return;
     const resultsContainer = document.getElementById('aa-search-results-' + itemId);
     if (!query.trim()) {
         resultsContainer.innerHTML = '';
@@ -7885,6 +8719,10 @@ window.performAutoAssignSearch = function(itemId, query) {
 };
 
 window.addAutoAssignLink = function(itemId, partId, qtyStr) {
+    if (!hasFeature('autoAssign')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const qty = parseInt(qtyStr, 10) || 1;
     const part = mockInventory.find(p => p.id === partId);
     if (!part) return;
@@ -7905,6 +8743,10 @@ window.addAutoAssignLink = function(itemId, partId, qtyStr) {
 };
 
 window.removeAutoAssignLink = function(itemId, partId) {
+    if (!hasFeature('autoAssign')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const part = mockInventory.find(p => p.id === partId);
     if (part && part.linkedInspectionItems) {
         part.linkedInspectionItems = part.linkedInspectionItems.filter(l => l.itemId !== itemId);
@@ -8396,6 +9238,9 @@ function renderDtcResults(items) {
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
     }
+    if (typeof renderReports === 'function' && typeof currentReportRange !== 'undefined') {
+        renderReports(currentReportRange);
+    }
 }
 window.renderDtcResults = renderDtcResults;
 
@@ -8413,6 +9258,9 @@ function addDtcResultEntry(entry, code) {
         setTimeout(() => existing.classList.remove('ring-2', 'ring-blue-500'), 1500);
         const item = dtcScanState.scanned.find(s => s.id === entry.id);
         if (item && (entry.codes || []).includes(query)) item.code = query;
+        if (typeof renderReports === 'function' && typeof currentReportRange !== 'undefined') {
+            renderReports(currentReportRange);
+        }
         return;
     }
 
@@ -8424,6 +9272,9 @@ function addDtcResultEntry(entry, code) {
 
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
+    }
+    if (typeof renderReports === 'function' && typeof currentReportRange !== 'undefined') {
+        renderReports(currentReportRange);
     }
 }
 window.addDtcResultEntry = addDtcResultEntry;
@@ -8548,6 +9399,9 @@ function clearDtcScanResults() {
     if (step3EcuCard) step3EcuCard.classList.add('hidden');
     const step3EcuResults = document.getElementById('step3-ecu-results');
     if (step3EcuResults) step3EcuResults.innerHTML = '';
+    if (typeof renderReports === 'function' && typeof currentReportRange !== 'undefined') {
+        renderReports(currentReportRange);
+    }
 }
 window.clearDtcScanResults = clearDtcScanResults;
 
@@ -9201,10 +10055,22 @@ window.showLoginForm = function() {
     }
     
     selectLoginRole('', null);
+    const emailIn = document.getElementById('login-email');
+    if (emailIn) emailIn.value = '';
+    const pwdIn = document.getElementById('login-password');
+    if (pwdIn) pwdIn.value = '';
+    const roleErrorMsg = document.getElementById('login-role-error');
+    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    if (typeof openLoginEmailList === 'function') openLoginEmailList();
 };
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        if (typeof isLoginEmailListOpen === 'function' && isLoginEmailListOpen()) {
+            e.preventDefault();
+            closeLoginEmailList();
+            return;
+        }
         const loginScreen = document.getElementById('login-screen');
         const loginForm = document.getElementById('login-form-view');
         if (loginScreen && !loginScreen.classList.contains('hidden') && loginForm && !loginForm.classList.contains('hidden')) {
@@ -9217,7 +10083,10 @@ document.addEventListener('keydown', function(e) {
 window.submitLogin = function() {
     const roleId = document.getElementById('login-selected-role').value;
     const roleErrorMsg = document.getElementById('login-role-error');
-    if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+    if (roleErrorMsg) {
+        roleErrorMsg.textContent = 'Please choose an account.';
+        roleErrorMsg.classList.add('hidden');
+    }
     
     if (!roleId || !ROLES_CONFIG[roleId]) {
         if (roleErrorMsg) roleErrorMsg.classList.remove('hidden');
@@ -9245,7 +10114,7 @@ window.submitLogin = function() {
         
         localStorage.setItem('activeRole', roleId);
         sessionStorage.setItem('currentUserRole', roleId);
-        sessionStorage.setItem('roles_version', 'v3_swapped');
+        sessionStorage.setItem('roles_version', 'v4_cashier');
         
         forceOwnerMobile = false;
         sessionStorage.removeItem('forceOwnerMobile');
@@ -9254,10 +10123,9 @@ window.submitLogin = function() {
         const switcher = document.getElementById('role-switcher');
         if (switcher) switcher.value = roleId;
         
-        switchRole(roleId);
-        
-        const dashLink = document.querySelector('.nav-link[data-target="dashboard"]');
-        if (dashLink) dashLink.click();
+        switchRole(roleId, true);
+        setActiveNavLink('dashboard');
+        loadView('dashboard');
         
     }, 600);
 };
@@ -9279,9 +10147,9 @@ window.handleLogout = function() {
 
 // --- Settings Logic ---
 const SETTINGS_CARDS_CONFIG = [
-    { id: 'settings-card-session',          roles: ['super_admin', 'admin', 'mechanic'] },
+    { id: 'settings-card-session',          roles: ['super_admin', 'admin', 'cashier', 'mechanic'] },
     { id: 'settings-card-shop',             roles: ['super_admin', 'admin'] },
-    { id: 'settings-card-password',         roles: ['super_admin', 'admin', 'mechanic'] },
+    { id: 'settings-card-password',         roles: ['super_admin', 'admin', 'cashier', 'mechanic'] },
     { id: 'settings-card-system',           roles: ['super_admin'] },
     { id: 'settings-card-session-controls', roles: ['super_admin', 'admin', 'mechanic'] }
 ];
@@ -9498,28 +10366,132 @@ window.toggleDiagnosticSections = function() {
     if (typeof updateSectionNumbering === 'function') updateSectionNumbering();
 };
 
-window.selectLoginRole = function(roleId, btn) {
+// --- Saved Accounts / Login Email List Logic ---
+let currentFilteredAccounts = [];
+let activeAccountRowIndex = -1;
+
+const ROLE_TILES = {
+    super_admin: { icon: 'ph-bold ph-user-gear', bg: 'bg-purple-100 text-purple-600' },
+    admin:       { icon: 'ph-bold ph-crown',     bg: 'bg-indigo-100 text-indigo-600' },
+    cashier:     { icon: 'ph-bold ph-storefront',bg: 'bg-emerald-100 text-emerald-600' },
+    mechanic:    { icon: 'ph-bold ph-wrench',    bg: 'bg-orange-100 text-orange-600' }
+};
+
+function isLoginEmailListOpen() {
+    const list = document.getElementById('login-email-list');
+    return !!(list && !list.classList.contains('hidden'));
+}
+window.isLoginEmailListOpen = isLoginEmailListOpen;
+
+function openLoginEmailList() {
+    const list = document.getElementById('login-email-list');
+    if (!list) return;
+    const input = document.getElementById('login-email');
+    const val = input ? input.value.trim() : '';
+    const isExactDemo = typeof getRoleByEmail === 'function' && getRoleByEmail(val);
+    renderLoginEmailList(isExactDemo ? '' : val);
+    list.classList.remove('hidden');
+}
+window.openLoginEmailList = openLoginEmailList;
+
+function closeLoginEmailList() {
+    const list = document.getElementById('login-email-list');
+    if (list) {
+        list.classList.add('hidden');
+    }
+    activeAccountRowIndex = -1;
+}
+window.closeLoginEmailList = closeLoginEmailList;
+
+function renderLoginEmailList(query) {
+    const list = document.getElementById('login-email-list');
+    if (!list) return;
+
+    const trimmed = (query || '').trim().toLowerCase();
+    const allAccounts = typeof getDemoAccounts === 'function' ? getDemoAccounts() : [];
+
+    currentFilteredAccounts = trimmed
+        ? allAccounts.filter(acc => acc.email.toLowerCase().includes(trimmed) || acc.label.toLowerCase().includes(trimmed))
+        : allAccounts;
+
+    activeAccountRowIndex = -1;
+
+    let html = `<div class="px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100">Saved accounts</div>`;
+
+    if (currentFilteredAccounts.length === 0) {
+        html += `<div class="p-3 text-center text-xs text-slate-400 font-medium min-h-[48px] flex items-center justify-center">No saved account found.</div>`;
+    } else {
+        html += currentFilteredAccounts.map((acc, idx) => {
+            const tile = ROLE_TILES[acc.roleId] || { icon: 'ph-bold ph-user', bg: 'bg-slate-100 text-slate-600' };
+            return `
+                <div class="account-row min-h-[48px] px-3 py-2 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors text-left" data-index="${idx}" data-role-id="${acc.roleId}" onmouseenter="activeAccountRowIndex = ${idx}; updateActiveAccountRow()" onclick="pickDemoAccountByIndex(${idx})">
+                    <div class="w-7 h-7 rounded-lg ${tile.bg} flex items-center justify-center shrink-0 text-sm">
+                        <i class="${tile.icon}"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="font-bold text-slate-800 text-xs sm:text-sm truncate leading-tight">${acc.email}</div>
+                        <div class="text-[11px] text-slate-400 font-medium truncate mt-0.5">${acc.label}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    list.innerHTML = html;
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderLoginEmailList = renderLoginEmailList;
+
+function updateActiveAccountRow() {
+    const rows = document.querySelectorAll('#login-email-list .account-row');
+    rows.forEach((row, idx) => {
+        if (idx === activeAccountRowIndex) {
+            row.classList.add('bg-blue-50/70');
+            row.classList.remove('hover:bg-slate-50');
+            row.scrollIntoView({ block: 'nearest' });
+        } else {
+            row.classList.remove('bg-blue-50/70');
+            row.classList.add('hover:bg-slate-50');
+        }
+    });
+}
+
+function pickDemoAccount(acc) {
+    if (!acc) return;
+    const emailIn = document.getElementById('login-email');
+    if (emailIn) emailIn.value = acc.email;
+    selectLoginRole(acc.roleId, null);
+    closeLoginEmailList();
+}
+window.pickDemoAccount = pickDemoAccount;
+
+window.pickDemoAccountByIndex = function(idx) {
+    if (currentFilteredAccounts[idx]) {
+        pickDemoAccount(currentFilteredAccounts[idx]);
+    }
+};
+
+window.selectLoginRole = function(roleId, btn, skipEmailSync) {
     const pwdIn = document.getElementById('login-password'); if (pwdIn) pwdIn.value = '';
     const roleInput = document.getElementById('login-selected-role');
-    if (roleInput) roleInput.value = roleId;
+    if (roleInput) roleInput.value = roleId || '';
     const roleErrorMsg = document.getElementById('login-role-error');
     if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
     
-    document.querySelectorAll('#role-selector .role-card').forEach(c => {
-        c.className = 'role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px]';
-        const check = c.querySelector('.role-check');
-        if(check) {
-            check.classList.add('opacity-0', 'scale-50');
-            check.classList.remove('opacity-100', 'scale-100');
+    if (!skipEmailSync) {
+        const emailIn = document.getElementById('login-email');
+        if (emailIn) {
+            if (roleId && ROLES_CONFIG[roleId]?.demoEmail) {
+                emailIn.value = ROLES_CONFIG[roleId].demoEmail;
+            } else if (!roleId) {
+                emailIn.value = '';
+            }
         }
-    });
-    
-    if (btn) {
-        btn.className = 'role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-blue-500 bg-blue-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all min-h-[64px]';
-        const check = btn.querySelector('.role-check');
-        if(check) {
-            check.classList.remove('opacity-0', 'scale-50');
-            check.classList.add('opacity-100', 'scale-100');
+        if (typeof closeLoginEmailList === 'function') {
+            closeLoginEmailList();
         }
     }
     
@@ -9533,8 +10505,92 @@ window.selectLoginRole = function(roleId, btn) {
     }
 };
 
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'login-email') {
+        const val = e.target.value;
+        const roleErrorMsg = document.getElementById('login-role-error');
+        if (roleErrorMsg) roleErrorMsg.classList.add('hidden');
+        const list = document.getElementById('login-email-list');
+        if (list) list.classList.remove('hidden');
+        renderLoginEmailList(val);
+
+        const matchedRoleId = typeof getRoleByEmail === 'function' ? getRoleByEmail(val) : null;
+        if (matchedRoleId) {
+            selectLoginRole(matchedRoleId, null, true);
+        } else {
+            selectLoginRole('', null, true);
+        }
+    }
+});
+
+document.addEventListener('focusin', function(e) {
+    if (e.target.id === 'login-email') {
+        openLoginEmailList();
+    } else {
+        const container = document.getElementById('login-email-container');
+        if (container && !container.contains(e.target)) {
+            closeLoginEmailList();
+        }
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'login-email') {
+        openLoginEmailList();
+        return;
+    }
+    const container = document.getElementById('login-email-container');
+    if (container && !container.contains(e.target)) {
+        closeLoginEmailList();
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.target && e.target.id === 'login-email') {
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (!isLoginEmailListOpen()) {
+                openLoginEmailList();
+                activeAccountRowIndex = 0;
+            } else if (currentFilteredAccounts.length > 0) {
+                if (activeAccountRowIndex === -1) {
+                    activeAccountRowIndex = 0;
+                } else {
+                    activeAccountRowIndex = (activeAccountRowIndex + 1) % currentFilteredAccounts.length;
+                }
+            }
+            updateActiveAccountRow();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (isLoginEmailListOpen() && currentFilteredAccounts.length > 0) {
+                if (activeAccountRowIndex === -1) {
+                    activeAccountRowIndex = currentFilteredAccounts.length - 1;
+                } else {
+                    activeAccountRowIndex = (activeAccountRowIndex - 1 + currentFilteredAccounts.length) % currentFilteredAccounts.length;
+                }
+                updateActiveAccountRow();
+            }
+        } else if (e.key === 'Enter') {
+            if (isLoginEmailListOpen()) {
+                e.preventDefault();
+                if (activeAccountRowIndex >= 0 && activeAccountRowIndex < currentFilteredAccounts.length) {
+                    pickDemoAccount(currentFilteredAccounts[activeAccountRowIndex]);
+                } else if (currentFilteredAccounts.length === 1) {
+                    pickDemoAccount(currentFilteredAccounts[0]);
+                } else {
+                    closeLoginEmailList();
+                    submitLogin();
+                }
+            } else {
+                submitLogin();
+            }
+        }
+    }
+});
+
 systemUsers.super_admin.password = 'admin123';
 systemUsers.admin.password = 'admin123';
+systemUsers.cashier.password = 'cashier123';
 systemUsers.mechanic.password = 'mech123';
 
 // Initialize widgets on load

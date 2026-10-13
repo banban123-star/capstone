@@ -110,6 +110,7 @@
                 <select id="role-switcher" class="w-full bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded-md px-2 py-1.5 outline-none focus:border-blue-500 transition-colors" onchange="switchRole(this.value)">
                     <option value="super_admin">Super Admin (System)</option>
                     <option value="admin">Owner/Cashier (Admin) (User)</option>
+                    <option value="cashier">Cashier (Cashier)</option>
                     <option value="mechanic">Mechanic (Larpus)</option>
                 </select>
             </div>
@@ -166,7 +167,7 @@
 
 
     <!-- Login Screen Overlay -->
-    <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex-col items-center justify-center p-4 overflow-hidden">
+    <div id="login-screen" class="fixed inset-0 z-[100] hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex-col items-center justify-center p-4 overflow-y-auto">
         
         <!-- Blurred background glow -->
         <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -174,8 +175,8 @@
         </div>
 
         <!-- Login Form View (Card) -->
-        <div id="login-form-view" class="flex flex-col items-center justify-center w-full max-w-sm sm:max-w-lg z-10">
-            <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full p-8 flex flex-col gap-8 text-center relative animate-fade-rise">
+        <div id="login-form-view" class="flex flex-col items-center justify-center w-full max-w-sm sm:max-w-lg z-10 my-auto">
+            <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] w-full p-8 flex flex-col gap-6 text-center relative animate-fade-rise">
                 <button onclick="showSignedOutView()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors z-10" title="Close">
                     <i class="ph ph-x text-lg"></i>
                 </button>
@@ -187,50 +188,15 @@
                 </div>
                 
                 <div class="flex flex-col gap-4 text-left">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Sign In As</label>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="role-selector">
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px] min-w-0 overflow-hidden" data-role="super_admin" onclick="selectLoginRole('super_admin', this)">
-                                <div class="flex items-center gap-2 mb-1.5 w-full pr-5">
-                                    <div class="w-6 h-6 rounded bg-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-                                        <i class="ph-bold ph-user-gear"></i>
-                                    </div>
-                                    <span class="role-card-title font-bold text-slate-800 text-xs sm:text-xs leading-tight flex-1 min-w-0 break-words">Super Admin</span>
-                                </div>
-                                <p class="role-card-desc text-[10px] text-slate-500 font-medium leading-snug">Users and system settings</p>
-                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
-                                    <i class="ph-bold ph-check text-[10px]"></i>
-                                </div>
-                            </button>
-
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px] min-w-0 overflow-hidden" data-role="admin" onclick="selectLoginRole('admin', this)">
-                                <div class="flex items-center gap-2 mb-1.5 w-full pr-5">
-                                    <div class="w-6 h-6 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                                        <i class="ph-bold ph-crown"></i>
-                                    </div>
-                                    <span class="role-card-title font-bold text-slate-800 text-xs sm:text-xs leading-tight flex-1 min-w-0 break-words">Owner/Cashier (Admin)</span>
-                                </div>
-                                <p class="role-card-desc text-[10px] text-slate-500 font-medium leading-snug">Shop operations: owner and cashier</p>
-                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
-                                    <i class="ph-bold ph-check text-[10px]"></i>
-                                </div>
-                            </button>
-
-                            <button type="button" class="role-card group text-left relative flex flex-col items-start p-3 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all min-h-[64px] min-w-0 overflow-hidden" data-role="mechanic" onclick="selectLoginRole('mechanic', this)">
-                                <div class="flex items-center gap-2 mb-1.5 w-full pr-5">
-                                    <div class="w-6 h-6 rounded bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                                        <i class="ph-bold ph-wrench"></i>
-                                    </div>
-                                    <span class="role-card-title font-bold text-slate-800 text-xs sm:text-xs leading-tight flex-1 min-w-0 break-words">Mechanic</span>
-                                </div>
-                                <p class="role-card-desc text-[10px] text-slate-500 font-medium leading-snug">Repairs and diagnostics</p>
-                                <div class="role-check absolute top-2.5 right-2.5 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center opacity-0 scale-50 transition-all">
-                                    <i class="ph-bold ph-check text-[10px]"></i>
-                                </div>
-                            </button>
+                    <input type="hidden" id="login-selected-role" value="">
+                    <div id="login-email-container" class="relative">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">EMAIL</label>
+                        <div class="relative">
+                            <i class="ph ph-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"></i>
+                            <input type="email" id="login-email" autocomplete="off" class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors min-h-[44px]" placeholder="Choose or type an email">
                         </div>
-                        <input type="hidden" id="login-selected-role" value="">
-                        <p id="login-role-error" class="text-xs text-red-600 font-bold hidden mt-1">Please select a role.</p>
+                        <div id="login-email-list" class="hidden mt-2 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden divide-y divide-slate-100"></div>
+                        <p id="login-role-error" class="text-xs text-red-600 font-bold hidden mt-1.5">Please choose an account.</p>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">PASSWORD (optional)</label>
@@ -840,6 +806,106 @@
             </div>
             </div>
 
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="view-cashier-home">
+<div id="view-cashier-home" class="view-section max-w-6xl mx-auto">
+    <!-- 1. Top Welcome Bar & System Status -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Welcome back, <span id="cashier-home-user">Cashier</span> 👋</h2>
+            <p id="cashier-home-date" class="text-sm text-slate-500 font-medium mt-0.5">Cashier | Today</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online Sync Active
+            </span>
+        </div>
+    </div>
+
+    <!-- 2. Daily Pulse / Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-money"></i></div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Today's Sales</p>
+                <p class="text-xl font-bold text-slate-800 leading-none truncate" id="cashier-stat-today-sales">₱0.00</p>
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-wallet"></i></div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Pending Payments</p>
+                <p class="text-xl font-bold text-slate-800 leading-none truncate" id="cashier-stat-pending-payments">0 <span class="text-xs font-medium text-slate-500 ml-1" id="cashier-stat-pending-amount">(₱0.00)</span></p>
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-shopping-bag"></i></div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Walk-in Sales Today</p>
+                <p class="text-xl font-bold text-slate-800 leading-none truncate" id="cashier-stat-walkin-today">0 <span class="text-xs font-medium text-slate-500 ml-1" id="cashier-stat-walkin-sub">Orders</span></p>
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0"><i class="ph-fill ph-package"></i></div>
+            <div class="min-w-0 flex-1">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Stock Alerts</p>
+                <p class="text-xl font-bold text-slate-800 leading-none truncate" id="cashier-stat-stock-alerts">0 <span class="text-xs font-medium text-slate-500 ml-1" id="cashier-stat-stock-alerts-sub">Low / Out</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Quick Action Buttons -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <button onclick="openWalkInCheckout()" class="bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-emerald-700">
+            <i class="ph-fill ph-shopping-bag text-3xl text-slate-400 group-hover:text-emerald-500 transition-colors"></i>
+            <span class="font-bold text-sm">New Walk-in Sale</span>
+        </button>
+        <button onclick="cashierReceivePayment()" class="bg-white hover:bg-orange-50 border border-slate-200 hover:border-orange-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-orange-700">
+            <i class="ph-fill ph-hand-coins text-3xl text-slate-400 group-hover:text-orange-500 transition-colors"></i>
+            <span class="font-bold text-sm">Receive Payment</span>
+        </button>
+        <button onclick="document.querySelector('.nav-link[data-target=\'inventory\']')?.click() || loadView('inventory')" class="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-blue-700">
+            <i class="ph-fill ph-package text-3xl text-slate-400 group-hover:text-blue-500 transition-colors"></i>
+            <span class="font-bold text-sm">Check Stock</span>
+        </button>
+    </div>
+
+    <!-- 4. Operational Widgets -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Left: Recent Transactions -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="ph-fill ph-receipt text-emerald-500"></i> Recent Transactions</h3>
+                <button onclick="document.querySelector('.nav-link[data-target=\'transactions\']')?.click() || loadView('transactions')" class="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline">View All</button>
+            </div>
+            <div class="overflow-x-auto flex-1">
+                <table class="w-full text-left text-sm min-w-0">
+                    <thead class="bg-white border-b border-slate-100 text-[10px] uppercase text-slate-500 font-bold tracking-wider">
+                        <tr>
+                            <th class="p-3">ID & Type</th>
+                            <th class="p-3">Customer</th>
+                            <th class="p-3">Amount</th>
+                            <th class="p-3 text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cashier-recent-transactions-tbody" class="divide-y divide-slate-100">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Right: Stock Alerts -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2"><i class="ph-fill ph-warning-circle text-amber-500"></i> Stock Alerts</h3>
+                <button onclick="document.querySelector('.nav-link[data-target=\'inventory\']')?.click() || loadView('inventory')" class="text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline">View Inventory</button>
+            </div>
+            <div class="p-4 flex-1 flex flex-col gap-2.5 overflow-y-auto max-h-[350px]" id="cashier-stock-alerts-list">
+            </div>
         </div>
     </div>
 </div>
@@ -2508,10 +2574,10 @@
             </div>
         </div>
         <div class="flex gap-2 w-full md:w-auto">
-            <button class="flex-1 md:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5">
+            <button id="btn-export-reports-csv" onclick="exportReportsCSV()" class="flex-1 md:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5">
                 <i class="ph-bold ph-file-csv text-emerald-600"></i> Export CSV
             </button>
-            <button class="flex-1 md:flex-none bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5">
+            <button id="btn-export-reports-pdf" onclick="exportReportsPDF()" class="flex-1 md:flex-none bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5">
                 <i class="ph-bold ph-file-pdf text-red-400"></i> Export PDF
             </button>
         </div>
@@ -2599,7 +2665,7 @@
                 <div class="lg:col-span-2 border border-slate-200 rounded-xl p-5 flex flex-col">
                     <h3 class="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph-fill ph-trend-up text-blue-500"></i> Revenue Trend</h3>
                     <div class="flex-1 flex items-end gap-2 h-48 mt-auto px-2 relative border-b border-l border-slate-200">
-                        <div class="w-full flex justify-between items-end h-full pt-4">
+                        <div id="reports-rev-trend-bars" class="w-full flex justify-between items-end h-full pt-4">
                             <div class="w-[10%] bg-blue-500 rounded-t-sm relative group cursor-pointer transition-all hover:bg-blue-400" style="height: 30%">
                                 <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">₱2.1k</div>
                             </div>
@@ -2623,7 +2689,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="flex justify-between text-[10px] font-bold text-slate-400 mt-2 px-2 uppercase tracking-wider">
+                    <div id="reports-rev-trend-labels" class="flex justify-between text-[10px] font-bold text-slate-400 mt-2 px-2 uppercase tracking-wider">
                         <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
                     </div>
                 </div>
@@ -2632,8 +2698,8 @@
                     <h3 class="text-sm font-bold text-slate-800 mb-6 flex items-center gap-2"><i class="ph-fill ph-chart-pie-slice text-emerald-500"></i> Revenue Breakdown</h3>
                     <div class="flex-1 flex flex-col justify-center gap-6">
                         <div class="w-full h-8 bg-slate-100 rounded-full flex overflow-hidden shadow-inner">
-                            <div class="h-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white transition-all hover:brightness-110" style="width: 40%">40%</div>
-                            <div class="h-full bg-blue-500 flex items-center justify-center text-[10px] font-bold text-white transition-all hover:brightness-110" style="width: 60%">60%</div>
+                            <div id="reports-rev-parts-bar" class="h-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white transition-all hover:brightness-110" style="width: 40%">40%</div>
+                            <div id="reports-rev-repair-bar" class="h-full bg-blue-500 flex items-center justify-center text-[10px] font-bold text-white transition-all hover:brightness-110" style="width: 60%">60%</div>
                         </div>
                         <div class="space-y-3 mt-4 text-sm">
                             <div class="flex justify-between items-center p-2 rounded hover:bg-slate-50 transition-colors">
@@ -2710,7 +2776,7 @@
                     <div class="bg-slate-50 px-5 py-3 border-b border-slate-200">
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-cpu text-purple-500"></i> Most Frequent DTCs Logged</h3>
                     </div>
-                    <div class="p-5 space-y-4">
+                    <div id="reports-dtc-freq-list" class="p-5 space-y-4">
                         <div class="flex items-center gap-4">
                             <div class="w-12 h-10 bg-purple-100 rounded flex items-center justify-center font-bold text-purple-700 border border-purple-200 text-xs">P0118</div>
                             <div class="flex-1">
@@ -2727,7 +2793,7 @@
                     <div class="p-6 flex-1 flex flex-col justify-center items-center text-center gap-6">
                         <div class="relative w-32 h-32 rounded-full flex items-center justify-center bg-slate-50 border-[8px] border-blue-500 shadow-inner">
                             <div class="relative z-10 flex flex-col items-center">
-                                <span class="text-3xl font-bold text-slate-800">86%</span>
+                                <span class="text-3xl font-bold text-slate-800" id="reports-dtc-accuracy">86%</span>
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Match</span>
                             </div>
                         </div>
@@ -2745,7 +2811,7 @@
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2"><i class="ph-fill ph-users text-blue-500"></i> Jobs Completed Per Mechanic</h3>
                     </div>
                     <div class="p-6">
-                        <div class="flex items-end gap-6 h-40 border-b border-slate-200 pb-2 px-4 justify-around">
+                        <div id="reports-ops-mech-chart" class="flex items-end gap-6 h-40 border-b border-slate-200 pb-2 px-4 justify-around">
                             <div class="w-16 flex flex-col items-center gap-2">
                                 <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">24</span>
                                 <div class="w-full bg-blue-500 rounded-t-sm" style="height: 120px;"></div>
@@ -3093,6 +3159,7 @@
                     <option value="all">Filter by Role: All</option>
                     <option value="super_admin">Super Admin</option>
                     <option value="admin">Owner/Cashier (Admin)</option>
+                    <option value="cashier">Cashier</option>
                     <option value="mechanic">Mechanic</option>
                 </select>
                 <select id="user-filter-status" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
@@ -3144,9 +3211,10 @@
                     <thead>
                         <tr id="matrix-header-row" class="bg-slate-800 text-white text-[10px] uppercase tracking-wider font-bold">
                             <th class="p-4 text-left border-r border-slate-700">System Module</th>
-                            <th class="p-4 border-r border-slate-700 w-1/4"><i class="ph-fill ph-user-gear text-base block mb-1 text-purple-400"></i> <span class="matrix-role-super_admin">Super Admin</span></th>
-                            <th class="p-4 border-r border-slate-700 w-1/4"><i class="ph-fill ph-crown text-base block mb-1 text-yellow-400"></i> <span class="matrix-role-admin">Owner/Cashier (Admin)</span></th>
-                            <th class="p-4 w-1/4"><i class="ph-fill ph-wrench text-base block mb-1 text-blue-400"></i> <span class="matrix-role-mechanic">Mechanic</span></th>
+                            <th class="p-4 border-r border-slate-700 w-1/5"><i class="ph-fill ph-user-gear text-base block mb-1 text-purple-400"></i> <span class="matrix-role-super_admin">Super Admin</span></th>
+                            <th class="p-4 border-r border-slate-700 w-1/5"><i class="ph-fill ph-crown text-base block mb-1 text-yellow-400"></i> <span class="matrix-role-admin">Owner/Cashier (Admin)</span></th>
+                            <th class="p-4 border-r border-slate-700 w-1/5"><i class="ph-fill ph-storefront text-base block mb-1 text-emerald-400"></i> <span class="matrix-role-cashier">Cashier</span></th>
+                            <th class="p-4 w-1/5"><i class="ph-fill ph-wrench text-base block mb-1 text-blue-400"></i> <span class="matrix-role-mechanic">Mechanic</span></th>
                         </tr>
                     </thead>
                     <tbody id="permissions-matrix-tbody" class="divide-y divide-slate-200 text-sm bg-white">
@@ -3259,6 +3327,7 @@
                             <option value="" disabled selected>Select Role Assignment...</option>
                             <option value="super_admin">Super Admin (Users and system settings)</option>
                             <option value="admin">Owner/Cashier (Admin) (Shop operations: owner and cashier)</option>
+                            <option value="cashier">Cashier (Sales, billing and stock lookup)</option>
                             <option value="mechanic">Mechanic (Repairs and diagnostics)</option>
                         </select>
                         <p class="text-xs text-slate-500 mt-2 flex items-start gap-1"><i class="ph-fill ph-info text-blue-500 mt-0.5"></i> Access is controlled strictly via Role-Based Access Control (RBAC). Reference the Permissions Matrix tab for details.</p>

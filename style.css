@@ -47,11 +47,26 @@ body {
     color: white;
     border-color: #10b981;
 }
-/* Receipt Print Area Hide */
+/* Receipt & Report Print Styles */
 @media print {
-    body * { visibility: hidden; }
-    #receipt-printable-area, #receipt-printable-area * { visibility: visible; }
-    #receipt-printable-area { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; }
+    body:not(.printing-report) * { visibility: hidden; }
+    body:not(.printing-report) #receipt-printable-area,
+    body:not(.printing-report) #receipt-printable-area * { visibility: visible; }
+    body:not(.printing-report) #receipt-printable-area { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none; border: none; }
+
+    body.printing-report * { visibility: hidden !important; }
+    body.printing-report .report-tab-content.block,
+    body.printing-report .report-tab-content.block * { visibility: visible !important; }
+    body.printing-report .report-tab-content.block {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+        padding: 24px !important;
+    }
 }
 
 
@@ -259,28 +274,6 @@ button.m-sheet-row:active { background: #f1f5f9; }
 .insp-btn.fix.is-active   { background: #ef4444; border-color: #ef4444; color: #fff; }
 .insp-btn.na.is-active    { background: #64748b; border-color: #64748b; color: #fff; }
 .insp-btn.na { font-size: 11px; }
-
-/* Measurement stepper */
-.insp-step {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    background: #f1f5f9;
-    color: #475569;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-    transition: transform .08s, background-color .12s;
-}
-.insp-step:active { transform: scale(.9); background: #e2e8f0; }
-.insp-num {
-    width: 84px; height: 40px;
-    text-align: center;
-    font-size: 16px; font-weight: 800; color: #1e293b;
-    border: 1.5px solid #cbd5e1; border-radius: 10px;
-    padding-right: 26px;
-    outline: none; background: #fff;
-}
-.insp-num:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
-.insp-unit { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 10px; font-weight: 700; color: #94a3b8; pointer-events: none; }
 
 /* Tap-able chips (defect tags, complaints, fuel) */
 .insp-chip {
