@@ -536,3 +536,39 @@ body.mobile-app #add-part-content {
         opacity: 1 !important;
     }
 }
+
+/* Mobile UI Home Shop Jobs Collapsible Cards */
+body.mobile-app .m-job-card .m-job-header {
+    min-height: 44px;
+}
+
+body.mobile-app .m-job-card .m-job-body-wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 200ms ease-in-out;
+}
+
+body.mobile-app .m-job-card.is-open .m-job-body-wrap {
+    grid-template-rows: 1fr;
+}
+
+body.mobile-app .m-job-card .m-job-body-inner {
+    overflow: hidden;
+    min-height: 0;
+}
+
+body.mobile-app .m-job-card .m-job-chevron {
+    transition: transform 200ms ease-in-out, color 200ms ease-in-out;
+}
+
+body.mobile-app .m-job-card.is-open .m-job-chevron {
+    transform: rotate(180deg);
+    color: #2563eb !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.mobile-app .m-job-card .m-job-body-wrap,
+    body.mobile-app .m-job-card .m-job-chevron {
+        transition: none !important;
+    }
+}

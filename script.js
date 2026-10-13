@@ -72,13 +72,27 @@ const mockInventory = [
     { id: '120708', sku: '120708', name: 'Sprocket (TRQ 42t)', category: 'Transmission & Drivetrain', comp: 'Universal', price: 400, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spr' },
 
     // 2. Electrical & Electronics
-    { id: '170010', sku: '170010', name: 'Battery (Spypower 12n5l)', category: 'Electrical & Electronics', comp: 'Universal 12V', price: 900, stock: 5, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bat' },
+    { id: '170010', sku: '170010', name: 'Battery (Spypower 12n5l)', category: 'Electrical & Electronics', comp: 'Universal 12V', price: 900, stock: 5, minStock: 3, reserved: 0, dtc: 'P0560, P0562, P0563', linkedDTCs: ['P0560', 'P0562', 'P0563'], dtcPartName: 'Motorcycle Battery (12V)', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bat' },
+    { id: 'SNP-001', sku: 'SNP-001', name: 'Throttle Position Sensor (TPS)', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 750, stock: 8, minStock: 3, reserved: 0, dtc: 'P0120, P0122, P0123', linkedDTCs: ['P0120', 'P0122', 'P0123'], dtcPartName: 'Throttle Position Sensor (TPS)', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=TPS' },
+    { id: 'SNP-002', sku: 'SNP-002', name: 'Manifold Absolute Pressure (MAP) Sensor', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 680, stock: 6, minStock: 3, reserved: 0, dtc: 'P0105, P0107, P0108', linkedDTCs: ['P0105', 'P0107', 'P0108'], dtcPartName: 'Manifold Absolute Pressure (MAP) Sensor', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=MAP' },
+    { id: 'SNP-003', sku: 'SNP-003', name: 'Side Stand Switch', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 320, stock: 0, minStock: 3, reserved: 0, dtc: 'P1601, P1901', linkedDTCs: ['P1601', 'P1901'], dtcPartName: 'Side Stand Switch', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Swch' },
+    { id: 'SNP-004', sku: 'SNP-004', name: 'Intake Air Temperature (IAT) Sensor', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 450, stock: 7, minStock: 3, reserved: 0, dtc: 'P0110, P0112, P0113', linkedDTCs: ['P0110', 'P0112', 'P0113'], dtcPartName: 'Intake Air Temperature (IAT) Sensor', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=IAT' },
+    { id: 'SNP-005', sku: 'SNP-005', name: 'Oxygen (O2) Sensor', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 850, stock: 2, minStock: 3, reserved: 0, dtc: 'P0130, P0131, P0132', linkedDTCs: ['P0130', 'P0131', 'P0132'], dtcPartName: 'Oxygen (O2) Sensor', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=O2' },
+    { id: 'SNP-006', sku: 'SNP-006', name: 'Lean Angle Sensor (Bank Angle Sensor)', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 620, stock: 5, minStock: 2, reserved: 0, dtc: 'P1500, P1999', linkedDTCs: ['P1500', 'P1999'], dtcPartName: 'Lean Angle Sensor (Bank Angle Sensor)', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=BAS' },
+    { id: 'SNP-007', sku: 'SNP-007', name: 'Speedometer Cable / Speed Sensor', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 280, stock: 9, minStock: 3, reserved: 0, dtc: 'P0500', linkedDTCs: ['P0500'], dtcPartName: 'Speedometer Cable / Speed Sensor', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Spd' },
+    { id: 'SNP-008', sku: 'SNP-008', name: 'Stator Assembly', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 1650, stock: 4, minStock: 2, reserved: 0, dtc: 'P0335, P0336', linkedDTCs: ['P0335', 'P0336'], dtcPartName: 'Stator Assembly', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Stat' },
+    { id: 'SNP-009', sku: 'SNP-009', name: 'Engine Coolant Temperature (ECT) Sensor', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 850, stock: 2, minStock: 3, reserved: 0, dtc: 'P0115, P0117, P0118', linkedDTCs: ['P0115', 'P0117', 'P0118'], dtcPartName: 'Engine Coolant Temperature (ECT) Sensor', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=ECT' },
+    { id: 'SNP-010', sku: 'SNP-010', name: 'Yamaha Ignition Coil', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 550, stock: 6, minStock: 2, reserved: 0, dtc: 'P0351', linkedDTCs: ['P0351'], dtcPartName: 'Yamaha Ignition Coil', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Coil' },
+    { id: 'SNP-011', sku: 'SNP-011', name: 'Yamaha Regulator Rectifier', category: 'Electrical & Electronics', comp: 'Yamaha Sniper 150', price: 650, stock: 5, minStock: 2, reserved: 0, dtc: 'P0560, P0562, P0563', linkedDTCs: ['P0560', 'P0562', 'P0563'], dtcPartName: 'Yamaha Regulator Rectifier', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Reg' },
     { id: '212028', sku: '212028', name: 'Ignition Switch (TTGR TMX supremo)', category: 'Electrical & Electronics', comp: 'TMX Supremo', price: 250, stock: 10, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
     { id: '211637', sku: '211637', name: 'Starter Relay (TTGR gy6)', category: 'Electrical & Electronics', comp: 'GY6', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Rel' },
     { id: '210844', sku: '210844', name: 'Regulator (TTGR 5wire green white)', category: 'Electrical & Electronics', comp: 'Universal 5-wire', price: 300, stock: 3, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Reg' },
     { id: '330601', sku: '330601', name: 'Ignition Switch (Leitakitaca tmx155)', category: 'Electrical & Electronics', comp: 'TMX 155', price: 220, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Ign' },
 
     // 3. Fuel & Engine Intake
+    { id: 'SNP-012', sku: 'SNP-012', name: 'Fuel Injector', category: 'Fuel & Engine Intake', comp: 'Yamaha Sniper 150', price: 1100, stock: 8, minStock: 3, reserved: 0, dtc: 'P0201', linkedDTCs: ['P0201'], dtcPartName: 'Fuel Injector', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Inj' },
+    { id: 'SNP-013', sku: 'SNP-013', name: 'Fuel Injector Coupler', category: 'Fuel & Engine Intake', comp: 'Yamaha Sniper 150', price: 180, stock: 12, minStock: 4, reserved: 0, dtc: 'P0201', linkedDTCs: ['P0201'], dtcPartName: 'Fuel Injector Coupler', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Cplr' },
+    { id: 'SNP-014', sku: 'SNP-014', name: 'Spark Plug', category: 'Fuel & Engine Intake', comp: 'Yamaha Sniper 150 / Universal', price: 150, stock: 15, minStock: 5, reserved: 0, dtc: 'P0351', linkedDTCs: ['P0351'], dtcPartName: 'Spark Plug', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Plg' },
     { id: '211700', sku: '211700', name: 'Carburetor (Keihin xr200)', category: 'Fuel & Engine Intake', comp: 'XR200', price: 1200, stock: 2, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
     { id: '121060', sku: '121060', name: 'Carburetor (Keihin tmx 155)', category: 'Fuel & Engine Intake', comp: 'TMX 155', price: 950, stock: 4, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
     { id: '212031', sku: '212031', name: 'Carburetor (Keihin tmx 125)', category: 'Fuel & Engine Intake', comp: 'TMX 125', price: 900, stock: 6, minStock: 3, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Carb' },
@@ -93,10 +107,10 @@ const mockInventory = [
     { id: 'PROTO-T01', sku: 'PROTO-T01', name: 'Tire (Fuji 300x17)', category: 'Wheels & Tires', comp: 'Universal 17"', price: 950, stock: 0, minStock: 2, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Tire' },
 
     // 5. Suspension, Brakes & Cooling
+    { id: 'SNP-015', sku: 'SNP-015', name: 'Cooling Fan', category: 'Suspension, Brakes & Cooling', comp: 'Yamaha Sniper 150', price: 950, stock: 5, minStock: 2, reserved: 0, dtc: 'P0115, P0117, P0118', linkedDTCs: ['P0115', 'P0117', 'P0118'], dtcPartName: 'Cooling Fan', img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Fan' },
     { id: '950569', sku: '950569', name: 'Pivot Bushing (Otaka tmx155)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', price: 120, stock: 15, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
     { id: '060110', sku: '060110', name: 'Steel Bushing (tmx155 transparent packaging)', category: 'Suspension, Brakes & Cooling', comp: 'TMX 155', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Bush' },
     { id: 'PROTO-B01', sku: 'PROTO-B01', name: 'Front Disc Brake Pads', category: 'Suspension, Brakes & Cooling', comp: 'Universal Disc', price: 250, stock: 2, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Pad' },
-    { id: 'PROTO-C01', sku: 'PROTO-C01', name: 'Coolant Temp Sensor (OEM Honda)', category: 'Suspension, Brakes & Cooling', comp: 'Honda Click/PCX', price: 850, stock: 6, minStock: 3, reserved: 0, dtc: 'P0118, P0119', linkedDTCs: ['P0118', 'P0119'], img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Sens' },
     { id: 'PROTO-S01', sku: 'PROTO-S01', name: 'Front Fork Seals', category: 'Suspension, Brakes & Cooling', comp: 'Universal', price: 180, stock: 0, minStock: 4, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Seal' },
 
     // 6. Accessories, Add-Ons & Consumables
@@ -104,8 +118,8 @@ const mockInventory = [
     { id: '021568', sku: '021568', name: 'Mini Driving Light (MRM-4502 v6)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 850, stock: 12, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Lite' },
     { id: '980048', sku: '980048', name: 'Snail Horn (Global)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 250, stock: 0, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Horn' },
     { id: '021718', sku: '021718', name: 'Side Mirror (MRM domino)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 350, stock: 4, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Mirr' },
-    { id: '330411', sku: '330411', name: 'Handle Grip (Monster rubber ard)', category: 'Accessories, Add-Ons & Consumables', comp: 'Universal', price: 150, stock: 20, minStock: 5, reserved: 0, dtc: null, img: 'https://placehold.co/48x48/eff6ff/1d4ed8?text=Grip' }
 ];
+window.mockInventory = mockInventory;
 
 // --- Mock Customer Data ---
 const mockCustomers = [
@@ -437,6 +451,7 @@ window.switchDiagStep = function(step, fromStepper = false) {
     if (step === 1) {
         if (typeof restoreMotorcycleCard === 'function') restoreMotorcycleCard();
         if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
+        if (typeof refreshDtcPlanButtons === 'function') refreshDtcPlanButtons();
     }
 
     if (step === 3) {
@@ -1216,20 +1231,40 @@ document.addEventListener('click', function(e) {
         }
         runScanBtn.disabled = true;
         const dtcResultsContainer = document.getElementById('dtc-results-container');
+        const dtcResultsList = document.getElementById('dtc-results-list');
+        const dtcNoRefMsg = document.getElementById('dtc-no-ref-message');
         const originalContent = runScanBtn.innerHTML;
+
+        // Clear old results before each scan
+        if (dtcResultsList) dtcResultsList.innerHTML = '';
+        if (dtcResultsContainer) dtcResultsContainer.classList.add('hidden');
+        if (dtcNoRefMsg) dtcNoRefMsg.classList.add('hidden');
+
         runScanBtn.innerHTML = `<i class="ph ph-spinner animate-spin text-2xl"></i> Scanning ECU...`;
         runScanBtn.classList.replace('bg-blue-600', 'bg-blue-400');
-        dtcResultsContainer.classList.add('hidden');
 
         setTimeout(() => {
             runScanBtn.innerHTML = originalContent;
             runScanBtn.disabled = false;
             runScanBtn.classList.replace('bg-blue-400', 'bg-blue-600');
-            renderDtcResults(demoScanCodes);
-            dtcResultsContainer.classList.remove('hidden');
-            dtcResultsContainer.classList.add('animate-[fadeIn_0.5s_ease-out]');
+
+            const currentVehicle = inspectionState && inspectionState.vehicle;
+            const ref = typeof getDtcReference === 'function' ? getDtcReference(currentVehicle) : (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper);
+
+            if (!ref) {
+                if (dtcNoRefMsg) dtcNoRefMsg.classList.remove('hidden');
+                if (dtcResultsContainer) dtcResultsContainer.classList.add('hidden');
+            } else {
+                if (dtcNoRefMsg) dtcNoRefMsg.classList.add('hidden');
+                // Default demo: Engine Coolant Temperature, Power Supply / Charging, and Throttle Position Sensor
+                renderDtcResults(['P0118', 'P0562', 'P0120']);
+                if (dtcResultsContainer) {
+                    dtcResultsContainer.classList.remove('hidden');
+                    dtcResultsContainer.classList.add('animate-[fadeIn_0.5s_ease-out]');
+                }
+            }
             if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
-        }, 1500);
+        }, 1000);
     }
 
     // 2. Report Tabs
@@ -1329,6 +1364,11 @@ function sourceBadgesHTML(sources) {
 
 let planReviewed = false;
 let repairPlanParts = [];      // true once the mechanic finalized the parts list
+Object.defineProperty(window, 'repairPlanParts', {
+    get() { return repairPlanParts; },
+    set(v) { repairPlanParts = v; },
+    configurable: true
+});
 
 function escHTML(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -1582,12 +1622,12 @@ function renderRepairPlan() {
                 if (outOfStock && !isObsolete) outOfStockCount++;
                 
                 html += `
-                    <div id="selected-part-${p.id}" data-id="${p.id}" data-price="${p.part.price}" data-target="${p.target}" data-category="${p.category}" data-is-auto="${p.isAuto}" class="flex flex-col bg-white border ${isObsolete ? 'border-red-200 bg-red-50/20' : 'border-slate-200'} rounded-lg shadow-sm overflow-hidden transition-all duration-200 hover:border-slate-300">
+                    <div id="selected-part-${p.id}" data-id="${p.id}" data-price="${p.part.price}" data-target="${p.target}" data-category="${p.category}" data-is-auto="${p.isAuto}" data-source="${p.source || ''}" class="flex flex-col bg-white border ${isObsolete ? 'border-red-200 bg-red-50/20' : 'border-slate-200'} rounded-lg shadow-sm overflow-hidden transition-all duration-200 hover:border-slate-300">
                         <div class="flex items-center justify-between gap-2 p-2.5">
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-0.5">
                                     <div class="text-sm font-bold ${stockStatus === 'out_of_stock' ? 'text-red-500' : (stockStatus === 'low_stock' ? 'text-amber-600' : 'text-slate-800')} truncate ${isObsolete ? 'line-through text-slate-400' : ''}">${escHTML(p.part.name)}</div>
-                                    ${p.isAuto ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Auto-assigned</span>` : `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Added by mechanic</span>`}
+                                    ${p.source === 'ecu' || (p.target && p.target.startsWith('ECU/OBD')) ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">From ECU/OBD scan</span>` : (p.isAuto ? `<span class="inline-flex items-center gap-1 bg-purple-50 text-purple-600 border-purple-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Auto-assigned</span>` : `<span class="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border-blue-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">Added by mechanic</span>`)}
                                     ${isObsolete ? `<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 border-red-200 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider">No longer needed</span>` : stockBadge}
                                 </div>
                                 <div class="text-xs text-slate-500">
@@ -1646,6 +1686,7 @@ function renderRepairPlan() {
                 pendingBanner.classList.add('hidden');
             }
         }
+        if (typeof refreshDtcPlanButtons === 'function') refreshDtcPlanButtons();
     }
 }
 
@@ -1775,10 +1816,13 @@ function resetDiagnosticsWorkflow() {
     const planBox = document.getElementById('selected-parts-container');
     if (planBox) planBox.innerHTML = '';
     repairPlanParts = [];
+    planReviewed = false;
     const laborInput = document.getElementById('labor-cost-input');
     if (laborInput) laborInput.value = '';
-    const findings = document.getElementById('final-findings');
-    if (findings) findings.value = '';
+    document.querySelectorAll('#final-findings').forEach(el => { el.value = ''; });
+    
+    // Clear DTC scan results & state
+    if (typeof clearDtcScanResults === 'function') clearDtcScanResults();
     
     // Ensure Continue is reset
     
@@ -1871,7 +1915,8 @@ function clearAddPartForm() {
 function openAddPartModal() { 
     if (!window.can('inventory.addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
     clearAddPartForm();
-    const activeCatFilter = document.getElementById('inv-filter-category')?.value;
+    const isMobile = document.body.classList.contains('mobile-app');
+    const activeCatFilter = isMobile ? (currentCategoryFilter || document.getElementById('inv-filter-category')?.value) : '';
     if (activeCatFilter) {
         const catSelect = document.getElementById('add-part-category');
         if (catSelect) catSelect.value = activeCatFilter;
@@ -2727,13 +2772,13 @@ const inventoryMovements = [
     {
         id: 'mov-10',
         timestamp: calcMovementDate(0, 8, 30),
-        partId: 'PROTO-C01',
-        partName: 'Coolant Temp Sensor (OEM Honda)',
-        sku: 'PROTO-C01',
+        partId: 'SNP-009',
+        partName: 'Engine Coolant Temperature (ECT) Sensor',
+        sku: 'SNP-009',
         type: 'out',
         quantity: 1,
-        stockBefore: 7,
-        stockAfter: 6,
+        stockBefore: 3,
+        stockAfter: 2,
         reference: 'Walk-in sale TXN-101',
         performedBy: 'User (Owner/Cashier)'
     },
@@ -3383,6 +3428,9 @@ window.toggleSummaryFilter = function(filterType) {
 let currentPartTypeFilter = '';
 window.currentPartTypeFilter = currentPartTypeFilter;
 
+let currentCategoryFilter = '';
+window.currentCategoryFilter = currentCategoryFilter;
+
 function populateCategoryDropdowns(typeFilter) {
     const activeType = (typeFilter !== undefined) ? typeFilter : currentPartTypeFilter;
     const filterSelect = document.getElementById('inv-filter-category');
@@ -3394,8 +3442,9 @@ function populateCategoryDropdowns(typeFilter) {
         return categoryConfig[cat].type === activeType;
     });
     
-    if (filterSelect) {
-        const currentVal = filterSelect.value;
+    const isMobile = document.body.classList.contains('mobile-app');
+    if (filterSelect && isMobile) {
+        const currentVal = filterSelect.value || currentCategoryFilter;
         let selectHtml = '<option value="">Category: All</option>';
         categoriesToShow.forEach(cat => {
             selectHtml += `<option value="${cat}">${cat}</option>`;
@@ -3405,6 +3454,10 @@ function populateCategoryDropdowns(typeFilter) {
             filterSelect.value = currentVal;
         } else {
             filterSelect.value = '';
+            if (currentCategoryFilter && !categoriesToShow.includes(currentCategoryFilter)) {
+                currentCategoryFilter = '';
+                window.currentCategoryFilter = '';
+            }
         }
     }
     
@@ -3429,11 +3482,13 @@ function populateCategoryDropdowns(typeFilter) {
 }
 
 window.setCategoryFilter = function(cat) {
+    currentCategoryFilter = cat || '';
+    window.currentCategoryFilter = currentCategoryFilter;
     const filterSelect = document.getElementById('inv-filter-category');
     if (filterSelect) {
-        filterSelect.value = cat;
-        renderInventory();
+        filterSelect.value = currentCategoryFilter;
     }
+    renderInventory();
 };
 
 window.setPartTypeFilter = function(typeId) {
@@ -3448,10 +3503,14 @@ window.clearInvFilters = function() {
     window.currentPartTypeFilter = '';
     currentSummaryFilter = '';
     window.currentSummaryFilter = '';
+    currentCategoryFilter = '';
+    window.currentCategoryFilter = '';
     const searchInput = document.getElementById('inv-search');
     if (searchInput) searchInput.value = '';
     const stockSelect = document.getElementById('inv-filter-stock');
     if (stockSelect) stockSelect.value = '';
+    const catSelect = document.getElementById('inv-filter-category');
+    if (catSelect) catSelect.value = '';
     populateCategoryDropdowns('');
     renderInventory();
 };
@@ -3557,7 +3616,7 @@ const fullInventoryData = mockInventory;
 const inspectionToPartMapping = {
     'pad_f': 'PROTO-B01',
     'tire_r': 'PROTO-T01',
-    'coolant': 'PROTO-C01'
+    'coolant': 'SNP-009'
 };
 
 // Apply mappings dynamically
@@ -3708,7 +3767,7 @@ function renderInventory() {
     // Get filter values
     const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
     const stockFilter = document.getElementById('inv-filter-stock')?.value || '';
-    const rawCatFilter = document.getElementById('inv-filter-category')?.value || '';
+    const rawCatFilter = isMobile ? (currentCategoryFilter || document.getElementById('inv-filter-category')?.value || '') : '';
     const catFilter = rawCatFilter.toLowerCase();
     
     // Update chip styling based on selection
@@ -4066,7 +4125,12 @@ document.addEventListener('change', function(e) {
         window.currentSummaryFilter = currentSummaryFilter;
         renderInventory();
     } else if (e.target.id === 'inv-filter-category') {
-        renderInventory();
+        const isMobile = document.body.classList.contains('mobile-app');
+        if (isMobile) {
+            currentCategoryFilter = e.target.value;
+            window.currentCategoryFilter = currentCategoryFilter;
+            renderInventory();
+        }
     } else if (e.target.id === 'mv-filter-type' || e.target.id === 'mv-filter-date' || e.target.id === 'mv-filter-part-type') {
         renderMovements();
     }
@@ -4246,7 +4310,7 @@ const mockTxnData = [
         typeClass: 'text-emerald-600 bg-emerald-50 border-emerald-100',
         typeIcon: 'ph-shopping-bag',
         customer: 'Walk-in Customer',
-        details: 'Purchased: Coolant Temp Sensor (x1)',
+        details: 'Purchased: Engine Coolant Temperature (ECT) Sensor (x1)',
         amount: 850.00,
         amountSuffix: '',
         status: 'Unpaid',
@@ -4419,7 +4483,7 @@ const mockHistoryData = [
         mechanic: `Mike (${ROLES_CONFIG.mechanic.label})`,
         mechanicId: 'mike',
         issueTitle: 'Engine Overheating (P0118)',
-        issueDesc: 'Replaced faulty Coolant Temp Sensor and front brake pads.',
+        issueDesc: 'Replaced faulty Engine Coolant Temperature (ECT) Sensor and front brake pads.',
         cost: 1800.00
     },
     {
@@ -6543,19 +6607,19 @@ const mobileViews = ['dashboard', 'more'];
 // Short app-bar titles (the sidebar labels are too long for a phone)
 // Mock jobs for the mobile Home screen (mechanic names match systemUsers)
 const mockMobileJobs = [
-    { id: 'JOB #1042', plate: 'ABC-1234', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus', progress: 45 },
-    { id: 'JOB #1041', plate: 'XYZ-9876', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Throttle body cleaning & oil change', status: 'Pending Post-Scan', tone: 'purple', mechanic: 'Hiyo', progress: 90 },
-    { id: 'JOB #1043', plate: 'DEF-5678', brandId: 'rusi', brandText: '', model: 'Model TBC', task: 'Chain & sprocket set', status: 'In Progress', tone: 'blue', mechanic: 'Hiyo', progress: 60 },
-    { id: 'JOB #1044', plate: 'QRS-4455', brandId: 'other', brandText: '', model: 'Model TBC', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 30 },
-    { id: 'JOB #1045', plate: 'HON-5555', brandId: 'honda', brandText: '', model: 'Model TBC', task: 'Brake fluid flush and inspection', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 50 },
-    { id: 'JOB #1046', plate: 'KAW-6666', brandId: 'kawasaki', brandText: '', model: 'Model TBC', task: 'Drive belt replacement', status: 'Waiting Parts', tone: 'orange', mechanic: 'Hiyo', progress: 20 },
-    { id: 'JOB #1047', plate: 'MOT-7777', brandId: 'motoposh', brandText: '', model: 'Model TBC', task: 'Carburetor tuning and cleaning', status: 'In Progress', tone: 'blue', mechanic: 'Larpus', progress: 80 }
+    { id: 'JOB #1042', plate: 'ABC-1234', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Coolant sensor & brake pads', status: 'Waiting Parts', tone: 'orange', mechanic: 'Larpus' },
+    { id: 'JOB #1041', plate: 'XYZ-9876', brandId: 'yamaha', brandText: '', model: 'Sniper', task: 'Throttle body cleaning & oil change', status: 'Pending Post-Scan', tone: 'purple', mechanic: 'Hiyo' },
+    { id: 'JOB #1043', plate: 'DEF-5678', brandId: 'rusi', brandText: '', model: 'Model TBC', task: 'Chain & sprocket set', status: 'In Progress', tone: 'blue', mechanic: 'Hiyo' },
+    { id: 'JOB #1044', plate: 'QRS-4455', brandId: 'other', brandText: '', model: 'Model TBC', task: 'Clutch lining replacement', status: 'In Progress', tone: 'blue', mechanic: 'Larpus' },
+    { id: 'JOB #1045', plate: 'HON-5555', brandId: 'honda', brandText: '', model: 'Model TBC', task: 'Brake fluid flush and inspection', status: 'In Progress', tone: 'blue', mechanic: 'Larpus' },
+    { id: 'JOB #1046', plate: 'KAW-6666', brandId: 'kawasaki', brandText: '', model: 'Model TBC', task: 'Drive belt replacement', status: 'Waiting Parts', tone: 'orange', mechanic: 'Hiyo' },
+    { id: 'JOB #1047', plate: 'MOT-7777', brandId: 'motoposh', brandText: '', model: 'Model TBC', task: 'Carburetor tuning and cleaning', status: 'In Progress', tone: 'blue', mechanic: 'Larpus' }
 ];
 
 const mobileTones = {
-    orange: { chip: 'bg-orange-100 text-orange-700', bar: 'bg-orange-500' },
-    purple: { chip: 'bg-purple-100 text-purple-700', bar: 'bg-purple-500' },
-    blue:   { chip: 'bg-blue-100 text-blue-700',     bar: 'bg-blue-500' }
+    orange: { chip: 'bg-orange-100 text-orange-700' },
+    purple: { chip: 'bg-purple-100 text-purple-700' },
+    blue:   { chip: 'bg-blue-100 text-blue-700' }
 };
 
 // Jobs visible to a role: Mechanic, Admin, and Super Admin see shop jobs
@@ -6659,27 +6723,36 @@ function renderMobileHome() {
     // Job cards
     document.getElementById('m-jobs-title').textContent = isLeadOrSuper ? 'Shop Jobs' : 'My Jobs';
     const jobsList = document.getElementById('m-jobs-list');
-    jobsList.innerHTML = jobs.length ? jobs.map(job => {
+    jobsList.innerHTML = jobs.length ? jobs.map((job, idx) => {
         const tone = mobileTones[job.tone];
         return `
-            <button onclick="mNav('repairs')" class="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform">
-                <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="font-extrabold text-slate-800">${job.plate}</span>
-                            <span class="text-[10px] font-bold text-slate-400">${job.id}</span>
-                        </div>
-                        <p class="text-xs text-slate-500 mt-0.5 truncate">${getBrandLabel(job)} ${job.model}</p>
+            <div class="m-job-card bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden" id="m-job-card-${idx}">
+                <button type="button"
+                        onclick="toggleMobileJobCard(${idx})"
+                        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleMobileJobCard(${idx});}"
+                        aria-expanded="false"
+                        aria-controls="m-job-body-${idx}"
+                        id="m-job-header-${idx}"
+                        class="m-job-header w-full text-left min-h-[44px] p-4 flex items-center justify-between gap-3 active:bg-slate-50 transition-colors cursor-pointer">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <span class="font-extrabold text-slate-800 text-sm truncate">${job.plate}</span>
+                        <span class="text-[10px] font-bold text-slate-400 shrink-0">${job.id}</span>
                     </div>
-                    <span class="px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap ${tone.chip}">${job.status}</span>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap ${tone.chip}">${job.status}</span>
+                        <i class="m-job-chevron ph-bold ph-caret-down text-slate-400 text-base shrink-0"></i>
+                    </div>
+                </button>
+                <div id="m-job-body-${idx}" class="m-job-body-wrap" role="region" aria-labelledby="m-job-header-${idx}">
+                    <div class="m-job-body-inner">
+                        <div onclick="mNav('repairs')" class="px-4 pb-4 pt-1 border-t border-slate-50 cursor-pointer active:bg-slate-50/50 transition-colors">
+                            <p class="text-xs text-slate-500 truncate">${getBrandLabel(job)} ${job.model}</p>
+                            <p class="text-xs text-slate-600 mt-2">${job.task}</p>
+                            ${isLeadOrSuper ? `<div class="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"><i class="ph-fill ph-user-circle text-base text-slate-400"></i> ${job.mechanic}</div>` : ''}
+                        </div>
+                    </div>
                 </div>
-                <p class="text-xs text-slate-600 mt-2">${job.task}</p>
-                <div class="mt-3 flex items-center gap-3">
-                    <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full ${tone.bar}" style="width:${job.progress}%"></div></div>
-                    <span class="text-[10px] font-bold text-slate-500">${job.progress}%</span>
-                </div>
-                ${isLeadOrSuper ? `<div class="mt-2.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"><i class="ph-fill ph-user-circle text-base"></i> ${job.mechanic}</div>` : ''}
-            </button>`;
+            </div>`;
     }).join('') : `
         <div class="bg-white rounded-2xl border border-slate-100 p-6 text-center text-xs font-semibold text-slate-400">
             <i class="ph-fill ph-coffee text-3xl block mb-1 text-slate-300"></i> No jobs assigned to you
@@ -6707,7 +6780,28 @@ function renderMobileHome() {
                 </div>`;
         }).join('');
     }
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
 }
+
+window.toggleMobileJobCard = function(index) {
+    const list = document.getElementById('m-jobs-list');
+    if (!list) return;
+    const cards = list.querySelectorAll('.m-job-card');
+    cards.forEach((card, idx) => {
+        const btn = card.querySelector('.m-job-header');
+        if (idx === index) {
+            const willOpen = !card.classList.contains('is-open');
+            card.classList.toggle('is-open', willOpen);
+            if (btn) btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        } else {
+            card.classList.remove('is-open');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+        }
+    });
+};
 
 
 // =====================================================================
@@ -7096,6 +7190,7 @@ function restoreMotorcycleCard() {
 
     const plateInput = document.getElementById('moto-plate');
     if (plateInput && plateInput.value !== (v.plate || '')) plateInput.value = v.plate || '';
+    if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
 }
 
 window.selectModelSuggestion = function(modelName) {
@@ -7104,6 +7199,7 @@ window.selectModelSuggestion = function(modelName) {
     const modelInput = document.getElementById('moto-model');
     if (modelInput) modelInput.value = modelName;
     saveInspectionState();
+    if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
 };
 
 window.setMotoMode = function(mode, skipSave = false) {
@@ -7136,6 +7232,7 @@ window.setMotoMode = function(mode, skipSave = false) {
         fieldsWalkin.classList.add('hidden');
         if (!skipSave) restoreMotorcycleCard();
     }
+    if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
 };
 
 window.setMotoBrand = function(brandOrId) {
@@ -7156,6 +7253,7 @@ window.setMotoBrand = function(brandOrId) {
     }
     saveInspectionState();
     restoreMotorcycleCard();
+    if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
 };
 
 window.updateMotoField = function(field, value) {
@@ -7169,6 +7267,7 @@ window.updateMotoField = function(field, value) {
         inspectionState.vehicle.plate = value;
     }
     saveInspectionState();
+    if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
 };
 
 function restoreCustomerCard() {
@@ -7556,9 +7655,13 @@ document.addEventListener('click', function(e) {
 
     } else if (action === 'addpart') {
         const part = mockInventory.find(p => p.id === el.dataset.part);
-        if (addPartToPlan(part)) {
+        const added = el.dataset.entry
+            ? addDtcPartToPlan(el.dataset.part, el.dataset.entry)
+            : addPartToPlan(part);
+        if (added && part) {
             document.querySelectorAll(`[data-insp="addpart"][data-part="${part.id}"]`).forEach(btn => {
                 btn.classList.add('is-added');
+                if (btn.dataset.entry) btn.className = "is-added w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1.5 cursor-default";
                 btn.innerHTML = '<i class="ph-bold ph-check"></i> Added to plan';
             });
         }
@@ -7571,15 +7674,20 @@ document.addEventListener('click', function(e) {
         flashInspectionButton(el, `<i class="ph-bold ph-check text-lg"></i> ${fixParts.length} added to plan`);
 
     } else if (action === 'to-findings') {
-        const textarea = document.getElementById('final-findings');
-        if (!textarea) return;
         const block = buildInspectionFindings();
         const existing = /— PHYSICAL INSPECTION —[\s\S]*?— END INSPECTION —/;
-        textarea.value = existing.test(textarea.value)
-            ? textarea.value.replace(existing, block)                      // refresh the earlier block instead of duplicating it
-            : (textarea.value.trim() ? `${textarea.value.trim()}\n\n${block}` : block);
-        textarea.style.height = 'auto';
-        textarea.style.height = `${Math.max(96, textarea.scrollHeight)}px`;
+        document.querySelectorAll('#final-findings').forEach(textarea => {
+            textarea.value = existing.test(textarea.value)
+                ? textarea.value.replace(existing, block)                      // refresh the earlier block instead of duplicating it
+                : (textarea.value.trim() ? `${textarea.value.trim()}\n\n${block}` : block);
+            textarea.style.height = 'auto';
+            textarea.style.height = `${Math.max(96, textarea.scrollHeight)}px`;
+        });
+        applyDtcFindings();
+        flashInspectionButton(el, '<i class="ph-bold ph-check text-lg"></i> Added to findings');
+
+    } else if (action === 'dtc-to-findings') {
+        applyDtcFindings();
         flashInspectionButton(el, '<i class="ph-bold ph-check text-lg"></i> Added to findings');
 
     } else if (action === 'reset') {
@@ -7589,6 +7697,13 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('input', function(e) {
     const target = e.target;
+    if (target && target.id === 'final-findings') {
+        document.querySelectorAll('#final-findings').forEach(ta => {
+            if (ta !== target && ta.value !== target.value) {
+                ta.value = target.value;
+            }
+        });
+    }
     if (target.dataset && target.dataset.inspInput === 'measure') {
         applyInspectionMeasure(target.dataset.item, target.value);
     } else if (target.dataset && target.dataset.inspInput === 'note') {
@@ -7834,119 +7949,627 @@ window.renderAutoAssignLinks = function() {
     }
 };
 
-// SAMPLE DATA for the prototype. Replace with validated Yamaha Sniper 150 V2 references.
-const dtcLibrary = {
-  P0118: { description: 'Engine Coolant Temp Sensor High', causes: ['Faulty sensor', 'Wiring open or shorted', 'Poor connector contact'], verification: ['Inspect the sensor connector and harness', 'Measure sensor resistance against engine temperature', 'Check wiring continuity to the ECU'] },
-  P0562: { description: 'System Voltage Low', causes: ['Weak or old battery', 'Charging system fault (stator or regulator)', 'Loose or corroded terminals'], verification: ['Measure battery voltage at rest and while running', 'Inspect and clean the terminals', 'Check charging output at the regulator'] },
-  P0335: { description: 'Crankshaft Position Sensor Circuit', causes: ['Faulty sensor', 'Damaged wiring or connector', 'Sensor gap or reluctor issue'], verification: ['Inspect the connector and harness', 'Test sensor resistance', 'Check the sensor gap'] }
+// Motorcycle DTC and Error Codes Reference for Yamaha Sniper 150 Version 2
+const DTC_REFERENCE = {
+  "yamaha_sniper": {
+    label: "Yamaha Sniper 150 V2",
+    partMap: {
+      "Throttle Position Sensor (TPS)": "SNP-001",
+      "Manifold Absolute Pressure (MAP) Sensor": "SNP-002",
+      "Side Stand Switch": "SNP-003",
+      "Intake Air Temperature (IAT) Sensor": "SNP-004",
+      "Oxygen (O2) Sensor": "SNP-005",
+      "Lean Angle Sensor (Bank Angle Sensor)": "SNP-006",
+      "Speedometer Cable / Speed Sensor": "SNP-007",
+      "Stator Assembly": "SNP-008",
+      "Engine Coolant Temperature (ECT) Sensor": "SNP-009",
+      "Yamaha Ignition Coil": "SNP-010",
+      "Yamaha Regulator Rectifier": "SNP-011",
+      "Fuel Injector": "SNP-012",
+      "Fuel Injector Coupler": "SNP-013",
+      "Spark Plug": "SNP-014",
+      "Cooling Fan": "SNP-015",
+      "Motorcycle Battery (12V)": "170010"
+    },
+    entries: [
+      // COMMON (most encountered)
+      {
+        id: "tps",
+        group: "common",
+        codes: ["P0120", "P0122", "P0123"],
+        errorNumbers: ["Error 15"],
+        component: "Throttle Position Sensor (TPS)",
+        description: "Defective or dirty TPS, causing poor acceleration or an unstable engine idle.",
+        verification: [
+          "Clean the throttle body with FI cleaner.",
+          "Check for loose TPS wiring."
+        ],
+        parts: ["Throttle Position Sensor (TPS)"]
+      },
+      {
+        id: "map",
+        group: "common",
+        codes: ["P0105", "P0107", "P0108"],
+        errorNumbers: ["Error 13", "Error 14"],
+        component: "Intake Air Pressure Sensor (MAP)",
+        description: "Sensor circuit open/shorted, or a loose/disconnected vacuum hose line.",
+        verification: [
+          "Inspect the rubber vacuum hose for cracks or leaks.",
+          "Check the 3-pin sensor connector."
+        ],
+        parts: ["Manifold Absolute Pressure (MAP) Sensor"]
+      },
+      {
+        id: "side_stand",
+        group: "common",
+        codes: ["P1601", "P1901"],
+        errorNumbers: ["Error 19"],
+        component: "Side Stand Switch",
+        description: "Broken or disconnected blue/green wire leading to the ECU. Prevents starting.",
+        verification: [
+          "Check if the side stand switch is stuck with mud/dirt.",
+          "Inspect the blue/green wire under the frame."
+        ],
+        parts: ["Side Stand Switch"]
+      },
+      {
+        id: "iat",
+        group: "common",
+        codes: ["P0110", "P0112", "P0113"],
+        errorNumbers: ["Error 22"],
+        component: "Intake Air Temperature (IAT) Sensor",
+        description: "Faulty sensor or disconnected harness causing incorrect air temperature readings.",
+        verification: [
+          "Check the air filter box housing connector.",
+          "Inspect for loose pins in the sensor wire."
+        ],
+        parts: ["Intake Air Temperature (IAT) Sensor"]
+      },
+      {
+        id: "o2",
+        group: "common",
+        codes: ["P0130", "P0131", "P0132"],
+        errorNumbers: ["Error 24"],
+        component: "Oxygen (O2) Sensor",
+        description: "The ECU is getting abnormal or no signals from the exhaust O2 sensor. Often triggers a fuel gauge blinking symptom.",
+        verification: [
+          "Inspect the exhaust pipe connection for leaks.",
+          "Check for carbon buildup on the sensor tip."
+        ],
+        parts: ["Oxygen (O2) Sensor"]
+      },
+      {
+        id: "lean_angle",
+        group: "common",
+        codes: ["P1500", "P1999"],
+        errorNumbers: ["Error 30", "Error 41"],
+        component: "Lean Angle Sensor",
+        description: "Triggers if the motorcycle has rolled over, or if the sensor is dislodged/faulty. It shuts off the engine for safety.",
+        verification: [
+          "Check if the sensor has fallen out of its rubber mount.",
+          "Ensure the sensor is oriented vertically."
+        ],
+        parts: ["Lean Angle Sensor (Bank Angle Sensor)"]
+      },
+      {
+        id: "injector",
+        group: "common",
+        codes: ["P0201"],
+        errorNumbers: ["Error 39"],
+        component: "Fuel Injector",
+        description: "Open or short circuit detected in the injector wiring, causing engine jerking.",
+        verification: [
+          "Listen if the injector clicks when priming.",
+          "Inspect the injector harness connector for corrosion."
+        ],
+        parts: ["Fuel Injector Coupler", "Fuel Injector"]
+      },
+      {
+        id: "speed_sensor",
+        group: "common",
+        codes: ["P0500"],
+        errorNumbers: ["Error 42"],
+        component: "Speed Sensor",
+        description: "No normal signal received from the speed sensor. The digital speedometer on your cluster will stop reading correctly.",
+        verification: [
+          "Check the front wheel speed sensor cable for cuts.",
+          "Inspect the digital gear/sensor at the wheel hub."
+        ],
+        parts: ["Speedometer Cable / Speed Sensor"]
+      },
+      // LEAST ENCOUNTERED
+      {
+        id: "ckp",
+        group: "least",
+        codes: ["P0335", "P0336"],
+        errorNumbers: ["Error 12"],
+        component: "Crankshaft Position Sensor (CKP)",
+        description: "The ECU is not receiving normal signals from the crank sensor. The bike usually will not start or may misfire.",
+        verification: [
+          "Clean the stator/crank area from debris.",
+          "Check the CKP sensor plug for water intrusion."
+        ],
+        parts: ["Stator Assembly"]
+      },
+      {
+        id: "coolant_temp",
+        group: "least",
+        codes: ["P0115", "P0117", "P0118"],
+        errorNumbers: ["Error 21"],
+        component: "Coolant Temperature Sensor",
+        description: "Open/short circuit in the sensor. Can cause the radiator fan to run continuously or the engine to run too rich.",
+        verification: [
+          "Check coolant level in the radiator and reservoir.",
+          "Inspect the wiring plug on the back of the cylinder."
+        ],
+        parts: ["Engine Coolant Temperature (ECT) Sensor", "Cooling Fan"]
+      },
+      {
+        id: "ignition_coil",
+        group: "least",
+        codes: ["P0351"],
+        errorNumbers: ["Error 33"],
+        component: "Ignition Coil",
+        description: "Primary lead open or short circuit. Causes severe engine misfiring or no spark.",
+        verification: [
+          "Check the spark plug cap connection.",
+          "Inspect the high-tension wire for burns/cuts."
+        ],
+        parts: ["Yamaha Ignition Coil", "Spark Plug"]
+      },
+      {
+        id: "power_supply",
+        group: "least",
+        codes: ["P0560", "P0562", "P0563"],
+        errorNumbers: ["Error 46"],
+        component: "Power Supply / Charging System",
+        description: "The ECU is receiving abnormal voltage (too low or too high). Usually caused by a dead battery, faulty rectifier/regulator, or stator issue.",
+        verification: [
+          "Measure battery voltage using a multimeter (should be 12.4V-12.8V off).",
+          "Check for loose or corroded battery terminals."
+        ],
+        parts: ["Yamaha Regulator Rectifier", "Motorcycle Battery (12V)"]
+      }
+    ]
+  }
 };
-const demoScanCodes = ['P0118', 'P0562', 'P0335'];
+window.DTC_REFERENCE = DTC_REFERENCE;
 
-function renderDtcResults(codes) {
-    const container = document.getElementById('dtc-results-list');
-    if (!container) return;
-    container.innerHTML = '';
+function findDtcEntry(codeOrErrorNumber) {
+  if (!codeOrErrorNumber) return null;
+  const query = String(codeOrErrorNumber).trim().toUpperCase();
+  if (!query) return null;
 
-    (codes || []).forEach(code => {
-        const info = (typeof dtcLibrary !== 'undefined' && dtcLibrary[code]) ? dtcLibrary[code] : null;
+  const ref = DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper;
+  if (!ref || !Array.isArray(ref.entries)) return null;
 
-        // Potentially related parts (linkedDTCs + partsForDtc, deduplicated by id)
-        const relatedParts = [];
-        const seenPartIds = new Set();
-        mockInventory.forEach(p => {
-            if (p.linkedDTCs && p.linkedDTCs.includes(code)) {
-                if (!seenPartIds.has(p.id)) {
-                    seenPartIds.add(p.id);
-                    relatedParts.push(p);
-                }
+  const normalizedQuery = query.replace(/^ERROR(\d+)$/i, 'ERROR $1');
+
+  for (const entry of ref.entries) {
+    if (entry.codes && entry.codes.some(c => c.toUpperCase() === query)) {
+      return entry;
+    }
+    if (entry.errorNumbers && entry.errorNumbers.some(e => {
+      const eUpper = e.toUpperCase();
+      return eUpper === query || eUpper === normalizedQuery;
+    })) {
+      return entry;
+    }
+  }
+  return null;
+}
+window.findDtcEntry = findDtcEntry;
+
+function getDtcReference(vehicle) {
+  const v = vehicle || (typeof inspectionState !== 'undefined' ? inspectionState.vehicle : null);
+  if (!v || v.mode === 'walk-in') {
+    return null;
+  }
+
+  const brand = (v.brandId || (typeof getBrandLabel === 'function' ? getBrandLabel(v) : '') || v.brand || '').toLowerCase();
+  const isYamaha = brand === 'yamaha';
+  const model = String(v.model || '').toLowerCase();
+  const isSniper = model.includes('sniper');
+
+  if (isYamaha && isSniper) {
+    return (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+  }
+
+  return null;
+}
+window.getDtcReference = getDtcReference;
+
+const demoScanCodes = ['P0118', 'P0562', 'P0120'];
+
+function buildDtcCardHtml(entry, scannedCode) {
+    if (!entry) return '';
+    const ref = typeof getDtcReference === 'function' ? getDtcReference(inspectionState && inspectionState.vehicle) : (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper);
+    const partMap = (ref && ref.partMap) ? ref.partMap : {};
+
+    // 1. Header: code badges, Error badge (grey), component name title, group tag
+    const codeBadges = (entry.codes || []).map(code => 
+        `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200">${escHTML(code)}</span>`
+    ).join(' ');
+
+    const errorBadges = (entry.errorNumbers || []).map(err => 
+        `<span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">${escHTML(err)}</span>`
+    ).join(' ');
+
+    const groupLabel = entry.group === 'common' ? 'Common' : 'Less common';
+    const groupBadge = `<span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${entry.group === 'common' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}">${groupLabel}</span>`;
+
+    // 2. Body: Two columns on desktop, one on mobile
+    const descriptionHtml = `
+        <div>
+            <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">Description</span>
+            <p class="text-xs text-slate-600 leading-relaxed">${escHTML(entry.description || 'None recorded.')}</p>
+        </div>
+    `;
+
+    const verificationHtml = `
+        <div>
+            <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">Verification</span>
+            ${(entry.verification && entry.verification.length)
+                ? `<ul class="list-disc pl-4 space-y-1 text-xs text-slate-600">${entry.verification.map(v => `<li>${escHTML(v)}</li>`).join('')}</ul>`
+                : '<p class="text-xs text-slate-400 italic">None recorded.</p>'
             }
-        });
-        if (typeof partsForDtc === 'function') {
-            const found = partsForDtc(code);
-            found.forEach(f => {
-                const p = mockInventory.find(item => item.id === f.id);
-                if (p && !seenPartIds.has(p.id)) {
-                    seenPartIds.add(p.id);
-                    relatedParts.push(p);
-                }
-            });
-        }
+        </div>
+    `;
 
-        let partsHtml = '';
-        if (relatedParts.length === 0) {
-            partsHtml = '<p class="text-xs text-slate-400 italic">No related part recorded in inventory.</p>';
-        } else {
-            partsHtml = '<div class="flex flex-col gap-2">' + relatedParts.map(p => {
-                let stockBadge = '';
-                if (p.stock === 0) {
-                    stockBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>';
-                } else if (p.stock <= 5) {
-                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${p.stock} Available</span>`;
-                } else {
-                    stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${p.stock} Available</span>`;
-                }
-                return `
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg gap-2 text-xs">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <span class="font-bold text-slate-800 truncate">${escHTML(p.name)}</span>
-                            <span class="text-slate-400">·</span>
-                            <span class="font-semibold text-blue-600 shrink-0">${fmtPeso(p.price)}</span>
-                        </div>
-                        <div class="shrink-0">${stockBadge}</div>
+    // 3. Related parts
+    const relatedParts = (entry.parts || []).map(partName => {
+        const partId = partMap[partName];
+        return partId ? mockInventory.find(p => p.id === partId) : null;
+    }).filter(Boolean);
+
+    let partsHtml = '';
+    if (relatedParts.length === 0) {
+        partsHtml = '<p class="text-xs text-slate-400 italic">No related part recorded in inventory.</p>';
+    } else {
+        partsHtml = '<div class="flex flex-col gap-2">' + relatedParts.map(part => {
+            let stockBadge = '';
+            if (part.stock === 0) {
+                stockBadge = '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200 shrink-0"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>';
+            } else if (part.stock <= (part.minStock !== undefined ? part.minStock : 5)) {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200 shrink-0"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${part.stock} Available</span>`;
+            } else {
+                stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200 shrink-0"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${part.stock} Available</span>`;
+            }
+
+            const isAlreadyAdded = typeof repairPlanParts !== 'undefined' && repairPlanParts.some(p => p.id === part.id && !p.obsolete);
+            let btnHtml = '';
+            if (isAlreadyAdded) {
+                btnHtml = `<button type="button" class="is-added w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1.5 cursor-default"><i class="ph-bold ph-check"></i> Added to plan</button>`;
+            } else if (part.stock === 0) {
+                btnHtml = `<button type="button" data-insp="addpart" data-part="${part.id}" data-entry="${escHTML(entry.id)}" class="w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 active:scale-[0.98]"><i class="ph-bold ph-plus"></i> Add (out of stock)</button>`;
+            } else {
+                btnHtml = `<button type="button" data-insp="addpart" data-part="${part.id}" data-entry="${escHTML(entry.id)}" class="w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors flex items-center justify-center gap-1.5 active:scale-[0.98]"><i class="ph-bold ph-plus"></i> Add to parts plan</button>`;
+            }
+
+            return `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-lg gap-3 text-xs">
+                    <div class="flex flex-wrap items-center gap-2 min-w-0">
+                        <span class="font-bold text-slate-800">${escHTML(part.name)}</span>
+                        <span class="text-slate-400">·</span>
+                        <span class="font-bold text-blue-600 shrink-0">\u20B1${Number(part.price || 0).toFixed(2)}</span>
+                        ${stockBadge}
                     </div>
-                `;
-            }).join('') + '</div>';
-        }
-
-        let bodyHtml = '';
-        if (!info) {
-            bodyHtml = '<p class="text-xs text-slate-400 italic">No reference entry for this code yet.</p>';
-        } else {
-            const causesList = (info.causes && info.causes.length)
-                ? `<ul class="list-disc pl-4 space-y-0.5 text-xs text-slate-600">${info.causes.map(c => `<li>${escHTML(c)}</li>`).join('')}</ul>`
-                : '<p class="text-xs text-slate-400 italic">None recorded.</p>';
-
-            const verifList = (info.verification && info.verification.length)
-                ? `<ul class="list-disc pl-4 space-y-0.5 text-xs text-slate-600">${info.verification.map(v => `<li>${escHTML(v)}</li>`).join('')}</ul>`
-                : '<p class="text-xs text-slate-400 italic">None recorded.</p>';
-
-            bodyHtml = `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-100">
-                    <div>
-                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Possible Causes</span>
-                        ${causesList}
-                    </div>
-                    <div>
-                        <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1">Verification Guidance</span>
-                        ${verifList}
+                    <div class="shrink-0 w-full sm:w-auto">
+                        ${btnHtml}
                     </div>
                 </div>
             `;
-        }
+        }).join('') + '</div>';
+    }
 
-        const cardHtml = `
-            <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-3" data-dtc="${escHTML(code)}">
-                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                    <div class="flex items-center gap-2">
-                        <span class="px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200">${escHTML(code)}</span>
-                        <span class="text-sm font-bold text-slate-800">${escHTML(info ? info.description : 'Unrecognized DTC')}</span>
-                    </div>
+    const primaryCode = scannedCode || ((entry.codes && entry.codes[0]) ? entry.codes[0] : '');
+
+    return `
+        <div class="bg-white border border-slate-200 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col gap-3.5" data-entry-id="${escHTML(entry.id)}" data-dtc="${escHTML(primaryCode)}">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    ${codeBadges}
+                    ${errorBadges}
+                    <span class="text-sm font-bold text-slate-800 ml-1">${escHTML(entry.component)}</span>
                 </div>
-                ${bodyHtml}
-                <div class="pt-2 border-t border-slate-100">
-                    <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">Potentially Related Parts</span>
-                    ${partsHtml}
+                <div>
+                    ${groupBadge}
                 </div>
             </div>
-        `;
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 py-1">
+                ${descriptionHtml}
+                ${verificationHtml}
+            </div>
+            <div class="pt-3 border-t border-slate-100">
+                <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-2">Related Parts</span>
+                ${partsHtml}
+            </div>
+        </div>
+    `;
+}
+window.buildDtcCardHtml = buildDtcCardHtml;
 
-        container.insertAdjacentHTML('beforeend', cardHtml);
-    });
+// Scanned DTC entries ({ id, code }) and parts the user added from them ({ partId, entryId })
+const dtcScanState = { scanned: [], addedParts: [] };
+window.dtcScanState = dtcScanState;
+
+function getDtcEntryById(id) {
+    const ref = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+    return (ref && Array.isArray(ref.entries)) ? (ref.entries.find(e => e.id === id) || null) : null;
+}
+
+// items: array of entries / codes to replace the results with; omit to re-render the current state
+function renderDtcResults(items) {
+    const container = document.getElementById('dtc-results-list');
+    if (!container) return;
+
+    if (items !== undefined) {
+        const list = Array.isArray(items) ? items : [items];
+        dtcScanState.scanned = [];
+        list.forEach(item => {
+            let entry = null;
+            let code = '';
+            if (item && typeof item === 'object' && item.component) {
+                entry = item;
+            } else if (typeof item === 'string') {
+                entry = getDtcEntryById(item) || (typeof findDtcEntry === 'function' ? findDtcEntry(item) : null);
+                if (entry && (entry.codes || []).includes(item.toUpperCase())) code = item.toUpperCase();
+            }
+            if (entry && !dtcScanState.scanned.some(s => s.id === entry.id)) {
+                dtcScanState.scanned.push({ id: entry.id, code: code || ((entry.codes && entry.codes[0]) || '') });
+            }
+        });
+        dtcScanState.addedParts = dtcScanState.addedParts.filter(a => dtcScanState.scanned.some(s => s.id === a.entryId));
+    }
+
+    container.innerHTML = dtcScanState.scanned
+        .map(s => buildDtcCardHtml(getDtcEntryById(s.id), s.code))
+        .join('');
 
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
     }
 }
+window.renderDtcResults = renderDtcResults;
+
+function addDtcResultEntry(entry, code) {
+    const container = document.getElementById('dtc-results-list');
+    if (!container || !entry) return;
+
+    const query = String(code || '').trim().toUpperCase();
+    const scannedCode = (entry.codes || []).includes(query) ? query : ((entry.codes && entry.codes[0]) || '');
+
+    const existing = container.querySelector(`[data-entry-id="${entry.id}"]`);
+    if (existing) {
+        existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        existing.classList.add('ring-2', 'ring-blue-500');
+        setTimeout(() => existing.classList.remove('ring-2', 'ring-blue-500'), 1500);
+        const item = dtcScanState.scanned.find(s => s.id === entry.id);
+        if (item && (entry.codes || []).includes(query)) item.code = query;
+        return;
+    }
+
+    if (!dtcScanState.scanned.some(s => s.id === entry.id)) {
+        dtcScanState.scanned.push({ id: entry.id, code: scannedCode });
+    }
+
+    container.insertAdjacentHTML('beforeend', buildDtcCardHtml(entry, scannedCode));
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.addDtcResultEntry = addDtcResultEntry;
+
+function getDtcPlanTarget(entry) {
+    return `ECU/OBD: ${entry && entry.component ? entry.component : 'Scan'}`;
+}
+
+// "Add to parts plan" from a DTC card: qty 1, tagged "From ECU/OBD scan", no duplicates
+function addDtcPartToPlan(partId, entryId) {
+    const part = mockInventory.find(p => p.id === partId);
+    const entry = getDtcEntryById(entryId);
+    if (!part || !entry) return false;
+
+    if (!dtcScanState.addedParts.some(a => a.partId === partId)) {
+        dtcScanState.addedParts.push({ partId: partId, entryId: entryId });
+    }
+    if (repairPlanParts.some(p => p.id === partId && !p.obsolete)) return true;
+
+    const target = getDtcPlanTarget(entry);
+    window.removedAutoSuggestions.delete(partId + '|' + target);
+    const old = repairPlanParts.find(p => p.id === partId);
+    if (old) {
+        old.obsolete = false;
+        old.target = target;
+        old.source = 'ecu';
+        old.isAuto = true;
+        old.category = 'ECU / OBD';
+        if (!old.handling) old.handling = 'order';
+    } else {
+        repairPlanParts.push({
+            id: part.id,
+            part: part,
+            qty: 1,
+            target: target,
+            category: 'ECU / OBD',
+            isAuto: true,
+            source: 'ecu',
+            stock: part.stock,
+            handling: 'order'
+        });
+    }
+    renderRepairPlan();
+    updatePlanTotals();
+    return true;
+}
+window.addDtcPartToPlan = addDtcPartToPlan;
+
+// One line per scanned entry, e.g. "P0118 / Error 21 - Coolant Temperature Sensor: Open/short circuit..."
+function buildDtcFindings() {
+    if (!dtcScanState || !Array.isArray(dtcScanState.scanned)) return '';
+    const lines = dtcScanState.scanned.map(s => {
+        const entry = getDtcEntryById(s.id);
+        if (!entry) return '';
+        const codeStr = s.code || (entry.codes && entry.codes[0]) || '';
+        const errors = (entry.errorNumbers || []).join(', ');
+        const prefix = codeStr && errors ? `${codeStr} / ${errors}` : (codeStr || errors);
+        return `${prefix ? prefix + ' - ' : ''}${entry.component}: ${entry.description}`;
+    }).filter(Boolean);
+    if (!lines.length) return '';
+    return ['— ECU/OBD SCAN —', ...lines, '— END ECU/OBD —'].join('\n');
+}
+window.buildDtcFindings = buildDtcFindings;
+
+function applyDtcFindings(textarea) {
+    const block = buildDtcFindings();
+    const existing = /— ECU\/OBD SCAN —[\s\S]*?— END ECU\/OBD —/;
+    const all = textarea ? [textarea] : document.querySelectorAll('#final-findings');
+    all.forEach(ta => {
+        if (existing.test(ta.value)) {
+            ta.value = block ? ta.value.replace(existing, block).replace(/\n{3,}/g, '\n\n').trim() : ta.value.replace(existing, '').replace(/\n{3,}/g, '\n\n').trim();
+        } else if (block) {
+            ta.value = ta.value.trim() ? `${ta.value.trim()}\n\n${block}` : block;
+        }
+        ta.style.height = 'auto';
+        ta.style.height = `${Math.max(96, ta.scrollHeight)}px`;
+    });
+}
+window.applyDtcFindings = applyDtcFindings;
+
+function refreshDtcPlanButtons() {
+    const list = document.getElementById('dtc-results-list');
+    if (!list) return;
+    list.querySelectorAll('[data-entry-id]').forEach(card => {
+        card.querySelectorAll('button[data-part], button.is-added').forEach(btn => {
+            const partId = btn.dataset.part;
+            if (!partId) return;
+            const part = mockInventory.find(p => p.id === partId);
+            if (!part) return;
+            const isAdded = (repairPlanParts || []).some(p => p.id === partId && !p.obsolete);
+            if (isAdded) {
+                btn.classList.add('is-added');
+                btn.className = "is-added w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center gap-1.5 cursor-default";
+                btn.innerHTML = '<i class="ph-bold ph-check"></i> Added to plan';
+            } else {
+                btn.classList.remove('is-added');
+                if (part.stock === 0) {
+                    btn.className = "w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300 hover:bg-amber-100 transition-colors flex items-center justify-center gap-1.5 active:scale-[0.98]";
+                    btn.innerHTML = '<i class="ph-bold ph-plus"></i> Add (out of stock)';
+                } else {
+                    btn.className = "w-full sm:w-auto min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-colors flex items-center justify-center gap-1.5 active:scale-[0.98]";
+                    btn.innerHTML = '<i class="ph-bold ph-plus"></i> Add to parts plan';
+                }
+            }
+        });
+    });
+}
+window.refreshDtcPlanButtons = refreshDtcPlanButtons;
+
+function clearDtcScanResults() {
+    dtcScanState.scanned = [];
+    dtcScanState.addedParts = [];
+    const list = document.getElementById('dtc-results-list');
+    if (list) list.innerHTML = '';
+    const container = document.getElementById('dtc-results-container');
+    if (container) container.classList.add('hidden');
+    const msg = document.getElementById('dtc-lookup-message');
+    if (msg) msg.classList.add('hidden');
+    const input = document.getElementById('dtc-lookup-input');
+    if (input) input.value = '';
+    const step3EcuCard = document.getElementById('step3-ecu-card');
+    if (step3EcuCard) step3EcuCard.classList.add('hidden');
+    const step3EcuResults = document.getElementById('step3-ecu-results');
+    if (step3EcuResults) step3EcuResults.innerHTML = '';
+}
+window.clearDtcScanResults = clearDtcScanResults;
+
+function updateDtcReferenceUi() {
+    const currentVehicle = inspectionState && inspectionState.vehicle;
+    const ref = typeof getDtcReference === 'function' ? getDtcReference(currentVehicle) : (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper);
+    const noRefMsg = document.getElementById('dtc-no-ref-message');
+    const resultsContainer = document.getElementById('dtc-results-container');
+    const subtitle = document.getElementById('dtc-ref-subtitle');
+
+    if (!ref) {
+        if (noRefMsg) noRefMsg.classList.remove('hidden');
+        if (resultsContainer) resultsContainer.classList.add('hidden');
+        if (subtitle) subtitle.textContent = 'Reference: None available for this motorcycle';
+    } else {
+        if (noRefMsg) noRefMsg.classList.add('hidden');
+        if (subtitle) subtitle.textContent = `Reference: ${ref.label || 'Yamaha Sniper 150 V2'}`;
+        if (resultsContainer && typeof dtcScanState !== 'undefined' && dtcScanState.scanned && dtcScanState.scanned.length > 0) {
+            resultsContainer.classList.remove('hidden');
+        }
+    }
+}
+window.updateDtcReferenceUi = updateDtcReferenceUi;
+
+function executeDtcLookup() {
+    const inputEl = document.getElementById('dtc-lookup-input');
+    if (!inputEl) return;
+    const query = inputEl.value.trim();
+    const msgEl = document.getElementById('dtc-lookup-message');
+    const dtcResultsContainer = document.getElementById('dtc-results-container');
+    const dtcNoRefMsg = document.getElementById('dtc-no-ref-message');
+
+    if (!query) {
+        if (msgEl) msgEl.classList.add('hidden');
+        return;
+    }
+
+    const currentVehicle = inspectionState && inspectionState.vehicle;
+    const ref = typeof getDtcReference === 'function' ? getDtcReference(currentVehicle) : (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper);
+
+    if (!ref) {
+        if (msgEl) {
+            msgEl.textContent = 'No DTC reference loaded for this motorcycle.';
+            msgEl.classList.remove('hidden');
+        }
+        if (dtcNoRefMsg) dtcNoRefMsg.classList.remove('hidden');
+        return;
+    }
+
+    const entry = typeof findDtcEntry === 'function' ? findDtcEntry(query) : null;
+    if (!entry) {
+        if (msgEl) {
+            msgEl.textContent = 'Code not found in the Yamaha Sniper 150 V2 reference.';
+            msgEl.classList.remove('hidden');
+        }
+    } else {
+        if (msgEl) msgEl.classList.add('hidden');
+        inputEl.value = '';
+        addDtcResultEntry(entry, query);
+        if (dtcResultsContainer) {
+            dtcResultsContainer.classList.remove('hidden');
+        }
+        if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
+    }
+}
+window.executeDtcLookup = executeDtcLookup;
+
+document.addEventListener('keydown', function(e) {
+    if (e.target && e.target.id === 'dtc-lookup-input' && (e.key === 'Enter' || e.keyCode === 13)) {
+        e.preventDefault();
+        executeDtcLookup();
+    }
+});
+
+document.addEventListener('click', function(e) {
+    if (e.target && (e.target.id === 'btn-dtc-lookup' || e.target.closest('#btn-dtc-lookup'))) {
+        e.preventDefault();
+        executeDtcLookup();
+    }
+});
+
+document.addEventListener('input', function(e) {
+    if (e.target && e.target.id === 'dtc-lookup-input') {
+        const msgEl = document.getElementById('dtc-lookup-message');
+        if (msgEl && !e.target.value.trim()) {
+            msgEl.classList.add('hidden');
+        }
+    }
+});
 
 function renderInspectionOverview() {
     const overview = document.getElementById('inspection-overview');
@@ -8027,19 +8650,23 @@ function renderInspectionOverview() {
 window.renderInspectionOverview = renderInspectionOverview;
 
 function partsForDtc(code) {
-    const c = String(code || '').toUpperCase();
+    const c = String(code || '').toUpperCase().trim();
     const out = [];
-    if (c === 'P0117' || c === 'P0118' || c === 'P0119') {
-        out.push({ id: 'PROTO-C01', qty: 1 });                       // coolant temp sensor circuit
-    } else if (/^P030[0-6]$/.test(c)) {
-        // out.push({ id: 'p5', qty: 1 });                       // misfire -> spark plug (not in inventory)
-    } else if (c === 'P0562' || c === 'P0563') {
+    const entry = typeof findDtcEntry === 'function' ? findDtcEntry(c) : null;
+    const ref = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+    if (entry && Array.isArray(entry.parts) && ref && ref.partMap) {
+        entry.parts.forEach(partName => {
+            const partId = ref.partMap[partName];
+            if (partId) {
+                out.push({ id: partId, qty: 1 });
+            }
+        });
+        if (out.length > 0) return out;
+    }
+    if (c === 'P0117' || c === 'P0118' || c === 'P0119' || c === 'P0115') {
+        out.push({ id: 'SNP-009', qty: 1 });                       // coolant temp sensor circuit
+    } else if (c === 'P0560' || c === 'P0562' || c === 'P0563') {
         out.push({ id: '170010', qty: 1 });                      // system voltage -> battery
-    } else if (c === 'P0171' || c === 'P0172') {
-        // out.push({ id: 'p6', qty: 1 });                       // fuel trim -> air filter (not in inventory)
-        // out.push({ id: 'p5', qty: 1 });
-    } else if (c === 'P0217') {
-        // out.push({ id: 'p16', qty: 1 });                      // overtemp -> coolant (not in inventory)
     }
     return out;
 }
@@ -8103,7 +8730,7 @@ window.getSuggestedParts = function(diagnosis = inspectionState) {
 window.removedAutoSuggestions = window.removedAutoSuggestions || new Set();
 
 window.syncPlanFromDiagnosis = function(firstTime = false, restoreRemoved = false) {
-    if (firstTime && repairPlanParts.length > 0) return; // Only auto-assign once if first time
+    if (firstTime && planReviewed) return; // Only auto-assign once if first time
     
     if (restoreRemoved) {
         window.removedAutoSuggestions.clear();
@@ -8159,16 +8786,56 @@ window.syncPlanFromDiagnosis = function(firstTime = false, restoreRemoved = fals
                         isAuto: true,
                         stock: part.stock
                     });
+                } else {
+                    existing.obsolete = false;
                 }
             }
         }
     });
+
+    // 2b. Include parts from scanned DTC entries that the user added
+    if (typeof dtcScanState !== 'undefined' && Array.isArray(dtcScanState.addedParts)) {
+        dtcScanState.addedParts.forEach(a => {
+            const entry = getDtcEntryById(a.entryId);
+            const part = mockInventory.find(p => p.id === a.partId);
+            if (!part || !entry) return;
+            const isScanned = dtcScanState.scanned.some(s => s.id === a.entryId);
+            if (!isScanned) return;
+
+            const target = getDtcPlanTarget(entry);
+            if (window.removedAutoSuggestions.has(part.id + '|' + target)) return;
+
+            const existing = repairPlanParts.find(p => p.id === a.partId && p.target === target);
+            if (!existing) {
+                repairPlanParts.push({
+                    id: part.id,
+                    part: part,
+                    qty: 1,
+                    target: target,
+                    category: 'ECU / OBD',
+                    isAuto: true,
+                    source: 'ecu',
+                    stock: part.stock,
+                    handling: 'order'
+                });
+            } else {
+                existing.obsolete = false;
+                if (!existing.handling) existing.handling = 'order';
+            }
+        });
+    }
     
     // 3. Mark obsolete auto-assigned parts (No longer needed)
     repairPlanParts.forEach(p => {
         if (p.isAuto) {
-            const stillNeeded = suggestions.some(s => s.id === p.id && s.target === p.target && s.checked);
-            p.obsolete = !stillNeeded;
+            if (p.source === 'ecu' || (p.target && p.target.startsWith('ECU/OBD'))) {
+                const stillScanned = dtcScanState && dtcScanState.scanned && dtcScanState.scanned.some(s => s.id === (dtcScanState.addedParts.find(a => a.partId === p.id)?.entryId));
+                const userAdded = dtcScanState && dtcScanState.addedParts && dtcScanState.addedParts.some(a => a.partId === p.id);
+                p.obsolete = !(stillScanned && userAdded);
+            } else {
+                const stillNeeded = suggestions.some(s => s.id === p.id && s.target === p.target && s.checked);
+                p.obsolete = !stillNeeded;
+            }
         }
     });
     
@@ -8314,6 +8981,50 @@ function renderStep3Summary() {
         }).join('')
         : '<li class="text-xs text-slate-400 italic py-1">No issues flagged.</li>'
     );
+
+    // ECU/OBD Results
+    const ecuCard = document.getElementById('step3-ecu-card');
+    if (ecuCard) {
+        if (typeof dtcScanState !== 'undefined' && dtcScanState.scanned && dtcScanState.scanned.length > 0) {
+            ecuCard.classList.remove('hidden');
+            const ecuHtml = dtcScanState.scanned.map(s => {
+                const entry = getDtcEntryById(s.id);
+                if (!entry) return '';
+                const codeBadges = (entry.codes || (s.code ? [s.code] : [])).map(c => 
+                    `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700 font-mono">${escHTML(c)}</span>`
+                ).join(' ');
+                const errorBadges = (entry.errorNumbers || []).map(e => 
+                    `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">${escHTML(e)}</span>`
+                ).join(' ');
+
+                const entryTarget = getDtcPlanTarget(entry);
+                const chosenParts = (repairPlanParts || []).filter(p => !p.obsolete && (
+                    p.target === entryTarget ||
+                    (dtcScanState.addedParts || []).some(a => a.entryId === entry.id && a.partId === p.id)
+                ));
+
+                const partsText = chosenParts.length > 0
+                    ? chosenParts.map(p => `${escHTML(p.part ? p.part.name : p.id)} (\u00D7${p.qty})`).join(', ')
+                    : '<span class="italic text-slate-400">None chosen</span>';
+
+                return `<li class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                        <i class="ph-bold ph-cpu text-blue-600 shrink-0"></i>
+                        ${codeBadges}
+                        ${errorBadges}
+                        <span class="font-bold text-slate-800 ml-1 truncate">${escHTML(entry.component)}</span>
+                    </div>
+                    <div class="text-xs text-slate-600 sm:text-right shrink-0">
+                        <span class="text-slate-400 font-medium">Parts:</span> <span class="font-semibold text-slate-700">${partsText}</span>
+                    </div>
+                </li>`;
+            }).filter(Boolean).join('');
+            setText('step3-ecu-results', ecuHtml || '<li class="text-xs text-slate-400 italic py-1">No scanned codes recorded.</li>');
+        } else {
+            ecuCard.classList.add('hidden');
+            setText('step3-ecu-results', '');
+        }
+    }
 
     // Final Findings
     const findings = (document.getElementById('final-findings')?.value || '').trim();
@@ -8761,13 +9472,6 @@ systemUsers.mechanic.password = 'mech123';
 
 // Initialize widgets on load
 updateDashboardWidgets();
-
-window.clearInvFilters = function() {
-    document.getElementById('inv-search').value = '';
-    document.getElementById('inv-filter-stock').value = '';
-    document.getElementById('inv-filter-category').value = '';
-    renderInventory();
-};
 
 
 document.addEventListener('input', function(e) {
