@@ -572,3 +572,25 @@ body.mobile-app .m-job-card.is-open .m-job-chevron {
         transition: none !important;
     }
 }
+
+/* Reports & Monitoring Mobile UI Tabs */
+body.mobile-app #report-tabs-bar {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    gap: 0.5rem !important;
+}
+
+body.mobile-app #report-tabs-bar::-webkit-scrollbar {
+    display: none !important;
+}
+
+body.mobile-app .report-tab-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    min-height: 40px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}

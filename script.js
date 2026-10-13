@@ -667,7 +667,8 @@ async function loadView(viewName) {
 
         // NEW: Initialize Reports view
         if (viewName === 'reports') {
-            renderReports('today');
+            renderReports(typeof currentReportRange !== 'undefined' ? currentReportRange : 'today');
+            setReportTab(typeof activeReportTab !== 'undefined' ? activeReportTab : 'financial');
         }
         if (viewName === 'audit') { renderAudit(); }
 
@@ -1270,20 +1271,8 @@ document.addEventListener('click', function(e) {
     // 2. Report Tabs
     const reportBtn = e.target.closest('.report-tab-btn');
     if (reportBtn) {
-        const targetId = reportBtn.getAttribute('data-target');
-        const view = document.getElementById('view-reports');
-        if(view) {
-            view.querySelectorAll('.report-tab-btn').forEach(b => {
-                b.classList.remove('active', 'text-blue-600', 'border-blue-600');
-                b.classList.add('text-slate-500', 'border-transparent', 'hover:border-slate-300', 'hover:text-slate-800');
-            });
-            reportBtn.classList.add('active', 'text-blue-600', 'border-blue-600');
-            reportBtn.classList.remove('text-slate-500', 'border-transparent', 'hover:border-slate-300', 'hover:text-slate-800');
-            view.querySelectorAll('.report-tab-content').forEach(content => {
-                content.classList.toggle('hidden', content.id !== targetId);
-                content.classList.toggle('block', content.id === targetId);
-            });
-        }
+        const targetId = reportBtn.getAttribute('data-tab') || reportBtn.getAttribute('data-target')?.replace('tab-', '') || 'financial';
+        setReportTab(targetId === 'diagnostics' ? 'dtc' : targetId);
     }
 
     // 3. User Tabs
@@ -4657,7 +4646,76 @@ const mockReportData = {
     }
 };
 
+let activeReportTab = 'financial';
+window.activeReportTab = activeReportTab;
+let currentReportRange = 'today';
+window.currentReportRange = currentReportRange;
+
+window.setReportTab = function(id) {
+    if (!id) id = 'financial';
+    activeReportTab = id;
+    window.activeReportTab = activeReportTab;
+
+    const container = document.querySelector('#main-content-area') || document;
+    const tabs = container.querySelectorAll('.report-tab-btn');
+    const panels = container.querySelectorAll('.report-tab-content');
+    if (!tabs.length && !panels.length) return;
+
+    const targetPanelId = (id === 'dtc' || id === 'diagnostics') ? 'tab-dtc' : ('tab-' + id);
+
+    tabs.forEach(tab => {
+        const tabId = tab.getAttribute('data-tab') || tab.getAttribute('data-target')?.replace('tab-', '') || '';
+        const isMatch = (tabId === id) || (tab.id === 'report-tab-' + id) || (tab.getAttribute('data-target') === 'tab-' + id) || (id === 'dtc' && (tabId === 'diagnostics' || tab.getAttribute('data-target') === 'tab-diagnostics'));
+        
+        if (isMatch) {
+            tab.classList.add('active', 'text-blue-600', 'border-blue-600', 'font-bold');
+            tab.classList.remove('text-slate-500', 'border-transparent', 'hover:border-slate-300', 'hover:text-slate-800', 'font-semibold');
+            tab.setAttribute('aria-selected', 'true');
+            tab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        } else {
+            tab.classList.remove('active', 'text-blue-600', 'border-blue-600', 'font-bold');
+            tab.classList.add('text-slate-500', 'border-transparent', 'hover:border-slate-300', 'hover:text-slate-800', 'font-semibold');
+            tab.setAttribute('aria-selected', 'false');
+        }
+    });
+
+    let matchedPanel = null;
+    panels.forEach(panel => {
+        const isMatch = (panel.id === targetPanelId) || (id === 'dtc' && (panel.id === 'tab-dtc' || panel.id === 'tab-diagnostics'));
+        if (isMatch) {
+            matchedPanel = panel;
+            panel.classList.remove('hidden');
+            panel.classList.add('block');
+        } else {
+            panel.classList.add('hidden');
+            panel.classList.remove('block');
+        }
+    });
+
+    // Requirement 3: If a panel is missing, create an empty one with placeholder
+    if (!matchedPanel) {
+        const parent = container.querySelector('.report-tab-content')?.parentElement;
+        if (parent) {
+            matchedPanel = document.createElement('div');
+            matchedPanel.id = targetPanelId;
+            matchedPanel.className = 'report-tab-content p-5 sm:p-6 block';
+            matchedPanel.innerHTML = '<div class="py-12 text-center text-slate-400 text-sm font-medium italic">Coming up in the next step</div>';
+            parent.appendChild(matchedPanel);
+        }
+    }
+
+    // Requirement 5: Re-run chart drawing when a panel becomes visible
+    if (typeof updateDashboardWidgets === 'function') {
+        updateDashboardWidgets();
+    }
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+};
+
 function renderReports(range = 'today') {
+    currentReportRange = range;
+    window.currentReportRange = currentReportRange;
     const data = mockReportData[range];
     if (!data) return;
 
@@ -4694,22 +4752,31 @@ function renderReports(range = 'today') {
     safeSet('summary-adv', `\u20B1${data.sumAdv}`);
     safeSet('summary-out', `\u20B1${data.sumOut}`);
     safeSet('summary-set', `\u20B1${data.sumSet}`);
+
+    // Sync date range button styling
+    const dateBtns = document.querySelectorAll('.report-date-btn');
+    dateBtns.forEach(btn => {
+        const isMatch = btn.getAttribute('data-range') === currentReportRange;
+        if (isMatch) {
+            btn.className = 'report-date-btn px-3 py-1.5 text-xs font-bold bg-white text-blue-600 shadow-sm rounded-md whitespace-nowrap transition-colors';
+        } else {
+            btn.className = 'report-date-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 whitespace-nowrap transition-colors';
+        }
+    });
+
+    if (typeof updateDashboardWidgets === 'function') {
+        updateDashboardWidgets();
+    }
 }
 
 // Attach Event Listener for Date Range Filters
 document.addEventListener('click', function(e) {
     const filterBtn = e.target.closest('.report-date-btn');
     if (filterBtn) {
-        // Reset all buttons to default styling
-        document.querySelectorAll('.report-date-btn').forEach(btn => {
-            btn.className = 'report-date-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 whitespace-nowrap transition-colors';
-        });
-        
-        // Set Active State
-        filterBtn.className = 'report-date-btn px-3 py-1.5 text-xs font-bold bg-white text-blue-600 shadow-sm rounded-md whitespace-nowrap transition-colors';
-        
-        const range = filterBtn.getAttribute('data-range');
+        const range = filterBtn.getAttribute('data-range') || 'today';
+        currentReportRange = range;
         renderReports(range);
+        setReportTab(activeReportTab);
     }
 });
 // --- Interactive Audit Logs Logic ---

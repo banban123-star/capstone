@@ -2575,18 +2575,17 @@
     </div>
 
     <!-- 3. Tabbed Navigation -->
-    <!-- (Your existing Tabs HTML remains the exact same) -->
-    <div class="flex overflow-x-auto gap-2 border-b border-slate-200 hide-scrollbar px-1">
-        <button class="report-tab-btn active px-4 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap transition-colors" data-target="tab-financial">
+    <div id="report-tabs-bar" class="flex overflow-x-auto gap-2 border-b border-slate-200 hide-scrollbar px-1 flex-nowrap" role="tablist" aria-label="Reports tabs">
+        <button id="report-tab-financial" onclick="setReportTab('financial')" role="tab" aria-selected="true" aria-controls="tab-financial" class="report-tab-btn active px-4 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="financial">
             <i class="ph-bold ph-chart-line-up mr-1"></i> Financial & Sales
         </button>
-        <button class="report-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors" data-target="tab-inventory">
+        <button id="report-tab-inventory" onclick="setReportTab('inventory')" role="tab" aria-selected="false" aria-controls="tab-inventory" class="report-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="inventory">
             <i class="ph-bold ph-packages mr-1"></i> Inventory Movement
         </button>
-        <button class="report-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors" data-target="tab-diagnostics">
+        <button id="report-tab-dtc" onclick="setReportTab('dtc')" role="tab" aria-selected="false" aria-controls="tab-dtc" class="report-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="dtc">
             <i class="ph-bold ph-cpu mr-1"></i> DTC Analytics
         </button>
-        <button class="report-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors" data-target="tab-operations">
+        <button id="report-tab-operations" onclick="setReportTab('operations')" role="tab" aria-selected="false" aria-controls="tab-operations" class="report-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="operations">
             <i class="ph-bold ph-users mr-1"></i> Operations Performance
         </button>
     </div>
@@ -2594,7 +2593,7 @@
     <!-- Tab Contents Container -->
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[400px]">
         <!-- TAB A: Financial & Sales -->
-        <div id="tab-financial" class="report-tab-content p-5 sm:p-6 block animate-[fadeIn_0.3s_ease-out]">
+        <div id="tab-financial" role="tabpanel" aria-labelledby="report-tab-financial" class="report-tab-content p-5 sm:p-6 block animate-[fadeIn_0.3s_ease-out]">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <!-- Trend Line Mockup -->
                 <div class="lg:col-span-2 border border-slate-200 rounded-xl p-5 flex flex-col">
@@ -2672,7 +2671,7 @@
         </div>
         
         <!-- TAB B: Inventory Movement -->
-        <div id="tab-inventory" class="report-tab-content p-5 sm:p-6 hidden">
+        <div id="tab-inventory" role="tabpanel" aria-labelledby="report-tab-inventory" class="report-tab-content p-5 sm:p-6 hidden">
             <!-- Content remains the same -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="border border-slate-200 rounded-xl overflow-hidden flex flex-col">
@@ -2704,7 +2703,7 @@
         </div>
         
         <!-- TAB C: Diagnostic & DTC Analytics -->
-        <div id="tab-diagnostics" class="report-tab-content p-5 sm:p-6 hidden">
+        <div id="tab-dtc" role="tabpanel" aria-labelledby="report-tab-dtc" class="report-tab-content p-5 sm:p-6 hidden">
             <!-- Content remains the same -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
@@ -2738,7 +2737,7 @@
         </div>
         
         <!-- TAB D: Operational Performance -->
-        <div id="tab-operations" class="report-tab-content p-5 sm:p-6 hidden">
+        <div id="tab-operations" role="tabpanel" aria-labelledby="report-tab-operations" class="report-tab-content p-5 sm:p-6 hidden">
             <!-- Content remains the same -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="border border-slate-200 rounded-xl overflow-hidden">
