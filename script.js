@@ -2042,7 +2042,9 @@ window.confirmRestock = function() {
     
     const part = mockInventory.find(p => p.id === currentRestockPartId);
     if (part) {
+        const stockBefore = part.stock;
         part.stock += qty;
+        const stockAfter = part.stock;
         
         const catConf = categoryConfig[part.category];
         if (catConf && catConf.hasExpiry) {
@@ -2053,6 +2055,21 @@ window.confirmRestock = function() {
                     part.expiryDate = expInput.value;
                 }
             }
+        }
+        
+        const noteInput = document.getElementById('restock-notes');
+        const note = (noteInput && noteInput.value) ? noteInput.value.trim() : '';
+        const ref = note ? `Restock: ${note}` : 'Restock';
+
+        if (typeof recordMovement === 'function') {
+            recordMovement({
+                part,
+                type: 'in',
+                quantity: qty,
+                stockBefore,
+                stockAfter,
+                reference: ref
+            });
         }
         
         // Optionally update minStock or anything else, but just stock is fine
@@ -2165,16 +2182,44 @@ function savePartForm() {
     }
 
     if (part) {
+        const oldStock = Number(part.stock) || 0;
+        const newStock = Number(newData.stock) || 0;
+        const stockDiff = newStock - oldStock;
+
         // Update existing part in place
         Object.assign(part, newData);
+
+        if (stockDiff !== 0 && typeof recordMovement === 'function') {
+            recordMovement({
+                part,
+                type: 'adjust',
+                quantity: Math.abs(stockDiff),
+                stockBefore: oldStock,
+                stockAfter: newStock,
+                reference: 'Manual edit'
+            });
+        }
     } else {
         // Add new part
         const newId = 'P' + Date.now();
-        fullInventoryData.unshift({
+        const newPart = {
             id: newId,
             ...newData,
             reserved: 0
-        });
+        };
+        fullInventoryData.unshift(newPart);
+
+        const initialStock = Number(newPart.stock) || 0;
+        if (initialStock > 0 && typeof recordMovement === 'function') {
+            recordMovement({
+                part: newPart,
+                type: 'new',
+                quantity: initialStock,
+                stockBefore: 0,
+                stockAfter: initialStock,
+                reference: 'New part'
+            });
+        }
     }
 
     closeAddPartModal();
@@ -2183,8 +2228,11 @@ function savePartForm() {
     if (typeof updateDiagStepper === 'function') updateDiagStepper(); // update any diagnostic steps using it
 }
 
+let currentWalkInPartName = '';
+
 function openWalkInModalInv(itemName, itemPrice) {
     if (!window.can('inventory.walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
+    currentWalkInPartName = itemName || '';
     document.getElementById('walkin-inv-item-name').textContent = itemName;
     document.getElementById('walkin-inv-item-price').textContent = "\u20B1" + itemPrice;
     toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', true);
@@ -2199,7 +2247,25 @@ function confirmWalkInSaleInv(event) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeWalkInModalInv();
-        alert("Payment Confirmed! Stock has been deducted automatically.");
+        const part = fullInventoryData.find(p => p.name === currentWalkInPartName);
+        if (part && part.stock > 0) {
+            const stockBefore = part.stock;
+            part.stock -= 1;
+            const stockAfter = part.stock;
+            const txnId = 'TXN-' + Math.floor(100 + Math.random() * 900);
+            if (typeof recordMovement === 'function') {
+                recordMovement({
+                    part,
+                    type: 'out',
+                    quantity: 1,
+                    stockBefore,
+                    stockAfter,
+                    reference: `Walk-in sale ${txnId}`
+                });
+            }
+            renderInventory();
+        }
+        showToast("Payment Confirmed! Stock has been deducted automatically.");
     }, 800);
 }
 
@@ -2236,6 +2302,30 @@ function processWalkinPayment(event) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeWalkInCheckout();
+        if (Array.isArray(walkinCart) && walkinCart.length > 0) {
+            const txnId = 'TXN-' + Math.floor(100 + Math.random() * 900);
+            walkinCart.forEach(cartItem => {
+                const part = fullInventoryData.find(p => p.id === cartItem.id);
+                if (part && part.stock > 0) {
+                    const stockBefore = part.stock;
+                    const qtyDeducted = Math.min(part.stock, cartItem.qty);
+                    part.stock = Math.max(0, part.stock - cartItem.qty);
+                    const stockAfter = part.stock;
+                    if (typeof recordMovement === 'function') {
+                        recordMovement({
+                            part,
+                            type: 'out',
+                            quantity: qtyDeducted > 0 ? qtyDeducted : cartItem.qty,
+                            stockBefore,
+                            stockAfter,
+                            reference: `Walk-in sale ${txnId}`
+                        });
+                    }
+                }
+            });
+            walkinCart = [];
+            renderInventory();
+        }
         openReceiptModal();
     }, 800);
 }
@@ -2535,38 +2625,802 @@ function confirmAdvancePayment(event) {
     }, 800);
 }
 
-// --- Category Configuration ---
+// --- Category & Part Type Configuration ---
+const PART_TYPES = [
+    { id: 'spare', label: 'Spare Parts', icon: 'ph-wrench', color: 'blue' },
+    { id: 'engine', label: 'Engine Parts', icon: 'ph-engine', color: 'amber' },
+    { id: 'accessory', label: 'Accessories', icon: 'ph-package', color: 'purple' }
+];
+
 const categoryConfig = {
-    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100' , hasExpiry: false},
-    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100' , hasExpiry: false},
-    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100' , hasExpiry: true},
-    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100' , hasExpiry: false},
-    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100' , hasExpiry: false},
-    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100' , hasExpiry: false}
+    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100', hasExpiry: false, type: 'engine' },
+    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100', hasExpiry: false, type: 'spare' },
+    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100', hasExpiry: true, type: 'engine' },
+    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100', hasExpiry: false, type: 'spare' },
+    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100', hasExpiry: false, type: 'spare' },
+    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100', hasExpiry: false, type: 'accessory' }
 };
 
-function populateCategoryDropdowns() {
+function getPartType(part) {
+    if (!part) return '';
+    const cat = typeof part === 'string' ? part : (part.category || '');
+    const conf = categoryConfig[cat];
+    return (conf && conf.type) ? conf.type : '';
+}
+window.getPartType = getPartType;
+window.PART_TYPES = PART_TYPES;
+
+function getStockStatus(part) {
+    if (!part) return 'ok';
+    const stock = Number(part.stock) || 0;
+    const min = (part.minStock !== undefined && part.minStock !== null) ? Number(part.minStock) : 5;
+    if (stock === 0) return 'out';
+    if (stock <= min) return 'low';
+    return 'ok';
+}
+window.getStockStatus = getStockStatus;
+
+function renderPartIconTile(item) {
+    const cat = item.category || 'Uncategorized';
+    const catConf = categoryConfig[cat] || { name: cat, icon: 'ph-package', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
+    const hasCustomImg = item.img && !item.img.includes('placehold.co');
+    return `
+        <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center relative shadow-sm">
+            <div class="absolute inset-0 flex items-center justify-center ${catConf.bg} ${catConf.text}">
+                <i class="ph-bold ${catConf.icon} text-xl"></i>
+            </div>
+            ${hasCustomImg ? `<img src="${item.img}" class="absolute inset-0 w-full h-full object-cover z-10" onerror="this.style.display='none'">` : ''}
+        </div>
+    `;
+}
+window.renderPartIconTile = renderPartIconTile;
+
+// --- Inventory Movements Data Model & Configuration ---
+const MOVEMENT_TYPES = {
+    in: {
+        id: 'in',
+        label: 'Stock In / Restock',
+        icon: 'ph-arrow-down-left',
+        color: 'emerald'
+    },
+    out: {
+        id: 'out',
+        label: 'Stock Out / Sale',
+        icon: 'ph-arrow-up-right',
+        color: 'red'
+    },
+    adjust: {
+        id: 'adjust',
+        label: 'Adjustment',
+        icon: 'ph-sliders-horizontal',
+        color: 'amber'
+    },
+    reserved: {
+        id: 'reserved',
+        label: 'Reserved for repair',
+        icon: 'ph-lock-simple',
+        color: 'blue'
+    },
+    released: {
+        id: 'released',
+        label: 'Reservation released',
+        icon: 'ph-lock-simple-open',
+        color: 'purple'
+    },
+    new: {
+        id: 'new',
+        label: 'New part added',
+        icon: 'ph-plus-circle',
+        color: 'indigo'
+    }
+};
+window.MOVEMENT_TYPES = MOVEMENT_TYPES;
+
+function calcMovementDate(daysAgo, hour = 10, min = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, min, 0, 0);
+    return d.toISOString();
+}
+
+const inventoryMovements = [
+    {
+        id: 'mov-10',
+        timestamp: calcMovementDate(0, 8, 30),
+        partId: 'PROTO-C01',
+        partName: 'Coolant Temp Sensor (OEM Honda)',
+        sku: 'PROTO-C01',
+        type: 'out',
+        quantity: 1,
+        stockBefore: 7,
+        stockAfter: 6,
+        reference: 'Walk-in sale TXN-101',
+        performedBy: 'User (Owner/Cashier)'
+    },
+    {
+        id: 'mov-9',
+        timestamp: calcMovementDate(1, 14, 15),
+        partId: '120701',
+        partName: 'Sprocket (TRQ 38t)',
+        sku: '120701',
+        type: 'reserved',
+        quantity: 2,
+        stockBefore: 4,
+        stockAfter: 4,
+        reference: 'Job ABC-1234',
+        performedBy: 'Larpus (Mechanic)'
+    },
+    {
+        id: 'mov-8',
+        timestamp: calcMovementDate(2, 11, 45),
+        partId: '170010',
+        partName: 'Battery (Spypower 12n5l)',
+        sku: '170010',
+        type: 'out',
+        quantity: 1,
+        stockBefore: 6,
+        stockAfter: 5,
+        reference: 'Job XYZ-9876',
+        performedBy: 'Larpus (Mechanic)'
+    },
+    {
+        id: 'mov-7',
+        timestamp: calcMovementDate(4, 9, 20),
+        partId: '212028',
+        partName: 'Ignition Switch (TTGR TMX supremo)',
+        sku: '212028',
+        type: 'adjust',
+        quantity: 1,
+        stockBefore: 9,
+        stockAfter: 10,
+        reference: 'Physical audit adjustment',
+        performedBy: 'System Admin (Super Admin)'
+    },
+    {
+        id: 'mov-6',
+        timestamp: calcMovementDate(5, 16, 10),
+        partId: '980187',
+        partName: 'Chain (Global 428h/120l)',
+        sku: '980187',
+        type: 'in',
+        quantity: 10,
+        stockBefore: 2,
+        stockAfter: 12,
+        reference: 'Restock PO-8821',
+        performedBy: 'User (Owner/Cashier)'
+    },
+    {
+        id: 'mov-5',
+        timestamp: calcMovementDate(7, 13, 50),
+        partId: '330027',
+        partName: 'Tube Tire (Krx 2.25x17)',
+        sku: '330027',
+        type: 'released',
+        quantity: 1,
+        stockBefore: 8,
+        stockAfter: 8,
+        reference: 'Job J-401 reservation released',
+        performedBy: 'User (Owner/Cashier)'
+    },
+    {
+        id: 'mov-4',
+        timestamp: calcMovementDate(9, 10, 5),
+        partId: '211700',
+        partName: 'Carburetor (Keihin xr200)',
+        sku: '211700',
+        type: 'out',
+        quantity: 1,
+        stockBefore: 3,
+        stockAfter: 2,
+        reference: 'Walk-in sale TXN-094',
+        performedBy: 'User (Owner/Cashier)'
+    },
+    {
+        id: 'mov-3',
+        timestamp: calcMovementDate(11, 15, 30),
+        partId: '021568',
+        partName: 'Mini Driving Light (MRM-4502 v6)',
+        sku: '021568',
+        type: 'in',
+        quantity: 6,
+        stockBefore: 6,
+        stockAfter: 12,
+        reference: 'Supplier Restock',
+        performedBy: 'User (Owner/Cashier)'
+    },
+    {
+        id: 'mov-2',
+        timestamp: calcMovementDate(13, 9, 0),
+        partId: '330124',
+        partName: 'Chain (Krx 428h/130l)',
+        sku: '330124',
+        type: 'new',
+        quantity: 10,
+        stockBefore: 0,
+        stockAfter: 10,
+        reference: 'New catalog entry',
+        performedBy: 'System Admin (Super Admin)'
+    },
+    {
+        id: 'mov-1',
+        timestamp: calcMovementDate(14, 14, 20),
+        partId: '121060',
+        partName: 'Carburetor (Keihin tmx 155)',
+        sku: '121060',
+        type: 'out',
+        quantity: 1,
+        stockBefore: 5,
+        stockAfter: 4,
+        reference: 'Job J-398',
+        performedBy: 'Larpus (Mechanic)'
+    }
+];
+window.inventoryMovements = inventoryMovements;
+
+function recordMovement(params = {}) {
+    try {
+        const safeParams = (params && typeof params === 'object') ? params : {};
+        const rawPart = safeParams.part;
+
+        let partObj = null;
+        if (rawPart && typeof rawPart === 'object') {
+            partObj = rawPart;
+        } else if (rawPart !== undefined && rawPart !== null) {
+            const rawId = String(rawPart);
+            if (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData)) {
+                partObj = fullInventoryData.find(p => p && p.id === rawId);
+            }
+            if (!partObj && typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) {
+                partObj = mockInventory.find(p => p && p.id === rawId);
+            }
+        }
+
+        const partId = (partObj && partObj.id !== undefined && partObj.id !== null)
+            ? String(partObj.id)
+            : (rawPart && (typeof rawPart === 'string' || typeof rawPart === 'number') ? String(rawPart) : 'unknown');
+        const partName = (partObj && partObj.name) ? String(partObj.name) : 'Unknown Part';
+        const sku = (partObj && partObj.sku) ? String(partObj.sku) : partId;
+
+        const rawType = safeParams.type;
+        const type = (rawType && MOVEMENT_TYPES[rawType]) ? String(rawType) : 'adjust';
+
+        const rawQty = safeParams.quantity;
+        const quantity = Math.max(1, Math.abs(Number(rawQty) || 1));
+
+        const currentStock = (partObj && typeof partObj.stock === 'number') ? partObj.stock : 0;
+
+        let stockBefore;
+        let stockAfter;
+
+        if (safeParams.stockBefore !== undefined && safeParams.stockAfter !== undefined) {
+            stockBefore = Number(safeParams.stockBefore);
+            stockAfter = Number(safeParams.stockAfter);
+        } else if (safeParams.stockBefore !== undefined) {
+            stockBefore = Number(safeParams.stockBefore);
+            if (type === 'in' || type === 'released') stockAfter = stockBefore + quantity;
+            else if (type === 'out' || type === 'reserved') stockAfter = Math.max(0, stockBefore - quantity);
+            else if (type === 'new') stockAfter = stockBefore + quantity;
+            else stockAfter = stockBefore;
+        } else if (safeParams.stockAfter !== undefined) {
+            stockAfter = Number(safeParams.stockAfter);
+            if (type === 'in' || type === 'released') stockBefore = Math.max(0, stockAfter - quantity);
+            else if (type === 'out' || type === 'reserved') stockBefore = stockAfter + quantity;
+            else if (type === 'new') stockBefore = 0;
+            else stockBefore = stockAfter;
+        } else {
+            if (type === 'in') {
+                stockBefore = Math.max(0, currentStock - quantity);
+                stockAfter = currentStock;
+            } else if (type === 'out') {
+                stockBefore = currentStock + quantity;
+                stockAfter = currentStock;
+            } else if (type === 'reserved' || type === 'released') {
+                stockBefore = currentStock;
+                stockAfter = currentStock;
+            } else if (type === 'new') {
+                stockBefore = 0;
+                stockAfter = currentStock;
+            } else {
+                stockBefore = currentStock;
+                stockAfter = currentStock;
+            }
+        }
+
+        const reference = (safeParams.reference && String(safeParams.reference).trim())
+            ? String(safeParams.reference).trim()
+            : (type === 'in' ? 'Restock' : (type === 'out' ? 'Stock Out' : 'Adjustment'));
+
+        let performedBy = '';
+        if (safeParams.performedBy && typeof safeParams.performedBy === 'string' && safeParams.performedBy.trim()) {
+            performedBy = safeParams.performedBy.trim();
+        } else {
+            const roleKey = (typeof currentRole !== 'undefined' && currentRole) ||
+                            (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('currentUserRole')) ||
+                            (typeof localStorage !== 'undefined' && localStorage.getItem('activeRole')) ||
+                            'admin';
+            const userObj = (typeof systemUsers !== 'undefined' && systemUsers && systemUsers[roleKey]) ? systemUsers[roleKey] : null;
+            const roleConfig = (typeof ROLES_CONFIG !== 'undefined' && ROLES_CONFIG && ROLES_CONFIG[roleKey]) ? ROLES_CONFIG[roleKey] : null;
+            const name = (userObj && userObj.name) ? userObj.name : 'User';
+            const roleLabel = (roleConfig && (roleConfig.shortLabel || roleConfig.label)) || (userObj && userObj.role) || 'Owner/Cashier';
+            performedBy = `${name} (${roleLabel})`;
+        }
+
+        const entry = {
+            id: 'mov-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+            timestamp: (safeParams.timestamp && typeof safeParams.timestamp === 'string') ? safeParams.timestamp : new Date().toISOString(),
+            partId,
+            partName,
+            sku,
+            type,
+            quantity,
+            stockBefore,
+            stockAfter,
+            reference,
+            performedBy
+        };
+
+        if (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) {
+            inventoryMovements.unshift(entry);
+        }
+
+        return entry;
+    } catch (err) {
+        const fallbackEntry = {
+            id: 'mov-' + Date.now(),
+            timestamp: new Date().toISOString(),
+            partId: 'unknown',
+            partName: 'Unknown Part',
+            sku: 'unknown',
+            type: 'adjust',
+            quantity: 1,
+            stockBefore: 0,
+            stockAfter: 0,
+            reference: 'Manual edit',
+            performedBy: 'User (Owner/Cashier)'
+        };
+        if (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) {
+            inventoryMovements.unshift(fallbackEntry);
+        }
+        return fallbackEntry;
+    }
+}
+window.recordMovement = recordMovement;
+
+// --- Inventory Movements View Controller ---
+
+let currentInventoryTab = 'stock';
+window.currentInventoryTab = currentInventoryTab;
+
+function switchInventoryTab(tab) {
+    currentInventoryTab = tab || 'stock';
+    window.currentInventoryTab = currentInventoryTab;
+
+    const stockContent = document.getElementById('inv-tab-content-stock');
+    const mvContent = document.getElementById('inv-tab-content-movements');
+    const tabStockBtn = document.getElementById('tab-inv-stock');
+    const tabMvBtn = document.getElementById('tab-inv-movements');
+
+    if (currentInventoryTab === 'stock') {
+        if (stockContent) stockContent.classList.remove('hidden');
+        if (mvContent) mvContent.classList.add('hidden');
+        if (tabStockBtn) {
+            tabStockBtn.className = 'px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center gap-2';
+        }
+        if (tabMvBtn) {
+            tabMvBtn.className = 'px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-2';
+        }
+    } else {
+        if (stockContent) stockContent.classList.add('hidden');
+        if (mvContent) mvContent.classList.remove('hidden');
+        if (tabStockBtn) {
+            tabStockBtn.className = 'px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-2';
+        }
+        if (tabMvBtn) {
+            tabMvBtn.className = 'px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center gap-2';
+        }
+        renderMovements();
+    }
+}
+window.switchInventoryTab = switchInventoryTab;
+
+function formatMovementDateTime(isoString) {
+    if (!isoString) return '-';
+    try {
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return isoString;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = months[d.getMonth()];
+        const day = d.getDate();
+        const year = d.getFullYear();
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        return `${month} ${day}, ${year} ${hours}:${minutes} ${ampm}`;
+    } catch (e) {
+        return isoString;
+    }
+}
+
+function renderMovementBadge(type) {
+    const conf = (typeof MOVEMENT_TYPES !== 'undefined' && MOVEMENT_TYPES[type]) ? MOVEMENT_TYPES[type] : {
+        label: type || 'Movement',
+        icon: 'ph-arrows-left-right',
+        color: 'slate'
+    };
+    
+    const colorClasses = {
+        emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+        red: 'bg-red-50 text-red-700 border-red-200',
+        amber: 'bg-amber-50 text-amber-700 border-amber-200',
+        blue: 'bg-blue-50 text-blue-700 border-blue-200',
+        purple: 'bg-purple-50 text-purple-700 border-purple-200',
+        indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        slate: 'bg-slate-50 text-slate-700 border-slate-200'
+    };
+    const cls = colorClasses[conf.color] || colorClasses.slate;
+    return `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${cls}"><i class="ph-bold ${conf.icon}"></i> ${conf.label}</span>`;
+}
+
+function formatMovementQty(item) {
+    const qty = Number(item.quantity) || 0;
+    const type = item.type;
+    if (type === 'in' || type === 'new' || type === 'released') {
+        return `<span class="font-bold text-emerald-600">+${qty}</span>`;
+    }
+    if (type === 'out' || type === 'reserved') {
+        return `<span class="font-bold text-red-600">-${qty}</span>`;
+    }
+    if (type === 'adjust') {
+        if (item.stockAfter > item.stockBefore) {
+            return `<span class="font-bold text-emerald-600">+${qty}</span>`;
+        }
+        if (item.stockAfter < item.stockBefore) {
+            return `<span class="font-bold text-red-600">-${qty}</span>`;
+        }
+        return `<span class="font-bold text-slate-700">${qty}</span>`;
+    }
+    return `<span class="font-bold text-slate-700">${qty}</span>`;
+}
+
+function matchesMovementDate(timestamp, range) {
+    if (!range || range === 'all') return true;
+    if (!timestamp) return false;
+    const itemDate = new Date(timestamp);
+    if (isNaN(itemDate.getTime())) return false;
+    const now = new Date();
+    
+    if (range === 'today') {
+        return itemDate.getFullYear() === now.getFullYear() &&
+               itemDate.getMonth() === now.getMonth() &&
+               itemDate.getDate() === now.getDate();
+    }
+    if (range === '7d') {
+        const diffMs = now.getTime() - itemDate.getTime();
+        return diffMs >= 0 && diffMs <= 7 * 24 * 60 * 60 * 1000;
+    }
+    if (range === '30d') {
+        const diffMs = now.getTime() - itemDate.getTime();
+        return diffMs >= 0 && diffMs <= 30 * 24 * 60 * 60 * 1000;
+    }
+    return true;
+}
+
+function getMovementPartType(item) {
+    if (!item) return '';
+    let part = null;
+    if (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData)) {
+        part = fullInventoryData.find(p => p && p.id === item.partId);
+    }
+    if (!part && typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) {
+        part = mockInventory.find(p => p && p.id === item.partId);
+    }
+    if (part && typeof getPartType === 'function') {
+        return getPartType(part);
+    }
+    return '';
+}
+
+function toggleMovementCard(id) {
+    const body = document.getElementById(`m-mv-body-${id}`);
+    const icon = document.getElementById(`m-mv-icon-${id}`);
+    if (!body) return;
+    
+    const isHidden = body.classList.contains('hidden');
+    if (isHidden) {
+        body.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180', 'text-blue-500');
+    } else {
+        body.classList.add('hidden');
+        if (icon) icon.classList.remove('rotate-180', 'text-blue-500');
+    }
+}
+window.toggleMovementCard = toggleMovementCard;
+
+function clearMovementFilters() {
+    const searchEl = document.getElementById('mv-search');
+    if (searchEl) searchEl.value = '';
+    const typeEl = document.getElementById('mv-filter-type');
+    if (typeEl) typeEl.value = '';
+    const dateEl = document.getElementById('mv-filter-date');
+    if (dateEl) dateEl.value = 'all';
+    const partTypeEl = document.getElementById('mv-filter-part-type');
+    if (partTypeEl) partTypeEl.value = '';
+    renderMovements();
+}
+window.clearMovementFilters = clearMovementFilters;
+
+function renderMovements() {
+    const tableBody = document.getElementById('mv-tbody');
+    const mobileContainer = document.getElementById('mv-mobile-cards');
+    const resultsCount = document.getElementById('mv-results-count');
+
+    // Clear containers before rendering
+    if (tableBody) tableBody.innerHTML = '';
+    if (mobileContainer) mobileContainer.innerHTML = '';
+
+    const query = (document.getElementById('mv-search')?.value || '').toLowerCase().trim();
+    const typeFilter = document.getElementById('mv-filter-type')?.value || '';
+    const dateFilter = document.getElementById('mv-filter-date')?.value || 'all';
+    const partTypeFilter = document.getElementById('mv-filter-part-type')?.value || '';
+
+    const movements = (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) ? inventoryMovements : [];
+
+    const filtered = movements.filter(item => {
+        if (!item) return false;
+
+        const matchesQuery = !query ||
+            (item.partName && item.partName.toLowerCase().includes(query)) ||
+            (item.sku && item.sku.toLowerCase().includes(query)) ||
+            (item.reference && item.reference.toLowerCase().includes(query));
+
+        const matchesType = !typeFilter || item.type === typeFilter;
+        const matchesDate = matchesMovementDate(item.timestamp, dateFilter);
+        const matchesPartType = !partTypeFilter || getMovementPartType(item) === partTypeFilter;
+
+        return matchesQuery && matchesType && matchesDate && matchesPartType;
+    });
+
+    // Sort newest first
+    filtered.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+    });
+
+    if (filtered.length === 0) {
+        if (resultsCount) {
+            resultsCount.textContent = 'Showing 0 movements';
+            resultsCount.classList.remove('hidden');
+        }
+        const emptyHtml = `
+            <div class="py-12 px-6 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center gap-3 w-full">
+                <i class="ph-bold ph-magnifying-glass text-4xl text-slate-300"></i>
+                <div>No movements found</div>
+                <button type="button" onclick="clearMovementFilters()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 shadow-sm mt-2 transition-colors">Clear filters</button>
+            </div>
+        `;
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">${emptyHtml}</td></tr>`;
+        }
+        if (mobileContainer) {
+            mobileContainer.innerHTML = emptyHtml;
+        }
+        return;
+    }
+
+    if (resultsCount) {
+        resultsCount.textContent = `Showing ${filtered.length} movement${filtered.length === 1 ? '' : 's'}`;
+        resultsCount.classList.remove('hidden');
+    }
+
+    let tableHtml = '';
+    let mobileHtml = '';
+
+    filtered.forEach(item => {
+        const safePartName = item.partName || 'Unknown Part';
+        const safeSku = item.sku ? '#' + item.sku : '';
+        const safeBefore = (item.stockBefore !== undefined && item.stockBefore !== null) ? item.stockBefore : '-';
+        const safeAfter = (item.stockAfter !== undefined && item.stockAfter !== null) ? item.stockAfter : '-';
+        const safeRef = item.reference || '-';
+        const safeBy = item.performedBy || '-';
+
+        // Desktop table row
+        tableHtml += `
+            <tr class="hover:bg-slate-50/80 transition-colors">
+                <td class="p-3.5 text-xs text-slate-600 whitespace-nowrap">${formatMovementDateTime(item.timestamp)}</td>
+                <td class="p-3.5">
+                    <div class="font-bold text-slate-800 text-sm leading-snug">${safePartName}</div>
+                    <div class="text-[11px] text-slate-400 font-mono mt-0.5">${safeSku}</div>
+                </td>
+                <td class="p-3.5 whitespace-nowrap">${renderMovementBadge(item.type)}</td>
+                <td class="p-3.5 whitespace-nowrap text-sm">${formatMovementQty(item)}</td>
+                <td class="p-3.5 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5 text-xs font-mono">
+                        <span class="text-slate-500">${safeBefore}</span>
+                        <i class="ph-bold ph-arrow-right text-[10px] text-slate-400"></i>
+                        <span class="font-bold text-slate-800">${safeAfter}</span>
+                    </div>
+                </td>
+                <td class="p-3.5 text-xs text-slate-700 font-medium">${safeRef}</td>
+                <td class="p-3.5 text-xs text-slate-600 whitespace-nowrap">${safeBy}</td>
+            </tr>
+        `;
+
+        // Mobile card (collapsed by default)
+        mobileHtml += `
+            <div class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+                <div class="p-3.5 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors" onclick="toggleMovementCard('${item.id}')">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <span class="text-[11px] text-slate-400 font-medium">${formatMovementDateTime(item.timestamp)}</span>
+                            <div>${formatMovementQty(item)}</div>
+                        </div>
+                        <div class="font-bold text-slate-800 text-sm leading-tight truncate">${safePartName}</div>
+                        <div class="text-[11px] text-slate-400 font-mono mt-0.5 mb-2">${safeSku}</div>
+                        <div class="flex items-center justify-between">
+                            <div>${renderMovementBadge(item.type)}</div>
+                            <i id="m-mv-icon-${item.id}" class="ph-bold ph-caret-down text-slate-400 text-base transition-transform"></i>
+                        </div>
+                    </div>
+                </div>
+                <div id="m-mv-body-${item.id}" class="hidden p-3.5 pt-2 border-t border-slate-100 bg-slate-50/60 flex flex-col gap-2 text-xs">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-semibold">Stock:</span>
+                        <div class="flex items-center gap-1.5 font-mono">
+                            <span class="text-slate-500">${safeBefore}</span>
+                            <i class="ph-bold ph-arrow-right text-[10px] text-slate-400"></i>
+                            <span class="font-bold text-slate-800">${safeAfter}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-semibold">Reference:</span>
+                        <span class="font-medium text-slate-700 truncate max-w-[200px]" title="${safeRef}">${safeRef}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-500 font-semibold">Performed By:</span>
+                        <span class="font-medium text-slate-700">${safeBy}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+
+    if (tableBody) tableBody.innerHTML = tableHtml;
+    if (mobileContainer) mobileContainer.innerHTML = mobileHtml;
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderMovements = renderMovements;
+
+let currentSummaryFilter = '';
+window.currentSummaryFilter = currentSummaryFilter;
+
+function renderSummaryStrip() {
+    const strip = document.getElementById('inv-summary-strip');
+    if (!strip) return;
+
+    const totalCount = fullInventoryData.length;
+    const lowCount = fullInventoryData.filter(p => getStockStatus(p) === 'low').length;
+    const outCount = fullInventoryData.filter(p => getStockStatus(p) === 'out').length;
+    const expiringCount = fullInventoryData.filter(p => {
+        if (typeof getExpiryStatus !== 'function') return false;
+        const st = getExpiryStatus(p);
+        return st && (st.status === 'soon' || st.status === 'expired');
+    }).length;
+
+    const isTotalActive = currentSummaryFilter === 'total';
+    const isLowActive = currentSummaryFilter === 'low';
+    const isOutActive = currentSummaryFilter === 'out';
+    const isExpActive = currentSummaryFilter === 'expiring';
+
+    strip.innerHTML = `
+        <button type="button" onclick="toggleSummaryFilter('total')" class="text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${isTotalActive ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 shadow-sm'}">
+            <div class="min-w-0 pr-2">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Total Items</div>
+                <div class="text-2xl font-extrabold text-slate-800 mt-0.5">${totalCount}</div>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-blue-100/70 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-bold ph-stack"></i>
+            </div>
+        </button>
+
+        <button type="button" onclick="toggleSummaryFilter('low')" class="text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${isLowActive ? 'border-amber-500 bg-amber-50/80 ring-2 ring-amber-500/20 shadow-md' : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-slate-50 shadow-sm'}">
+            <div class="min-w-0 pr-2">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Low Stock</div>
+                <div class="text-2xl font-extrabold text-amber-600 mt-0.5">${lowCount}</div>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-100/70 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-bold ph-warning"></i>
+            </div>
+        </button>
+
+        <button type="button" onclick="toggleSummaryFilter('out')" class="text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${isOutActive ? 'border-red-500 bg-red-50/80 ring-2 ring-red-500/20 shadow-md' : 'border-slate-200 bg-white hover:border-red-300 hover:bg-slate-50 shadow-sm'}">
+            <div class="min-w-0 pr-2">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Out of Stock</div>
+                <div class="text-2xl font-extrabold text-red-600 mt-0.5">${outCount}</div>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-red-100/70 text-red-600 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-bold ph-x-circle"></i>
+            </div>
+        </button>
+
+        <button type="button" onclick="toggleSummaryFilter('expiring')" class="text-left p-3.5 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${isExpActive ? 'border-orange-500 bg-orange-50/80 ring-2 ring-orange-500/20 shadow-md' : 'border-slate-200 bg-white hover:border-orange-300 hover:bg-slate-50 shadow-sm'}">
+            <div class="min-w-0 pr-2">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 truncate">Expiring / Expired</div>
+                <div class="text-2xl font-extrabold text-orange-600 mt-0.5">${expiringCount}</div>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-orange-100/70 text-orange-600 flex items-center justify-center text-xl shrink-0">
+                <i class="ph-bold ph-clock-countdown"></i>
+            </div>
+        </button>
+    `;
+}
+
+window.toggleSummaryFilter = function(filterType) {
+    if (filterType === 'total') {
+        currentSummaryFilter = '';
+    } else if (currentSummaryFilter === filterType) {
+        currentSummaryFilter = '';
+    } else {
+        currentSummaryFilter = filterType;
+    }
+    window.currentSummaryFilter = currentSummaryFilter;
+
+    const stockSelect = document.getElementById('inv-filter-stock');
+    if (stockSelect) {
+        if (currentSummaryFilter === 'low') stockSelect.value = 'low';
+        else if (currentSummaryFilter === 'out') stockSelect.value = 'out';
+        else stockSelect.value = '';
+    }
+
+    renderInventory();
+};
+
+let currentPartTypeFilter = '';
+window.currentPartTypeFilter = currentPartTypeFilter;
+
+function populateCategoryDropdowns(typeFilter) {
+    const activeType = (typeFilter !== undefined) ? typeFilter : currentPartTypeFilter;
     const filterSelect = document.getElementById('inv-filter-category');
     const formSelect = document.getElementById('add-part-category');
     const chipWrap = document.getElementById('inv-chip-wrap');
     
+    const categoriesToShow = Object.keys(categoryConfig).filter(cat => {
+        if (!activeType) return true;
+        return categoryConfig[cat].type === activeType;
+    });
+    
     if (filterSelect) {
-        filterSelect.innerHTML = '<option value="">Category: All</option>';
-        Object.keys(categoryConfig).forEach(cat => {
-            filterSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+        const currentVal = filterSelect.value;
+        let selectHtml = '<option value="">Category: All</option>';
+        categoriesToShow.forEach(cat => {
+            selectHtml += `<option value="${cat}">${cat}</option>`;
         });
+        filterSelect.innerHTML = selectHtml;
+        if (currentVal && categoriesToShow.includes(currentVal)) {
+            filterSelect.value = currentVal;
+        } else {
+            filterSelect.value = '';
+        }
     }
     
     if (formSelect) {
-        formSelect.innerHTML = '<option value="">Select a Category...</option>';
-        Object.keys(categoryConfig).forEach(cat => {
-            formSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-        });
+        if (formSelect.options.length <= 1) {
+            let formHtml = '<option value="">Select a Category...</option>';
+            Object.keys(categoryConfig).forEach(cat => {
+                formHtml += `<option value="${cat}">${cat}</option>`;
+            });
+            formSelect.innerHTML = formHtml;
+        }
     }
     
     if (chipWrap) {
         let chipHtml = `<button onclick="setCategoryFilter('')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px]" data-cat="">All</button>`;
-        Object.keys(categoryConfig).forEach(cat => {
+        categoriesToShow.forEach(cat => {
             const conf = categoryConfig[cat];
             chipHtml += `<button onclick="setCategoryFilter('${cat.replace(/'/g, "\\'")}')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px]" data-cat="${cat}"><i class="ph-bold ${conf.icon} text-lg"></i> ${conf.short}</button>`;
         });
@@ -2582,7 +3436,29 @@ window.setCategoryFilter = function(cat) {
     }
 };
 
-document.addEventListener('DOMContentLoaded', populateCategoryDropdowns);
+window.setPartTypeFilter = function(typeId) {
+    currentPartTypeFilter = typeId || '';
+    window.currentPartTypeFilter = currentPartTypeFilter;
+    populateCategoryDropdowns(currentPartTypeFilter);
+    renderInventory();
+};
+
+window.clearInvFilters = function() {
+    currentPartTypeFilter = '';
+    window.currentPartTypeFilter = '';
+    currentSummaryFilter = '';
+    window.currentSummaryFilter = '';
+    const searchInput = document.getElementById('inv-search');
+    if (searchInput) searchInput.value = '';
+    const stockSelect = document.getElementById('inv-filter-stock');
+    if (stockSelect) stockSelect.value = '';
+    populateCategoryDropdowns('');
+    renderInventory();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    populateCategoryDropdowns();
+});
 
 function updatePartExpiryVisibility(form) {
     if (!form) return;
@@ -2697,6 +3573,8 @@ function renderInventory() {
     const tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
 
+    renderSummaryStrip();
+
     const isMobile = document.body.classList.contains('mobile-app');
     
     // Check Permissions
@@ -2732,7 +3610,7 @@ function renderInventory() {
             }
             
         } else {
-            btnWrap.className = 'flex gap-2 w-full lg:w-auto shrink-0';
+            btnWrap.className = 'flex flex-wrap gap-2 w-full lg:w-auto shrink-0';
             if (canAutoAssign) {
                 html += `<button onclick="openAutoAssignLinks()" class="flex-1 lg:flex-none bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
                     <i class="ph-bold ph-magic-wand"></i> Auto Assign
@@ -2775,6 +3653,58 @@ function renderInventory() {
         }
     }
 
+    // Render Desktop Type Tabs
+    const typeTabsContainer = document.getElementById('inv-type-tabs');
+    if (typeTabsContainer) {
+        const allCount = fullInventoryData.length;
+        const isAllActive = !currentPartTypeFilter;
+        let tabsHtml = `
+            <button onclick="setPartTypeFilter('')" class="inv-type-tab pb-3 px-3.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${isAllActive ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}">
+                <i class="ph-bold ph-squares-four text-base"></i>
+                <span>All Parts</span>
+                <span class="text-xs px-2 py-0.5 rounded-full ${isAllActive ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-slate-100 text-slate-600 font-medium'}">${allCount}</span>
+            </button>
+        `;
+        PART_TYPES.forEach(t => {
+            const count = fullInventoryData.filter(p => getPartType(p) === t.id).length;
+            const isActive = currentPartTypeFilter === t.id;
+            tabsHtml += `
+                <button onclick="setPartTypeFilter('${t.id}')" class="inv-type-tab pb-3 px-3.5 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${isActive ? 'border-blue-600 text-blue-600 font-bold' : 'border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300'}">
+                    <i class="ph-bold ${t.icon} text-base"></i>
+                    <span>${t.label}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-blue-100 text-blue-700 font-bold' : 'bg-slate-100 text-slate-600 font-medium'}">${count}</span>
+                </button>
+            `;
+        });
+        typeTabsContainer.innerHTML = tabsHtml;
+    }
+
+    // Render Mobile Type Chips
+    const typeChipWrap = document.getElementById('inv-type-chip-wrap');
+    if (typeChipWrap) {
+        const allCount = fullInventoryData.length;
+        const isAllActive = !currentPartTypeFilter;
+        let chipsHtml = `
+            <button onclick="setPartTypeFilter('')" class="inv-type-chip shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors flex items-center gap-1.5 h-[36px] ${isAllActive ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                <i class="ph-bold ph-squares-four"></i>
+                <span>All Parts</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isAllActive ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'}">${allCount}</span>
+            </button>
+        `;
+        PART_TYPES.forEach(t => {
+            const count = fullInventoryData.filter(p => getPartType(p) === t.id).length;
+            const isActive = currentPartTypeFilter === t.id;
+            chipsHtml += `
+                <button onclick="setPartTypeFilter('${t.id}')" class="inv-type-chip shrink-0 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-colors flex items-center gap-1.5 h-[36px] ${isActive ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}">
+                    <i class="ph-bold ${t.icon}"></i>
+                    <span>${t.label}</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isActive ? 'bg-blue-700 text-white' : 'bg-slate-100 text-slate-600'}">${count}</span>
+                </button>
+            `;
+        });
+        typeChipWrap.innerHTML = chipsHtml;
+    }
+
     // Get filter values
     const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
     const stockFilter = document.getElementById('inv-filter-stock')?.value || '';
@@ -2790,7 +3720,7 @@ function renderInventory() {
                 chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px]';
             } else {
                 const conf = categoryConfig[cVal];
-                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors flex items-center gap-1.5 h-[40px] ${conf.bg} ${conf.text} ${conf.border}`;
+                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors flex items-center gap-1.5 h-[40px] ${conf ? `${conf.bg} ${conf.text} ${conf.border}` : 'bg-blue-600 text-white border-blue-600'}`;
             }
         } else {
             if (cVal === '') {
@@ -2807,15 +3737,25 @@ function renderInventory() {
         const matchesSearch = item.name.toLowerCase().includes(query) || item.sku.toLowerCase().includes(query) || item.comp.toLowerCase().includes(query);
         
         let matchesStock = true;
-        if (stockFilter === 'low') matchesStock = item.stock > 0 && item.stock <= 5;
-        if (stockFilter === 'out') matchesStock = item.stock === 0;
+        const activeStock = currentSummaryFilter || stockFilter;
+        if (activeStock === 'low') matchesStock = getStockStatus(item) === 'low';
+        else if (activeStock === 'out') matchesStock = getStockStatus(item) === 'out';
+        else if (activeStock === 'expiring') {
+            const expSt = (typeof getExpiryStatus === 'function') ? getExpiryStatus(item) : null;
+            matchesStock = !!(expSt && (expSt.status === 'soon' || expSt.status === 'expired'));
+        }
+
+        let matchesType = true;
+        if (currentPartTypeFilter) {
+            matchesType = getPartType(item) === currentPartTypeFilter;
+        }
 
         let matchesCat = true;
         if (query === '' && catFilter) {
             matchesCat = item.category.toLowerCase().includes(catFilter);
         }
 
-        return matchesSearch && matchesStock && matchesCat;
+        return matchesSearch && matchesStock && matchesType && matchesCat;
     });
 
     // Update result count
@@ -2842,6 +3782,10 @@ function renderInventory() {
         if (mobileContainer) {
             mobileContainer.innerHTML = mobileHtml + `<div class="py-12 px-6 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center gap-3"><i class="ph-bold ph-magnifying-glass text-4xl text-slate-300"></i> <div>No parts found</div><button onclick="clearInvFilters()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 shadow-sm mt-2 transition-colors">Clear filters</button></div></div>`;
         }
+        updateDashboardWidgets();
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
+        }
         return;
     }
 
@@ -2852,11 +3796,12 @@ function renderInventory() {
         let rowClass = 'hover:bg-blue-50/30 transition-colors';
         let btnStatus = `onclick="openWalkInModalInv('${item.name.replace(/'/g, "\\'")}', '${item.price.toFixed(2)}')" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors flex items-center gap-1"`;
 
-        if (item.stock === 0) {
+        const stockSt = getStockStatus(item);
+        if (stockSt === 'out') {
             stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-700 border border-red-200"><span class="w-2 h-2 rounded-full bg-red-500"></span> 0 Available</span>`;
             rowClass += ' opacity-75 bg-slate-50';
             btnStatus = `disabled class="bg-slate-100 text-slate-400 border border-slate-200 px-3 py-1.5 rounded-md text-xs font-bold cursor-not-allowed flex items-center gap-1"`;
-        } else if (item.stock <= 5) {
+        } else if (stockSt === 'low') {
             stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-yellow-100 text-yellow-700 border border-yellow-200"><span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> ${item.stock} Available</span>`;
         } else {
             stockBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> ${item.stock} Available</span>`;
@@ -2887,7 +3832,7 @@ function renderInventory() {
             <tr class="${rowClass}">
                 <td class="p-4">
                     <div class="flex items-center gap-3">
-                        <img src="${item.img}" alt="${item.name}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 bg-white shrink-0 shadow-sm">
+                        ${renderPartIconTile(item)}
                         <div>
                             <div class="font-bold text-slate-800">${item.name}</div>
                             <div class="text-[11px] text-slate-500 mt-0.5 mb-1.5">SKU: ${item.sku} | Comp: ${item.comp}</div>
@@ -2937,12 +3882,13 @@ function renderInventory() {
             const cat = item.category || 'Uncategorized';
             const catConf = categoryConfig[cat] || { name: cat, icon: 'ph-box', bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200' };
             
+            const stockSt = getStockStatus(item);
             let stockBadgeMobile = '';
-            if (item.stock === 0) stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>`;
-            else if (item.stock <= 5) stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">${item.stock} Available</span>`;
+            if (stockSt === 'out') stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-100 text-red-700">0 Available</span>`;
+            else if (stockSt === 'low') stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-yellow-100 text-yellow-700">${item.stock} Available</span>`;
             else stockBadgeMobile = `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-700">${item.stock} Available</span>`;
             
-            let isOut = item.stock === 0;
+            let isOut = stockSt === 'out';
             let dtcTag = item.dtc ? `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200"><i class="ph-bold ph-cpu text-blue-500"></i> Linked DTC: ${item.dtc}</span>` : '';
             
             let expDot = '';
@@ -2969,12 +3915,7 @@ function renderInventory() {
             mobileHtml += `
             <div class="bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col ${isOut ? 'opacity-75' : ''}">
                 <div class="p-3 flex items-start gap-3 cursor-pointer hover:bg-slate-50 transition-colors" onclick="toggleInvPartCard('${item.id}')">
-                    <div class="w-12 h-12 rounded-lg shrink-0 overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center relative">
-                        <div class="absolute inset-0 flex items-center justify-center ${catConf.bg} ${catConf.text}">
-                            <i class="ph-bold ${catConf.icon} text-xl"></i>
-                        </div>
-                        ${(item.img && !item.img.includes('placehold.co')) ? `<img src="${item.img}" class="absolute inset-0 w-full h-full object-cover z-10" onerror="this.style.display='none'">` : ''}
-                    </div>
+                    ${renderPartIconTile(item)}
                     <div class="flex-1 min-w-0">
                         <div class="font-bold text-slate-800 text-sm leading-tight">${item.name}${expDot}</div>
                         <div class="text-[11px] text-slate-400 font-mono mt-0.5">#${item.sku}</div>
@@ -3011,14 +3952,17 @@ function renderInventory() {
         mobileContainer.innerHTML = mobileHtml;
     }
     updateDashboardWidgets();
+    if (typeof renderMovements === 'function') {
+        renderMovements();
+    }
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
     }
 }
 
 function updateDashboardWidgets() {
-    const lowStockParts = mockInventory.filter(p => p.stock > 0 && p.stock <= p.minStock);
-    const outOfStockParts = mockInventory.filter(p => p.stock === 0);
+    const lowStockParts = mockInventory.filter(p => getStockStatus(p) === 'low');
+    const outOfStockParts = mockInventory.filter(p => getStockStatus(p) === 'out');
     
     const expiredParts = [];
     const soonParts = [];
@@ -3113,10 +4057,19 @@ function updateDashboardWidgets() {
 // Global Event Listeners for Inventory Filtering
 document.addEventListener('input', function(e) {
     if (e.target.id === 'inv-search') renderInventory();
+    if (e.target.id === 'mv-search') renderMovements();
 });
 
 document.addEventListener('change', function(e) {
-    if (e.target.id === 'inv-filter-stock' || e.target.id === 'inv-filter-category') renderInventory();
+    if (e.target.id === 'inv-filter-stock') {
+        currentSummaryFilter = e.target.value;
+        window.currentSummaryFilter = currentSummaryFilter;
+        renderInventory();
+    } else if (e.target.id === 'inv-filter-category') {
+        renderInventory();
+    } else if (e.target.id === 'mv-filter-type' || e.target.id === 'mv-filter-date' || e.target.id === 'mv-filter-part-type') {
+        renderMovements();
+    }
 });
 
 // --- Interactive Walk-In Cart Logic ---
@@ -3208,13 +4161,13 @@ document.addEventListener('click', function(e) {
             const existingItem = walkinCart.find(item => item.id === partId);
             if (existingItem) {
                 if(existingItem.qty < part.stock) existingItem.qty += 1;
-                else alert('Not enough stock available for this item.');
+                else showToast('Not enough stock available for this item.');
             } else {
                 walkinCart.push({ ...part, qty: 1 });
             }
             renderWalkinCart();
         } else {
-            alert('This item is out of stock.');
+            showToast('This item is out of stock.');
         }
         
         document.getElementById('walkin-search-input').value = '';
@@ -3234,7 +4187,7 @@ document.addEventListener('click', function(e) {
     if (btnPlus) {
         const idx = btnPlus.getAttribute('data-index');
         if (walkinCart[idx].qty < walkinCart[idx].stock) walkinCart[idx].qty += 1;
-        else alert('You cannot exceed the available stock limit.');
+        else showToast('You cannot exceed the available stock limit.');
         renderWalkinCart();
     }
 

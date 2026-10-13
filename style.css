@@ -178,6 +178,9 @@ body.mobile-app #mobile-bottom-nav {
 
 /* "More" bottom sheet (removed) */
 body.mobile-app #m-toast { display: block; }
+body.mobile-app #inv-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+body.mobile-app #inv-type-tabs { display: none !important; }
+body.mobile-app #inv-type-chip-wrap { display: flex !important; }
 
 
 .m-sheet-row {
@@ -466,6 +469,30 @@ body.mobile-app #inv-select-wrap {
 }
 body.mobile-app #inv-select-wrap select {
     flex: 1 !important;
+}
+
+/* Movements View Mobile UI Overrides */
+body.mobile-app .mv-table-wrap {
+    display: none !important;
+}
+body.mobile-app .mv-cards {
+    display: flex !important;
+    padding-bottom: 80px !important;
+}
+body.mobile-app #mv-top-bar {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+    padding: 1rem !important;
+}
+body.mobile-app #mv-search-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+body.mobile-app #mv-filter-wrap {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
 }
 
 body.mobile-app #add-part-content .grid-cols-1 {

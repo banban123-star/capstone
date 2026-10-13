@@ -1882,13 +1882,23 @@
 <style>
     /* Responsive Top Bar Stack for all roles on phone width */
     @media (max-width: 639px) {
+        #inv-type-tabs { display: none !important; }
+        #inv-type-chip-wrap { display: flex !important; }
         #inv-top-bar { flex-direction: column !important; gap: 1rem !important; }
         #inv-filter-group { flex-direction: column !important; }
         #inv-search-wrap { width: 100% !important; max-width: none !important; }
         #inv-select-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; width: 100% !important; }
         #view-inventory { padding-bottom: 80px !important; }
         #inv-results-count { display: block !important; margin-top: 0.5rem; text-align: left; }
+        .mv-table-wrap { display: none !important; }
+        .mv-cards { display: flex !important; padding-bottom: 80px !important; }
+        #mv-top-bar { flex-direction: column !important; gap: 0.75rem !important; }
+        #mv-search-wrap { width: 100% !important; max-width: none !important; }
+        #mv-filter-wrap { width: 100% !important; }
     }
+    body.mobile-app #inv-summary-strip { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    body.mobile-app #inv-type-tabs { display: none !important; }
+    body.mobile-app #inv-type-chip-wrap { display: flex !important; }
     body.mobile-app #inv-top-bar { flex-direction: column !important; gap: 1rem !important; }
     body.mobile-app #inv-filter-group { flex-direction: column !important; }
     body.mobile-app #inv-search-wrap { width: 100% !important; max-width: none !important; }
@@ -1896,61 +1906,149 @@
     body.mobile-app #view-inventory { padding-bottom: 80px !important; }
     body.mobile-app #inv-results-count { display: block !important; margin-top: 0.5rem; text-align: left; }
     body.mobile-app #inv-chip-wrap { display: flex !important; }
+    body.mobile-app .mv-table-wrap { display: none !important; }
+    body.mobile-app .mv-cards { display: flex !important; padding-bottom: 80px !important; }
+    body.mobile-app #mv-top-bar { flex-direction: column !important; gap: 0.75rem !important; }
+    body.mobile-app #mv-search-wrap { width: 100% !important; max-width: none !important; }
+    body.mobile-app #mv-filter-wrap { width: 100% !important; }
+    #inv-type-chip-wrap::-webkit-scrollbar { display: none; }
     #inv-chip-wrap::-webkit-scrollbar { display: none; }
 </style>
 <div id="view-inventory" class="view-section active max-w-6xl mx-auto">
-    <!-- Top Action Bar & Filters -->
-    <div id="inv-top-bar" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-col lg:flex-row gap-4 items-center justify-between">
-        <div id="inv-filter-group" class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-1">
-            <div id="inv-search-wrap" class="relative w-full sm:max-w-md lg:max-w-xs shrink-0">
+    <!-- Inventory Main View Tabs (Stock / Movements) -->
+    <div id="inv-main-tabs" class="flex items-center gap-2 mb-4 border-b border-slate-200">
+        <button type="button" id="tab-inv-stock" onclick="switchInventoryTab('stock')" class="px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center gap-2">
+            <i class="ph-bold ph-package"></i>
+            <span>Stock</span>
+        </button>
+        <button type="button" id="tab-inv-movements" onclick="switchInventoryTab('movements')" class="px-4 py-2.5 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-2">
+            <i class="ph-bold ph-arrows-down-up"></i>
+            <span>Movements</span>
+        </button>
+    </div>
+
+    <!-- Tab 1: Stock View -->
+    <div id="inv-tab-content-stock">
+        <!-- Inventory Summary Strip -->
+        <div id="inv-summary-strip" class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4"></div>
+
+        <!-- Desktop Type Tabs -->
+        <div id="inv-type-tabs" class="hidden sm:flex items-center gap-2 mb-4 border-b border-slate-200"></div>
+
+        <!-- Top Action Bar & Filters -->
+        <div id="inv-top-bar" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-col lg:flex-row flex-wrap gap-4 items-center justify-between">
+            <div id="inv-filter-group" class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-1 min-w-0 flex-wrap items-center">
+                <div id="inv-search-wrap" class="relative w-full sm:max-w-md lg:max-w-xs shrink-0 min-w-0">
+                    <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="inv-search" autocomplete="off" placeholder="Search part, SKU or model" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm min-w-0">
+                </div>
+                <div id="inv-type-chip-wrap" class="hidden overflow-x-auto w-full gap-2 items-center pb-1 -mb-1" style="-webkit-overflow-scrolling: touch; scrollbar-width: none;"></div>
+                <div id="inv-chip-wrap" class="hidden overflow-x-auto w-full gap-2 items-center pb-1 -mb-1" style="-webkit-overflow-scrolling: touch; scrollbar-width: none;"></div>
+                <div id="inv-select-wrap" class="flex sm:flex-row gap-3 w-full sm:w-auto min-w-0 flex-wrap">
+                    <select id="inv-filter-stock" class="py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 min-w-0">
+                        <option value="">Stock: All</option>
+                        <option value="low">Low Stock</option>
+                        <option value="out">Out of Stock</option>
+                    </select>
+                    <select id="inv-filter-category" class="py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 min-w-0 max-w-full">
+                        <option value="">Category: All</option>
+                    </select>
+                </div>
+            </div>
+            <div id="inv-btn-wrap" class="flex flex-wrap gap-2 w-full lg:w-auto shrink-0">
+                <button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
+                </button>
+                <button onclick="openAddPartModal()" class="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-plus"></i> Add New Part
+                </button>
+            </div>
+        </div>
+        <div id="inv-results-count" class="hidden text-xs font-semibold text-slate-500 mb-4 px-1"></div>
+
+        <!-- Main Inventory Table -->
+        <div id="inventory-table-container" class="hidden sm:flex bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                            <th class="p-4">Part Details</th>
+                            <th class="p-4">Category</th>
+                            <th class="p-4">Price (₱)</th>
+                            <th class="p-4">Stock Level</th>
+                            <th class="p-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <!-- JS will inject dynamic rows here -->
+                    <tbody id="inventory-tbody" class="divide-y divide-slate-100 text-sm">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Mobile Cards Container -->
+        <div id="inventory-mobile-cards" class="flex sm:hidden flex-col gap-3 w-full">
+        </div>
+    </div>
+
+    <!-- Tab 2: Movements View -->
+    <div id="inv-tab-content-movements" class="hidden">
+        <!-- Movements Toolbar -->
+        <div id="mv-top-bar" class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 flex flex-col lg:flex-row flex-wrap gap-3 items-center justify-between">
+            <div id="mv-search-wrap" class="relative w-full lg:max-w-xs shrink-0 min-w-0">
                 <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                <input type="text" id="inv-search" autocomplete="off" placeholder="Search part, SKU or model" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                <input type="text" id="mv-search" autocomplete="off" placeholder="Search part, SKU or reference" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm min-w-0">
             </div>
-            <div id="inv-chip-wrap" class="hidden overflow-x-auto w-full gap-2 items-center pb-1 -mb-1" style="-webkit-overflow-scrolling: touch; scrollbar-width: none;"></div>
-            <div id="inv-select-wrap" class="flex sm:flex-row gap-3 w-full">
-                <select id="inv-filter-stock" class="py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20">
-                    <option value="">Stock: All</option>
-                    <option value="low">Low Stock</option>
-                    <option value="out">Out of Stock</option>
+            <div id="mv-filter-wrap" class="flex flex-col sm:flex-row gap-2.5 w-full lg:w-auto flex-1 min-w-0 flex-wrap justify-end">
+                <select id="mv-filter-type" class="py-2 px-2.5 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 min-w-0">
+                    <option value="">Type: All</option>
+                    <option value="in">Stock In / Restock</option>
+                    <option value="out">Stock Out / Sale</option>
+                    <option value="adjust">Adjustment</option>
+                    <option value="reserved">Reserved for repair</option>
+                    <option value="released">Reservation released</option>
+                    <option value="new">New part added</option>
                 </select>
-                <select id="inv-filter-category" class="py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20">
-                    <option value="">Category: All</option>
+                <select id="mv-filter-date" class="py-2 px-2.5 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 min-w-0">
+                    <option value="all">Date: All</option>
+                    <option value="today">Today</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                </select>
+                <select id="mv-filter-part-type" class="py-2 px-2.5 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 min-w-0">
+                    <option value="">Part Type: All</option>
+                    <option value="spare">Spare Parts</option>
+                    <option value="engine">Engine Parts</option>
+                    <option value="accessory">Accessories</option>
                 </select>
             </div>
         </div>
-        <div id="inv-btn-wrap" class="flex gap-2 w-full lg:w-auto shrink-0">
-            <button onclick="openRestockModal()" class="flex-1 lg:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <i class="ph-bold ph-arrows-clockwise"></i> Restock Items
-            </button>
-            <button onclick="openAddPartModal()" class="flex-1 lg:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <i class="ph-bold ph-plus"></i> Add New Part
-            </button>
-        </div>
-    </div>
-    <div id="inv-results-count" class="hidden text-xs font-semibold text-slate-500 mb-4 px-1"></div>
+        <div id="mv-results-count" class="hidden text-xs font-semibold text-slate-500 mb-4 px-1"></div>
 
-    <!-- Main Inventory Table -->
-    <div id="inventory-table-container" class="hidden sm:flex bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse min-w-[900px]">
-                <thead>
-                    <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
-                        <th class="p-4">Part Details</th>
-                        <th class="p-4">Category</th>
-                        <th class="p-4">Price (₱)</th>
-                        <th class="p-4">Stock Level</th>
-                        <th class="p-4 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <!-- JS will inject dynamic rows here -->
-                <tbody id="inventory-tbody" class="divide-y divide-slate-100 text-sm">
-                </tbody>
-            </table>
+        <!-- Desktop Movements Table -->
+        <div id="mv-table-container" class="mv-table-wrap hidden sm:flex bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-col mb-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[950px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                            <th class="p-3.5">Date & Time</th>
+                            <th class="p-3.5">Part</th>
+                            <th class="p-3.5">Movement</th>
+                            <th class="p-3.5">Qty</th>
+                            <th class="p-3.5">Stock</th>
+                            <th class="p-3.5">Reference</th>
+                            <th class="p-3.5">By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mv-tbody" class="divide-y divide-slate-100 text-sm">
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
 
-    <!-- Mobile Cards Container -->
-    <div id="inventory-mobile-cards" class="flex sm:hidden flex-col gap-3 w-full">
+        <!-- Mobile Movements Card List -->
+        <div id="mv-mobile-cards" class="mv-cards flex sm:hidden flex-col gap-3 w-full pb-24">
+        </div>
     </div>
 
     <!-- 1. Add New Part Profile Modal -->
