@@ -501,9 +501,9 @@
 <div id="view-customers" class="view-section active max-w-6xl mx-auto">
     
     <!-- Top Action Bar -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
-        <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1">
-            <div class="relative w-full sm:max-w-md">
+    <div class="cust-toolbar bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+        <div class="cust-toolbar-inputs flex flex-col sm:flex-row gap-3 w-full sm:w-auto flex-1">
+            <div class="cust-search-wrap relative w-full sm:max-w-md">
                 <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input type="text" id="cust-search" autocomplete="off" placeholder="Search customers or plates..." class="w-full pl-9 pr-4 py-3 sm:py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
             </div>
@@ -513,7 +513,7 @@
                 <option value="cleared">Cleared</option>
             </select>
         </div>
-        <div class="flex gap-3 w-full sm:w-auto shrink-0">
+        <div class="cust-toolbar-actions flex gap-3 w-full sm:w-auto shrink-0">
             <button onclick="openCustomerModal()" class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 sm:py-2 rounded-lg text-sm font-bold transition-colors shadow-sm whitespace-nowrap flex items-center justify-center gap-1.5 min-h-[44px]">
                 <i class="ph-bold ph-user-plus"></i> New Customer
             </button>
@@ -524,7 +524,7 @@
     </div>
 
     <!-- Grouped Customer Data Table (Desktop) -->
-    <div class="hidden sm:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div id="customers-table-wrap" class="cust-table-wrap desktop-table-wrap bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[900px]">
                 <thead>
@@ -544,7 +544,7 @@
     </div>
 
     <!-- Grouped Customer Cards (Mobile) -->
-    <div id="customers-mobile-cards" class="sm:hidden flex flex-col gap-4">
+    <div id="customers-mobile-cards" class="cust-cards m-cards">
     </div>
 
     <!-- Modals (Add New Customer / Register Vehicle) -->
@@ -1066,40 +1066,50 @@
         <div id="physical-inspection-card" class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
 
             <!-- Title -->
-            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pt-5 pb-3">
+            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pt-4 pb-2.5 sm:pt-4.5 sm:pb-3">
                 <h2 id="title-physical-inspection" class="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Physical Inspection Log</h2>
-                <button type="button" data-insp="reset" class="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                <button type="button" data-insp="reset" class="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
                     <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset
                 </button>
             </div>
 
-            <!-- Sticky progress + section jump bar -->
-            <div class="sticky top-0 z-10 bg-white/95 backdrop-blur border-y border-slate-100 px-4 sm:px-5 py-3 flex flex-col gap-2.5">
-                <div class="flex items-center gap-3">
-                    <div class="flex-1">
-                        <div class="flex items-center justify-between mb-1">
-                            <span id="insp-progress-text" class="text-xs font-extrabold text-slate-700">0 / 0 checked</span>
-                            <div class="flex items-center gap-1.5 text-[10px] font-bold">
-                                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">OK <span id="insp-count-ok">0</span></span>
-                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Watch <span id="insp-count-watch">0</span></span>
-                                <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Fix <span id="insp-count-fix">0</span></span>
-                            </div>
-                        </div>
-                        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div id="insp-progress-fill" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width:0%"></div>
-                        </div>
+            <!-- Sticky progress bar -->
+            <div class="sticky top-0 z-10 bg-white/95 backdrop-blur border-y border-slate-100 px-4 sm:px-5 py-2 sm:py-2.5">
+                <div class="flex items-center justify-between mb-1">
+                    <span id="insp-progress-text" class="text-xs font-extrabold text-slate-700">0 / 0 checked</span>
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold">
+                        <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">OK <span id="insp-count-ok">0</span></span>
+                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Watch <span id="insp-count-watch">0</span></span>
+                        <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Fix <span id="insp-count-fix">0</span></span>
                     </div>
                 </div>
-                <div id="insp-pills" class="flex gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1"></div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div id="insp-progress-fill" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width:0%"></div>
+                </div>
             </div>
 
-            <div class="p-4 sm:p-5 flex flex-col gap-5">
+            <div class="p-3.5 sm:p-5 flex flex-col gap-3 sm:gap-4">
 
-                <!-- Quick legend -->
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-medium">
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <b class="text-slate-700">OK</b> good condition</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> <b class="text-slate-700">Watch</b> wearing, advise customer</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> <b class="text-slate-700">Fix</b> repair / replace now</span>
+                <!-- Quick legend (1 row, short labels if wrap) -->
+                <div class="insp-legend flex items-center gap-3 sm:gap-4 overflow-x-auto hide-scrollbar whitespace-nowrap text-[11px] text-slate-500 font-medium py-0.5">
+                    <span class="inline-flex items-center gap-1.5 shrink-0">
+                        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <b class="text-slate-700">OK</b>
+                        <span class="legend-desc-full hidden md:inline">good condition</span>
+                        <span class="legend-desc-short md:hidden">good</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 shrink-0">
+                        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                        <b class="text-slate-700">Watch</b>
+                        <span class="legend-desc-full hidden md:inline">wearing, advise customer</span>
+                        <span class="legend-desc-short md:hidden">wearing</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 shrink-0">
+                        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-500 shrink-0"></span>
+                        <b class="text-slate-700">Fix</b>
+                        <span class="legend-desc-full hidden md:inline">repair / replace now</span>
+                        <span class="legend-desc-short md:hidden">repair</span>
+                    </span>
                 </div>
 
 
@@ -1497,40 +1507,50 @@
         <div id="physical-inspection-card" class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col">
 
             <!-- Title -->
-            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pt-5 pb-3">
+            <div class="flex items-center justify-between gap-3 px-4 sm:px-5 pt-4 pb-2.5 sm:pt-4.5 sm:pb-3">
                 <h2 id="title-physical-inspection" class="text-sm font-bold text-slate-800 uppercase tracking-wider">3. Physical Inspection Log</h2>
-                <button type="button" data-insp="reset" class="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 px-2 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+                <button type="button" data-insp="reset" class="text-[11px] font-bold text-slate-500 hover:text-red-600 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors">
                     <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset
                 </button>
             </div>
 
-            <!-- Sticky progress + section jump bar -->
-            <div class="sticky top-0 z-10 bg-white/95 backdrop-blur border-y border-slate-100 px-4 sm:px-5 py-3 flex flex-col gap-2.5">
-                <div class="flex items-center gap-3">
-                    <div class="flex-1">
-                        <div class="flex items-center justify-between mb-1">
-                            <span id="insp-progress-text" class="text-xs font-extrabold text-slate-700">0 / 0 checked</span>
-                            <div class="flex items-center gap-1.5 text-[10px] font-bold">
-                                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">OK <span id="insp-count-ok">0</span></span>
-                                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Watch <span id="insp-count-watch">0</span></span>
-                                <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Fix <span id="insp-count-fix">0</span></span>
-                            </div>
-                        </div>
-                        <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div id="insp-progress-fill" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width:0%"></div>
-                        </div>
+            <!-- Sticky progress bar -->
+            <div class="sticky top-0 z-10 bg-white/95 backdrop-blur border-y border-slate-100 px-4 sm:px-5 py-2 sm:py-2.5">
+                <div class="flex items-center justify-between mb-1">
+                    <span id="insp-progress-text" class="text-xs font-extrabold text-slate-700">0 / 0 checked</span>
+                    <div class="flex items-center gap-1.5 text-[10px] font-bold">
+                        <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">OK <span id="insp-count-ok">0</span></span>
+                        <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">Watch <span id="insp-count-watch">0</span></span>
+                        <span class="px-1.5 py-0.5 rounded bg-red-100 text-red-700">Fix <span id="insp-count-fix">0</span></span>
                     </div>
                 </div>
-                <div id="insp-pills" class="flex gap-1.5 overflow-x-auto hide-scrollbar -mx-1 px-1"></div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div id="insp-progress-fill" class="h-full bg-blue-500 rounded-full transition-all duration-300" style="width:0%"></div>
+                </div>
             </div>
 
-            <div class="p-4 sm:p-5 flex flex-col gap-5">
+            <div class="p-3.5 sm:p-5 flex flex-col gap-3 sm:gap-4">
 
-                <!-- Quick legend -->
-                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-medium">
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <b class="text-slate-700">OK</b> good condition</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> <b class="text-slate-700">Watch</b> wearing, advise customer</span>
-                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> <b class="text-slate-700">Fix</b> repair / replace now</span>
+                <!-- Quick legend (1 row, short labels if wrap) -->
+                <div class="insp-legend flex items-center gap-3 sm:gap-4 overflow-x-auto hide-scrollbar whitespace-nowrap text-[11px] text-slate-500 font-medium py-0.5">
+                    <span class="inline-flex items-center gap-1.5 shrink-0">
+                        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                        <b class="text-slate-700">OK</b>
+                        <span class="legend-desc-full hidden md:inline">good condition</span>
+                        <span class="legend-desc-short md:hidden">good</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 shrink-0">
+                        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                        <b class="text-slate-700">Watch</b>
+                        <span class="legend-desc-full hidden md:inline">wearing, advise customer</span>
+                        <span class="legend-desc-short md:hidden">wearing</span>
+                    </span>
+                    <span class="inline-flex items-center gap-1.5 shrink-0">
+                        <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-red-500 shrink-0"></span>
+                        <b class="text-slate-700">Fix</b>
+                        <span class="legend-desc-full hidden md:inline">repair / replace now</span>
+                        <span class="legend-desc-short md:hidden">repair</span>
+                    </span>
                 </div>
 
 
@@ -1731,35 +1751,35 @@
 <template id="view-history">
 <div id="view-history" class="view-section active max-w-6xl mx-auto">
     <!-- 1. Top Search & Retrieval Bar -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
-        <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div class="relative w-full lg:max-w-md">
+    <div class="sh-toolbar bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
+        <div class="sh-toolbar-inner flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div class="sh-search-wrap relative w-full lg:max-w-md">
                 <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input type="text" id="history-search" autocomplete="off" placeholder="Search by Plate No., Customer Name, or Date..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
             </div>
             
-            <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
-                <select id="history-date-filter" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
-                    <option value="30">Date Range: Last 30 Days</option>
-                    <option value="180">Last 6 Months</option>
-                    <option value="custom">Custom Date</option>
-                </select>
-                <select id="history-mech-filter" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
-                    <option value="all">Assigned Mechanic: All</option>
-                    <option value="mike">Mike (Mechanic)</option>
-                    <option value="leo">Leo (Mechanic)</option>
-                </select>
-                <button class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
+            <div class="sh-controls flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+                <div class="sh-filters-grid flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    <select id="history-date-filter" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
+                        <option value="30">Date: Last 30 Days</option>
+                        <option value="180">Last 6 Months</option>
+                        <option value="custom">Custom Date</option>
+                    </select>
+                    <select id="history-mech-filter" class="py-2.5 px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto">
+                        <option value="all">Assigned: All</option>
+                        <option value="mike">Mike (Mechanic)</option>
+                        <option value="leo">Leo (Mechanic)</option>
+                    </select>
+                </div>
+                <button onclick="if(typeof showToast==='function')showToast('Exporting Service History...');" class="sh-btn-export w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-2 whitespace-nowrap">
                     <i class="ph-bold ph-export"></i> Export List
                 </button>
             </div>
-            </div>
-
         </div>
     </div>
 
-    <!-- 2. Service Archive (Main Data Table) -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- 2. Service Archive (Main Data Table & Mobile Cards) -->
+    <div id="history-table-wrap" class="sh-table-wrap desktop-table-wrap bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[1000px]">
                 <thead>
@@ -1777,6 +1797,10 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Mobile Service History Card List -->
+    <div id="history-mobile-cards" class="sh-cards m-cards">
     </div>
 
     <!-- 3. Comprehensive Service Record (Modal) -->
@@ -1994,13 +2018,13 @@
     body.mobile-app #inv-type-tabs { display: none !important; }
     body.mobile-app #inv-type-chip-wrap { display: flex !important; }
     body.mobile-app #inv-top-bar { flex-direction: column !important; gap: 1rem !important; }
-    body.mobile-app #inv-filter-group { flex-direction: column !important; }
+    body.mobile-app #inv-filter-group { flex-direction: column !important; gap: 0.75rem !important; width: 100% !important; }
     body.mobile-app #inv-search-wrap { width: 100% !important; max-width: none !important; }
-    body.mobile-app #inv-select-wrap { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 0.5rem !important; width: 100% !important; }
-    body.mobile-app #inv-filter-category { display: block !important; }
+    body.mobile-app #inv-select-wrap { width: 100% !important; max-width: none !important; display: block !important; }
+    body.mobile-app #inv-filter-stock { width: 100% !important; min-height: 44px !important; height: 44px !important; box-sizing: border-box !important; }
     body.mobile-app #view-inventory { padding-bottom: 80px !important; }
     body.mobile-app #inv-results-count { display: block !important; margin-top: 0.5rem; text-align: left; }
-    body.mobile-app #inv-chip-wrap { display: flex !important; }
+    body.mobile-app #inv-chip-wrap { display: flex !important; flex-wrap: nowrap !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; scrollbar-width: none !important; gap: 0.5rem !important; }
     body.mobile-app .mv-table-wrap { display: none !important; }
     body.mobile-app .mv-cards { display: flex !important; padding-bottom: 80px !important; }
     body.mobile-app #mv-top-bar { flex-direction: column !important; gap: 0.75rem !important; }
@@ -2044,9 +2068,6 @@
                         <option value="">Stock: All</option>
                         <option value="low">Low Stock</option>
                         <option value="out">Out of Stock</option>
-                    </select>
-                    <select id="inv-filter-category" class="hidden py-2 px-2 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 min-w-0 max-w-full h-[40px]">
-                        <option value="">Category: All</option>
                     </select>
                 </div>
             </div>
@@ -2836,13 +2857,13 @@
 <template id="view-transactions">
 <div id="view-transactions" class="view-section active max-w-6xl mx-auto">
     <!-- 1. Top Action Bar & Quick Filters -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div class="relative w-full sm:max-w-md">
+    <div class="txn-toolbar bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
+        <div class="txn-toolbar-top flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="txn-search-wrap relative w-full sm:max-w-md">
                 <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input type="text" id="txn-search" autocomplete="off" placeholder="Search by Customer, Plate No., or TXN ID..." class="w-full pl-9 pr-4 py-2.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
             </div>
-            <button onclick="openWalkInCheckout()" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 whitespace-nowrap">
+            <button onclick="openWalkInCheckout()" class="txn-btn-new w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 whitespace-nowrap">
                 <i class="ph-bold ph-plus"></i> New Walk-in Sale
             </button>
         </div>
@@ -2860,8 +2881,8 @@
         </div>
     </div>
 
-    <!-- 2. The Billing Queue (Data Table) -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <!-- 2. The Billing Queue (Data Table & Mobile Cards) -->
+    <div id="transactions-table-wrap" class="txn-table-wrap desktop-table-wrap bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse min-w-[950px]">
                 <thead>
@@ -2878,6 +2899,10 @@
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- Mobile Transactions Card List -->
+    <div id="transactions-mobile-cards" class="txn-cards m-cards">
     </div>
 
     <!-- 3A. Walk-In Parts Checkout Form (Interactive Modal) -->
@@ -3176,7 +3201,7 @@
         </div>
 
         <!-- 2. User Directory (Main Data Table) -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div id="users-table-wrap" class="hidden sm:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse min-w-[950px]">
                     <thead>
@@ -3193,8 +3218,10 @@
                     </tbody>
                 </table>
             </div>
-            </div>
+        </div>
 
+        <!-- Mobile User Directory Cards -->
+        <div id="users-mobile-cards" class="sm:hidden flex flex-col gap-3 w-full">
         </div>
     </div>
 
@@ -3284,20 +3311,19 @@
             </div>
 
         </div>
-    </div>
 
     <!-- 3. Account Creation & Editing Form (Modal) -->
     <!-- (Your existing Add User Modal HTML remains exactly the same) -->
     <div id="modal-user-form" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4 sm:p-6">
-        <div id="user-form-backdrop" class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
+        <div id="user-form-backdrop" class="absolute inset-0 bg-slate-900/70 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeUserModal()"></div>
         <div id="user-form-content" class="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
             <div class="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-slate-50 shrink-0">
                 <div>
-                    <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <h2 id="user-form-title" class="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <i class="ph-fill ph-user-circle-plus text-blue-600 text-2xl"></i> Add / Edit User Account
                     </h2>
                 </div>
-                <button onclick="closeUserModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><i class="ph ph-x text-xl"></i></button>
+                <button type="button" onclick="closeUserModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"><i class="ph ph-x text-xl"></i></button>
             </div>
             
             <div class="p-5 overflow-y-auto flex-1 flex flex-col gap-6">
@@ -3305,17 +3331,14 @@
                 <div>
                     <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">1. Personal Details</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">First Name</label>
-                            <input type="text" placeholder="e.g. Juan" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Last Name</label>
-                            <input type="text" placeholder="e.g. Dela Cruz" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Full Name <span class="text-red-500">*</span></label>
+                            <input type="text" id="user-form-name" placeholder="e.g. System Admin" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                            <p id="user-form-name-error" class="hidden text-xs text-red-600 mt-1 font-medium">Please enter a name.</p>
                         </div>
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Contact Number</label>
-                            <input type="tel" placeholder="09XX-XXX-XXXX" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
+                            <input type="tel" id="user-form-phone" placeholder="09XX-XXX-XXXX" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm">
                         </div>
                     </div>
                 </div>
@@ -3330,27 +3353,31 @@
                             <option value="cashier">Cashier (Sales, billing and stock lookup)</option>
                             <option value="mechanic">Mechanic (Repairs and diagnostics)</option>
                         </select>
+                        <p id="user-form-role-warning" class="hidden text-xs text-slate-500 mt-1.5">You cannot change your own role.</p>
+                        <p id="user-form-role-last-super-admin" class="hidden text-xs text-slate-500 mt-1.5">At least one active Super Admin is required.</p>
                         <p class="text-xs text-slate-500 mt-2 flex items-start gap-1"><i class="ph-fill ph-info text-blue-500 mt-0.5"></i> Access is controlled strictly via Role-Based Access Control (RBAC). Reference the Permissions Matrix tab for details.</p>
                     </div>
                 </div>
                 <!-- Authentication Details -->
-                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div id="user-form-auth-section" class="bg-slate-50 p-4 rounded-xl border border-slate-200">
                     <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-3 border-b border-slate-200 pb-2">3. Authentication Details</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="sm:col-span-2">
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">System Username</label>
                             <div class="relative">
                                 <i class="ph ph-at absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                                <input type="text" placeholder="username" class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
+                                <input type="text" id="user-form-username" placeholder="username" class="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Temporary Password</label>
-                            <input type="password" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Confirm Password</label>
-                            <input type="password" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
+                        <div id="user-form-password-fields" class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Temporary Password</label>
+                                <input type="password" id="user-form-pwd" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Confirm Password</label>
+                                <input type="password" id="user-form-pwd-confirm" placeholder="••••••••" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm font-mono">
+                            </div>
                         </div>
                         <div class="sm:col-span-2 mt-1">
                             <label class="flex items-center gap-2 cursor-pointer">
@@ -3363,16 +3390,15 @@
             </div>
             
             <div class="p-4 sm:p-5 border-t border-slate-200 bg-slate-50 shrink-0 flex gap-3 rounded-b-xl justify-end">
-                <button onclick="closeUserModal()" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
-                <button class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 transition-colors">
-                    <i class="ph-bold ph-floppy-disk"></i> Save Account Details
+                <button type="button" onclick="closeUserModal()" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="button" id="btn-save-user" onclick="saveUserForm()" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-900/20 flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph-bold ph-floppy-disk"></i> <span id="btn-save-user-text">Save Changes</span>
                 </button>
             </div>
             </div>
 
         </div>
     </div>
-</div>
 </template>
 
 <template id="view-settings">
@@ -3652,11 +3678,6 @@
                 <button data-mtab="reports" onclick="mNav('reports')" class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
                     <span class="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ph-chart-line-up"></i></span>
                     <span class="text-sm font-bold text-slate-700">Reports & Monitoring</span>
-                    <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
-                </button>
-                <button data-mtab="audit" onclick="mNav('audit')" class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">
-                    <span class="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ph-clipboard-text"></i></span>
-                    <span class="text-sm font-bold text-slate-700">Audit Logs</span>
                     <i class="ph-bold ph-caret-right ml-auto text-slate-300"></i>
                 </button>
                 <button data-mtab="users" onclick="mNav('users')" class="flex items-center gap-4 p-4 active:bg-slate-50 transition-colors">

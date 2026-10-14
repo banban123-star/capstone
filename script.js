@@ -604,12 +604,10 @@ async function loadView(viewName) {
     if (isMobileMode && !primaryMobileViews.includes(viewName)) {
         const navBtn = document.querySelector(`.nav-link[data-target="${viewName}"]`);
         const titleText = navBtn ? navBtn.textContent.trim() : viewName;
-        const isReadonly = viewName === 'audit' && typeof getAccessLevel === 'function' && getAccessLevel('audit') === 'read';
         const headerHTML = `
             <div class="sticky top-0 -mt-4 sm:-mt-6 -mx-4 sm:-mx-6 mb-4 px-4 sm:px-6 py-3 bg-white border-b border-slate-200 z-50 flex items-center justify-between shadow-sm">
                 <div class="font-bold text-slate-800 text-lg flex items-center gap-2">
                     <span>${titleText}</span>
-                    <span id="mobile-audit-readonly-pill" class="${isReadonly ? '' : 'hidden'} text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">Read-only</span>
                 </div>
                 <button onclick="mNav('more')" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-colors">
                     <i class="ph ph-x text-lg"></i>
@@ -822,10 +820,10 @@ const ROLES_CONFIG = {
 };
 
 const systemUsers = {
-    super_admin: { name: 'System Admin', role: ROLES_CONFIG.super_admin.label, initials: 'SA', color: 'bg-slate-800', password: 'admin123' },
-    admin: { name: 'User', role: ROLES_CONFIG.admin.label, initials: 'IG', color: 'bg-blue-600', password: 'admin123' },
-    cashier: { name: 'Cashier', role: ROLES_CONFIG.cashier.label, initials: 'CS', color: 'bg-emerald-600', password: 'cashier123' },
-    mechanic: { name: 'Larpus', role: ROLES_CONFIG.mechanic.label, initials: 'JB', color: 'bg-purple-600', password: 'mech123' }
+    super_admin: { id: 'u2', name: 'System Admin', role: ROLES_CONFIG.super_admin.label, initials: 'SA', color: 'bg-slate-800', password: 'admin123' },
+    admin: { id: 'u1', name: 'User', role: ROLES_CONFIG.admin.label, initials: 'IG', color: 'bg-blue-600', password: 'admin123' },
+    cashier: { id: 'u5', name: 'Cashier', role: ROLES_CONFIG.cashier.label, initials: 'CS', color: 'bg-emerald-600', password: 'cashier123' },
+    mechanic: { id: 'u3', name: 'Larpus', role: ROLES_CONFIG.mechanic.label, initials: 'JB', color: 'bg-purple-600', password: 'mech123' }
 };
 
 let currentRole = 'admin';
@@ -1114,6 +1112,11 @@ function updateRoleLabels() {
     if (document.querySelector('#main-content-area #view-audit') && typeof renderAudit === 'function') {
         renderAudit();
     }
+
+    // 13. User Directory update (if Users is currently rendered)
+    if (document.getElementById('users-tbody') && typeof renderUsers === 'function') {
+        renderUsers();
+    }
 }
 
 function updateMobileMoreNav(roleId) {
@@ -1224,20 +1227,21 @@ function switchRole(roleId, isLogin) {
     const roleHasBackupAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('backup');
 
     const isCurrentlyOnUsers = !!document.querySelector('#main-content-area #view-users') || currentActiveTarget === 'users';
-    const roleHasUsersAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('users');
 
     const isCurrentlyOnAudit = !!document.querySelector('#main-content-area #view-audit') || currentActiveTarget === 'audit';
     const roleHasAuditAccess = typeof getAccessLevel === 'function' ? (getAccessLevel('audit', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('audit'));
 
     const isCurrentlyOnInventory = !!document.querySelector('#main-content-area #view-inventory') || currentActiveTarget === 'inventory';
 
-    if ((isCurrentlyOnBackup && !roleHasBackupAccess) || (isCurrentlyOnUsers && !roleHasUsersAccess) || (isCurrentlyOnAudit && !roleHasAuditAccess) || !isCurrentViewAllowed) {
+    if ((isCurrentlyOnBackup && !roleHasBackupAccess) || (isCurrentlyOnAudit && !roleHasAuditAccess) || !isCurrentViewAllowed) {
         setActiveNavLink('dashboard');
         loadView('dashboard');
     } else if (wasMobile !== isMobile) {
-        const targetView = currentActiveTarget || 'dashboard';
+        const targetView = (currentActiveTarget && (isMobile || currentActiveTarget !== 'more')) ? currentActiveTarget : 'dashboard';
         setActiveNavLink(targetView);
         loadView(targetView);
+    } else if (isCurrentlyOnUsers && typeof renderUsers === 'function') {
+        renderUsers();
     } else if (isCurrentlyOnInventory) {
         const aaView = document.getElementById('view-autoassign');
         if (aaView && !aaView.classList.contains('hidden') && !hasFeature('autoAssign')) {
@@ -1433,6 +1437,10 @@ function toggleModal(modalId, backdropId, contentId, show, effect = 'scale') {
     if (!modal || !backdrop || !content) return;
 
     if (show) {
+        if (modal._hideTimeout) {
+            clearTimeout(modal._hideTimeout);
+            modal._hideTimeout = null;
+        }
         modal.classList.remove('hidden');
         void modal.offsetWidth; 
         backdrop.classList.remove('opacity-0');
@@ -1454,7 +1462,11 @@ function toggleModal(modalId, backdropId, contentId, show, effect = 'scale') {
             content.classList.remove('translate-x-0');
             content.classList.add('translate-x-full');
         }
-        setTimeout(() => modal.classList.add('hidden'), 300);
+        if (modal._hideTimeout) clearTimeout(modal._hideTimeout);
+        modal._hideTimeout = setTimeout(() => {
+            modal.classList.add('hidden');
+            modal._hideTimeout = null;
+        }, 300);
     }
 }
 
@@ -2042,7 +2054,7 @@ function openAddPartModal() {
     if (!hasFeature('addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
     clearAddPartForm();
     const isMobile = document.body.classList.contains('mobile-app');
-    const activeCatFilter = isMobile ? (currentCategoryFilter || document.getElementById('inv-filter-category')?.value) : '';
+    const activeCatFilter = isMobile ? (currentCategoryFilter || '') : '';
     if (activeCatFilter) {
         const catSelect = document.getElementById('add-part-category');
         if (catSelect) catSelect.value = activeCatFilter;
@@ -2687,9 +2699,7 @@ function toggleAuditDetail(detailId) {
     }
 }
 
-// --- User Management Logic ---
-function openUserModal() { toggleModal('modal-user-form', 'user-form-backdrop', 'user-form-content', true); }
-function closeUserModal() { toggleModal('modal-user-form', 'user-form-backdrop', 'user-form-content', false); }
+// --- User Management Modal Logic defined below in Interactive User Management Logic ---
 
 // --- Customers & Motorcycles Logic ---
 function toggleCustomerRow(rowId) {
@@ -2934,12 +2944,12 @@ const PART_TYPES = [
 ];
 
 const categoryConfig = {
-    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100', hasExpiry: false, type: 'engine' },
-    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100', hasExpiry: false, type: 'spare' },
-    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100', hasExpiry: true, type: 'engine' },
-    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100', hasExpiry: false, type: 'spare' },
-    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100', hasExpiry: false, type: 'spare' },
-    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100', hasExpiry: false, type: 'accessory' }
+    'Transmission & Drivetrain': { name: 'Transmission & Drivetrain', short: 'TRN', shortLabel: 'Transmission', icon: 'ph-nut', bg: 'bg-indigo-50', text: 'text-indigo-600', border: 'border-indigo-100', hasExpiry: false, type: 'engine' },
+    'Electrical & Electronics': { name: 'Electrical & Electronics', short: 'ELE', shortLabel: 'Electrical', icon: 'ph-lightning', bg: 'bg-cyan-50', text: 'text-cyan-600', border: 'border-cyan-100', hasExpiry: false, type: 'spare' },
+    'Fuel & Engine Intake': { name: 'Fuel & Engine Intake', short: 'FUE', shortLabel: 'Fuel & Intake', icon: 'ph-gas-pump', bg: 'bg-pink-50', text: 'text-pink-600', border: 'border-pink-100', hasExpiry: true, type: 'engine' },
+    'Wheels & Tires': { name: 'Wheels & Tires', short: 'WHL', shortLabel: 'Wheels & Tires', icon: 'ph-circle', bg: 'bg-purple-50', text: 'text-purple-600', border: 'border-purple-100', hasExpiry: false, type: 'spare' },
+    'Suspension, Brakes & Cooling': { name: 'Suspension, Brakes & Cooling', short: 'SUS', shortLabel: 'Suspension & Brakes', icon: 'ph-shield', bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-100', hasExpiry: false, type: 'spare' },
+    'Accessories, Add-Ons & Consumables': { name: 'Accessories, Add-Ons & Consumables', short: 'ACC', shortLabel: 'Accessories', icon: 'ph-package', bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', border: 'border-fuchsia-100', hasExpiry: false, type: 'accessory' }
 };
 
 function getPartType(part) {
@@ -3703,7 +3713,6 @@ window.currentCategoryFilter = currentCategoryFilter;
 
 function populateCategoryDropdowns(typeFilter) {
     const activeType = (typeFilter !== undefined) ? typeFilter : currentPartTypeFilter;
-    const filterSelect = document.getElementById('inv-filter-category');
     const formSelect = document.getElementById('add-part-category');
     const chipWrap = document.getElementById('inv-chip-wrap');
     
@@ -3712,23 +3721,9 @@ function populateCategoryDropdowns(typeFilter) {
         return categoryConfig[cat].type === activeType;
     });
     
-    const isMobile = document.body.classList.contains('mobile-app');
-    if (filterSelect && isMobile) {
-        const currentVal = filterSelect.value || currentCategoryFilter;
-        let selectHtml = '<option value="">Category: All</option>';
-        categoriesToShow.forEach(cat => {
-            selectHtml += `<option value="${cat}">${cat}</option>`;
-        });
-        filterSelect.innerHTML = selectHtml;
-        if (currentVal && categoriesToShow.includes(currentVal)) {
-            filterSelect.value = currentVal;
-        } else {
-            filterSelect.value = '';
-            if (currentCategoryFilter && !categoriesToShow.includes(currentCategoryFilter)) {
-                currentCategoryFilter = '';
-                window.currentCategoryFilter = '';
-            }
-        }
+    if (currentCategoryFilter && !categoriesToShow.includes(currentCategoryFilter)) {
+        currentCategoryFilter = '';
+        window.currentCategoryFilter = '';
     }
     
     if (formSelect) {
@@ -3742,10 +3737,12 @@ function populateCategoryDropdowns(typeFilter) {
     }
     
     if (chipWrap) {
-        let chipHtml = `<button onclick="setCategoryFilter('')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px]" data-cat="">All</button>`;
+        let chipHtml = `<button onclick="setCategoryFilter('')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px] whitespace-nowrap" data-cat="">All</button>`;
         categoriesToShow.forEach(cat => {
             const conf = categoryConfig[cat];
-            chipHtml += `<button onclick="setCategoryFilter('${cat.replace(/'/g, "\\'")}')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px]" data-cat="${cat}"><i class="ph-bold ${conf.icon} text-lg"></i> ${conf.short}</button>`;
+            const label = (conf && conf.shortLabel) ? conf.shortLabel : (conf ? conf.name : cat);
+            const icon = (conf && conf.icon) ? conf.icon : 'ph-package';
+            chipHtml += `<button onclick="setCategoryFilter('${cat.replace(/'/g, "\\'")}')" class="inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px] whitespace-nowrap" data-cat="${cat}"><i class="ph-bold ${icon} text-lg"></i> ${label}</button>`;
         });
         chipWrap.innerHTML = chipHtml;
     }
@@ -3754,10 +3751,6 @@ function populateCategoryDropdowns(typeFilter) {
 window.setCategoryFilter = function(cat) {
     currentCategoryFilter = cat || '';
     window.currentCategoryFilter = currentCategoryFilter;
-    const filterSelect = document.getElementById('inv-filter-category');
-    if (filterSelect) {
-        filterSelect.value = currentCategoryFilter;
-    }
     renderInventory();
 };
 
@@ -3779,8 +3772,6 @@ window.clearInvFilters = function() {
     if (searchInput) searchInput.value = '';
     const stockSelect = document.getElementById('inv-filter-stock');
     if (stockSelect) stockSelect.value = '';
-    const catSelect = document.getElementById('inv-filter-category');
-    if (catSelect) catSelect.value = '';
     populateCategoryDropdowns('');
     renderInventory();
 };
@@ -4046,7 +4037,7 @@ function renderInventory() {
     // Get filter values
     const query = (document.getElementById('inv-search')?.value || '').toLowerCase();
     const stockFilter = document.getElementById('inv-filter-stock')?.value || '';
-    const rawCatFilter = isMobile ? (currentCategoryFilter || document.getElementById('inv-filter-category')?.value || '') : '';
+    const rawCatFilter = isMobile ? (currentCategoryFilter || '') : '';
     const catFilter = rawCatFilter.toLowerCase();
     
     // Update chip styling based on selection
@@ -4055,17 +4046,23 @@ function renderInventory() {
         const cVal = chip.getAttribute('data-cat');
         if (cVal === rawCatFilter) {
             if (cVal === '') {
-                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px]';
+                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-blue-600 text-white border-blue-600 h-[40px] whitespace-nowrap';
             } else {
                 const conf = categoryConfig[cVal];
-                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors flex items-center gap-1.5 h-[40px] ${conf ? `${conf.bg} ${conf.text} ${conf.border}` : 'bg-blue-600 text-white border-blue-600'}`;
+                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors flex items-center gap-1.5 h-[40px] whitespace-nowrap ${conf ? `${conf.bg} ${conf.text} ${conf.border}` : 'bg-blue-600 text-white border-blue-600'}`;
+            }
+            if (isMobile && chip.offsetParent !== null) {
+                try {
+                    chip.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                } catch (e) {
+                    chip.scrollIntoView();
+                }
             }
         } else {
             if (cVal === '') {
-                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 h-[40px]';
+                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 h-[40px] whitespace-nowrap';
             } else {
-                const conf = categoryConfig[cVal];
-                chip.className = `inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px]`;
+                chip.className = 'inv-cat-chip shrink-0 px-4 py-2 rounded-full text-sm font-bold border transition-colors bg-white text-slate-600 border-slate-200 hover:bg-slate-50 flex items-center gap-1.5 h-[40px] whitespace-nowrap';
             }
         }
     });
@@ -4429,13 +4426,6 @@ document.addEventListener('change', function(e) {
         currentSummaryFilter = e.target.value;
         window.currentSummaryFilter = currentSummaryFilter;
         renderInventory();
-    } else if (e.target.id === 'inv-filter-category') {
-        const isMobile = document.body.classList.contains('mobile-app');
-        if (isMobile) {
-            currentCategoryFilter = e.target.value;
-            window.currentCategoryFilter = currentCategoryFilter;
-            renderInventory();
-        }
     } else if (e.target.id === 'mv-filter-type' || e.target.id === 'mv-filter-date' || e.target.id === 'mv-filter-part-type') {
         renderMovements();
     }
@@ -4692,15 +4682,48 @@ const mockTxnData = [
     }
 ];
 
+// Keep track of opened transaction card across re-renders
+let openedTxnCardId = null;
+
+// Synchronize transaction filter chip visual state
+function updateTxnFilterButtons() {
+    document.querySelectorAll('.txn-filter-btn').forEach(btn => {
+        const filter = btn.getAttribute('data-filter');
+        const defaultClass = btn.getAttribute('data-default') || 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100';
+        if (filter === currentTxnFilter) {
+            btn.className = `txn-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-slate-800 text-white border border-transparent`;
+        } else {
+            btn.className = `txn-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors ${defaultClass}`;
+        }
+    });
+}
+window.updateTxnFilterButtons = updateTxnFilterButtons;
+
+// Clear Filters for Transactions view
+function clearTxnFilters() {
+    const searchInput = document.getElementById('txn-search');
+    if (searchInput) searchInput.value = '';
+    currentTxnFilter = 'all';
+    updateTxnFilterButtons();
+    renderTransactions();
+}
+window.clearTxnFilters = clearTxnFilters;
+
 function renderTransactions() {
     const tbody = document.getElementById('transactions-tbody');
-    if (!tbody) return;
+    const mobileContainer = document.getElementById('transactions-mobile-cards');
+    if (!tbody && !mobileContainer) return;
 
-    const query = (document.getElementById('txn-search')?.value || '').toLowerCase();
+    // Keep active filter chips visually highlighted
+    updateTxnFilterButtons();
+
+    const query = (document.getElementById('txn-search')?.value || '').toLowerCase().trim();
     
     // Filter the Data
     const filtered = mockTxnData.filter(txn => {
-        const matchesSearch = txn.customer.toLowerCase().includes(query) || txn.id.toLowerCase().includes(query) || txn.details.toLowerCase().includes(query);
+        const matchesSearch = txn.customer.toLowerCase().includes(query) || 
+                              txn.id.toLowerCase().includes(query) || 
+                              txn.details.toLowerCase().includes(query);
         const matchesCategory = currentTxnFilter === 'all' || txn.category === currentTxnFilter;
         // Don't show completed in "All Active" view
         const matchesActive = currentTxnFilter !== 'all' || txn.category !== 'completed';
@@ -4709,43 +4732,196 @@ function renderTransactions() {
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No transactions found.</td></tr>`;
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No transactions found.</td></tr>`;
+        }
+        if (mobileContainer) {
+            mobileContainer.innerHTML = `
+                <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center justify-center gap-3 shadow-sm">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl">
+                        <i class="ph-bold ph-magnifying-glass"></i>
+                    </div>
+                    <div class="font-bold text-slate-700 text-base">No transactions found</div>
+                    <p class="text-xs text-slate-400 max-w-xs">No transactions match your current search query or filter.</p>
+                    <button type="button" onclick="clearTxnFilters()" class="mt-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs px-4 py-2.5 rounded-lg border border-blue-200 transition-colors inline-flex items-center gap-1.5 min-h-[44px]">
+                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Clear filters
+                    </button>
+                </div>
+            `;
+        }
         return;
     }
 
-    tbody.innerHTML = filtered.map(txn => {
-        const isCompleted = txn.category === 'completed';
-        const rowClass = isCompleted ? 'hover:bg-blue-50/30 transition-colors opacity-75' : 'hover:bg-blue-50/30 transition-colors';
-        const statusIndicator = isCompleted ? 
-            `<i class="ph-bold ph-check"></i> ${txn.status}` : 
-            `<span class="w-1.5 h-1.5 rounded-full ${txn.statusDot}"></span> ${txn.status}`;
+    if (tbody) {
+        tbody.innerHTML = filtered.map(txn => {
+            const isCompleted = txn.category === 'completed';
+            const rowClass = isCompleted ? 'hover:bg-blue-50/30 transition-colors opacity-75' : 'hover:bg-blue-50/30 transition-colors';
+            const statusIndicator = isCompleted ? 
+                `<i class="ph-bold ph-check"></i> ${txn.status}` : 
+                `<span class="w-1.5 h-1.5 rounded-full ${txn.statusDot}"></span> ${txn.status}`;
+                
+            return `
+                <tr class="${rowClass}">
+                    <td class="p-4">
+                        <div class="font-bold text-slate-800">${txn.id}</div>
+                        <div class="inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase tracking-wider ${txn.typeClass} px-2 py-0.5 rounded">
+                            <i class="ph-fill ${txn.typeIcon}"></i> ${txn.type}
+                        </div>
+                    </td>
+                    <td class="p-4">
+                        <div class="font-semibold text-slate-700">${txn.customer}</div>
+                        <div class="text-xs text-slate-500 mt-0.5">${txn.details}</div>
+                    </td>
+                    <td class="p-4 font-bold text-slate-800">\u20B1${txn.amount.toFixed(2)} ${txn.amountSuffix}</td>
+                    <td class="p-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${txn.statusClass}">
+                            ${statusIndicator}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="${txn.btnAction}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
+                            <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    if (mobileContainer) {
+        mobileContainer.innerHTML = filtered.map(txn => {
+            const isCompleted = txn.category === 'completed';
+            const isOpen = openedTxnCardId && openedTxnCardId === txn.id;
+            const statusIndicator = isCompleted ? 
+                `<i class="ph-bold ph-check"></i> ${txn.status}` : 
+                `<span class="w-1.5 h-1.5 rounded-full ${txn.statusDot}"></span> ${txn.status}`;
+            const statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-bold ${txn.statusClass}">${statusIndicator}</span>`;
             
-        return `
-            <tr class="${rowClass}">
-                <td class="p-4">
-                    <div class="font-bold text-slate-800">${txn.id}</div>
-                    <div class="inline-flex items-center gap-1 mt-1 text-[10px] font-bold uppercase tracking-wider ${txn.typeClass} px-2 py-0.5 rounded">
-                        <i class="ph-fill ${txn.typeIcon}"></i> ${txn.type}
+            // Format Amount with Suffix
+            const amountDisplay = '\u20B1' + txn.amount.toFixed(2) + (txn.amountSuffix ? ' ' + txn.amountSuffix : '');
+
+            // Derive opened body data
+            const isRepair = txn.type === 'Repair Service';
+            const vehicleInfo = isRepair ? txn.details : (txn.vehicle || 'None (Walk-in Retail)');
+            const itemsOrServices = isRepair 
+                ? (txn.services || 'General Diagnostics & Repair Service')
+                : (txn.details.startsWith('Purchased:') ? txn.details.replace(/^Purchased:\s*/i, '') : txn.details);
+
+            // Advance paid & Balance due
+            let advancePaid = null;
+            let balanceDue = null;
+            if (txn.status && txn.status.includes('Adv Paid')) {
+                const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+                if (match) {
+                    const advVal = parseFloat(match[2].replace(/,/g, ''));
+                    advancePaid = '\u20B1' + advVal.toFixed(2);
+                    if (txn.amount > advVal) {
+                        balanceDue = '\u20B1' + (txn.amount - advVal).toFixed(2);
+                    }
+                }
+            } else if (txn.category === 'advance') {
+                balanceDue = '\u20B1' + txn.amount.toFixed(2) + ' (Estimated)';
+            } else if (txn.status === 'Unpaid') {
+                balanceDue = '\u20B1' + txn.amount.toFixed(2);
+            }
+
+            // Date & Time formatting
+            let dateTimeStr = 'N/A';
+            if (txn.date) {
+                const d = new Date(txn.date);
+                if (!isNaN(d.getTime())) {
+                    dateTimeStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + 
+                        ' • ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                }
+            }
+
+            // Notes
+            const notesStr = txn.notes || (isCompleted 
+                ? 'Transaction settled and verified.'
+                : (txn.category === 'settle'
+                    ? 'Awaiting balance payment on release.'
+                    : (txn.category === 'advance'
+                        ? 'Advance payment requested before repair.'
+                        : 'Retail over-the-counter transaction.')));
+
+            // Action buttons calling the SAME functions as desktop
+            let actionsHtml = '';
+            if (isCompleted) {
+                actionsHtml = `
+                    <div class="m-actions grid-2">
+                        <button type="button" onclick="openReceiptModal()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors min-h-[44px]">
+                            <i class="ph-bold ph-receipt text-sm"></i> View Receipt
+                        </button>
+                        <button type="button" onclick="openReceiptModal(); setTimeout(function(){ window.print(); }, 300);" class="bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors shadow-sm min-h-[44px]">
+                            <i class="ph-bold ph-printer text-sm"></i> Print
+                        </button>
                     </div>
-                </td>
-                <td class="p-4">
-                    <div class="font-semibold text-slate-700">${txn.customer}</div>
-                    <div class="text-xs text-slate-500 mt-0.5">${txn.details}</div>
-                </td>
-                <td class="p-4 font-bold text-slate-800">\u20B1${txn.amount.toFixed(2)} ${txn.amountSuffix}</td>
-                <td class="p-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${txn.statusClass}">
-                        ${statusIndicator}
-                    </span>
-                </td>
-                <td class="p-4 text-right">
-                    <button onclick="${txn.btnAction}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
-                        <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
+                `;
+            } else {
+                actionsHtml = `
+                    <div class="m-actions">
+                        <button type="button" onclick="${txn.btnAction}" class="border px-4 py-2.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 w-full min-h-[44px] shadow-sm ${txn.btnClass}">
+                            <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                        </button>
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="m-card ${isOpen ? 'open' : ''}" data-txn-id="${txn.id}">
+                    <div class="m-card-head" role="button" tabindex="0" aria-expanded="${isOpen ? 'true' : 'false'}">
+                        <div class="flex-1 min-w-0 pr-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold text-slate-800 text-sm">${txn.id}</span>
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider ${txn.typeClass} px-2 py-0.5 rounded">
+                                        <i class="ph-fill ${txn.typeIcon}"></i> ${txn.type}
+                                    </span>
+                                </div>
+                                <div class="font-bold text-slate-800 text-sm whitespace-nowrap">${amountDisplay}</div>
+                            </div>
+                            <div class="flex items-center justify-between gap-2 mt-1.5">
+                                <div class="font-semibold text-slate-700 text-sm truncate">${txn.customer}</div>
+                                <div class="shrink-0">${statusBadge}</div>
+                            </div>
+                        </div>
+                        <i class="ph-bold ph-caret-down m-card-chevron text-slate-400 text-lg shrink-0"></i>
+                    </div>
+                    <div class="m-card-body">
+                        <div class="m-card-body-inner">
+                            <div class="m-row">
+                                <span class="m-row-label">Vehicle Info</span>
+                                <span class="m-row-value">${vehicleInfo}</span>
+                            </div>
+                            <div class="m-row">
+                                <span class="m-row-label">Items / Services</span>
+                                <span class="m-row-value">${itemsOrServices}</span>
+                            </div>
+                            ${advancePaid ? `
+                            <div class="m-row">
+                                <span class="m-row-label">Advance Paid</span>
+                                <span class="m-row-value text-emerald-600 font-bold">${advancePaid}</span>
+                            </div>` : ''}
+                            ${balanceDue ? `
+                            <div class="m-row">
+                                <span class="m-row-label">Balance Due</span>
+                                <span class="m-row-value text-red-600 font-bold">${balanceDue}</span>
+                            </div>` : ''}
+                            <div class="m-row">
+                                <span class="m-row-label">Date & Time</span>
+                                <span class="m-row-value">${dateTimeStr}</span>
+                            </div>
+                            <div class="m-row">
+                                <span class="m-row-label">Notes</span>
+                                <span class="m-row-value text-slate-500 font-normal">${notesStr}</span>
+                            </div>
+                            ${actionsHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 // Attach Event Listeners for Transactions
@@ -4756,18 +4932,12 @@ document.addEventListener('input', function(e) {
 document.addEventListener('click', function(e) {
     const filterBtn = e.target.closest('.txn-filter-btn');
     if (filterBtn) {
-        // Reset all buttons to default classes
-        document.querySelectorAll('.txn-filter-btn').forEach(btn => {
-            btn.className = `txn-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors ${btn.getAttribute('data-default')}`;
-        });
-        
-        // Set Active State
-        filterBtn.className = 'txn-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-slate-800 text-white border border-transparent';
-        
         currentTxnFilter = filterBtn.getAttribute('data-filter');
+        updateTxnFilterButtons();
         renderTransactions();
     }
 });
+
 
 // --- Cashier Home Dashboard Logic ---
 function cashierReceivePayment() {
@@ -5078,21 +5248,50 @@ const mockHistoryData = [
     }
 ];
 
+function getHistoryParts(record) {
+    if (!record) return 'Service Consumables';
+    if (record.parts) return record.parts;
+    const desc = ((record.issueDesc || '') + ' ' + (record.issueTitle || '')).toLowerCase();
+    if (desc.includes('spark plug')) return 'Spark Plug, Engine Oil';
+    if (desc.includes('coolant temperature') || desc.includes('ect')) return 'ECT Sensor, Front Brake Pads';
+    if (desc.includes('carburetor')) return 'Fuel Line Hose, Carb Cleaner';
+    if (desc.includes('chain')) return 'Chain Lube, Cleaner';
+    if (desc.includes('brake pad') || desc.includes('brake system')) return 'Brake Pads, Brake Fluid';
+    if (desc.includes('oil replacement') || desc.includes('oil change') || desc.includes('throttle')) return 'Standard Engine Oil, Throttle Cleaner';
+    if (desc.includes('fluid check') || desc.includes('scheduled maintenance')) return 'Brake Fluid, Coolant Top-up';
+    return 'Service Consumables';
+}
+window.getHistoryParts = getHistoryParts;
+
+function clearHistoryFilters() {
+    const searchInput = document.getElementById('history-search');
+    if (searchInput) searchInput.value = '';
+    const mechFilter = document.getElementById('history-mech-filter');
+    if (mechFilter) mechFilter.value = 'all';
+    const dateFilter = document.getElementById('history-date-filter');
+    if (dateFilter) dateFilter.value = '30';
+    renderHistory();
+}
+window.clearHistoryFilters = clearHistoryFilters;
+
 function renderHistory() {
     const tbody = document.getElementById('history-tbody');
-    if (!tbody) return;
+    const mobileContainer = document.getElementById('history-mobile-cards');
+    if (!tbody && !mobileContainer) return;
 
-    const query = (document.getElementById('history-search')?.value || '').toLowerCase();
+    const query = (document.getElementById('history-search')?.value || '').toLowerCase().trim();
     const mechFilter = document.getElementById('history-mech-filter')?.value || 'all';
 
     // Filter the Data
     const filtered = mockHistoryData.filter(record => {
         const brand = getBrandLabel(record);
-        const matchesSearch = record.plate.toLowerCase().includes(query) || 
+        const matchesSearch = !query || 
+                              record.plate.toLowerCase().includes(query) || 
                               record.customer.toLowerCase().includes(query) ||
                               record.date.toLowerCase().includes(query) ||
                               (record.vehicle && record.vehicle.toLowerCase().includes(query)) ||
-                              (brand && brand.toLowerCase().includes(query));
+                              (brand && brand.toLowerCase().includes(query)) ||
+                              (record.issueTitle && record.issueTitle.toLowerCase().includes(query));
                               
         const matchesMech = mechFilter === 'all' || record.mechanicId === mechFilter;
 
@@ -5100,39 +5299,128 @@ function renderHistory() {
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 font-medium">No service records found.</td></tr>`;
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 font-medium">
+                <div class="flex flex-col items-center justify-center gap-2">
+                    <span>No records found.</span>
+                    <button type="button" onclick="clearHistoryFilters()" class="text-xs text-blue-600 hover:underline font-bold">Clear filters</button>
+                </div>
+            </td></tr>`;
+        }
+        if (mobileContainer) {
+            mobileContainer.innerHTML = `
+                <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center justify-center gap-3 shadow-sm">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl">
+                        <i class="ph-bold ph-magnifying-glass"></i>
+                    </div>
+                    <div class="font-bold text-slate-700 text-base">No records found</div>
+                    <p class="text-xs text-slate-400 max-w-xs">No service records match your current search query or filter.</p>
+                    <button type="button" onclick="clearHistoryFilters()" class="mt-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs px-4 py-2.5 rounded-lg border border-blue-200 transition-colors inline-flex items-center gap-1.5 min-h-[44px]">
+                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Clear filters
+                    </button>
+                </div>
+            `;
+        }
         return;
     }
 
-    // Render HTML
-    tbody.innerHTML = filtered.map(record => {
-        const brand = getBrandLabel(record);
-        const vehicleLabel = brand ? `${brand} ${record.model || ''}`.trim() : (record.vehicle || '');
-        return `
-        <tr class="hover:bg-blue-50/30 transition-colors">
-            <td class="p-4 text-slate-600 font-medium">${record.date} <br><span class="text-xs text-slate-400">${record.time}</span></td>
-            <td class="p-4">
-                <button onclick="openTimelineModal('${record.plate}', '${vehicleLabel}')" class="font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 transition-colors">
-                    ${record.plate} <i class="ph-bold ph-clock-counter-clockwise text-xs"></i>
-                </button>
-                <div class="text-xs text-slate-500 mt-0.5">${vehicleLabel}</div>
-                <div class="text-xs font-semibold text-slate-700 mt-1">${record.customer}</div>
-            </td>
-            <td class="p-4 text-slate-700 font-medium">${record.mechanic}</td>
-            <td class="p-4 text-slate-600 text-xs leading-relaxed">
-                <span class="font-bold text-slate-700 block mb-0.5">${record.issueTitle}</span>
-                ${record.issueDesc}
-            </td>
-            <td class="p-4 font-bold text-slate-800">\u20B1${record.cost.toFixed(2)}</td>
-            <td class="p-4 text-center">
-                <button onclick="openHistoryDetailModal()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
-                    View Full Record
-                </button>
-            </td>
-        </tr>
-    `;
-    }).join('');
+    // Render Desktop HTML
+    if (tbody) {
+        tbody.innerHTML = filtered.map(record => {
+            const brand = getBrandLabel(record);
+            const vehicleLabel = brand ? `${brand} ${record.model || ''}`.trim() : (record.vehicle || '');
+            const vehicleLabelEscaped = vehicleLabel.replace(/'/g, "\\'");
+            return `
+            <tr class="hover:bg-blue-50/30 transition-colors">
+                <td class="p-4 text-slate-600 font-medium">${record.date} <br><span class="text-xs text-slate-400">${record.time}</span></td>
+                <td class="p-4">
+                    <button onclick="openTimelineModal('${record.plate}', '${vehicleLabelEscaped}')" class="font-bold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5 transition-colors">
+                        ${record.plate} <i class="ph-bold ph-clock-counter-clockwise text-xs"></i>
+                    </button>
+                    <div class="text-xs text-slate-500 mt-0.5">${vehicleLabel}</div>
+                    <div class="text-xs font-semibold text-slate-700 mt-1">${record.customer}</div>
+                </td>
+                <td class="p-4 text-slate-700 font-medium">${record.mechanic}</td>
+                <td class="p-4 text-slate-600 text-xs leading-relaxed">
+                    <span class="font-bold text-slate-700 block mb-0.5">${record.issueTitle}</span>
+                    ${record.issueDesc}
+                </td>
+                <td class="p-4 font-bold text-slate-800">\u20B1${record.cost.toFixed(2)}</td>
+                <td class="p-4 text-center">
+                    <button onclick="openHistoryDetailModal()" class="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
+                        View Full Record
+                    </button>
+                </td>
+            </tr>
+        `;
+        }).join('');
+    }
+
+    // Render Mobile Cards
+    if (mobileContainer) {
+        mobileContainer.innerHTML = filtered.map(record => {
+            const brand = getBrandLabel(record);
+            const vehicleLabel = brand ? `${brand} ${record.model || ''}`.trim() : (record.vehicle || '');
+            const vehicleLabelEscaped = vehicleLabel.replace(/'/g, "\\'");
+            const partsUsed = getHistoryParts(record);
+
+            return `
+            <div class="m-card" data-history-plate="${record.plate}">
+                <div class="m-card-head" role="button" tabindex="0" aria-expanded="false">
+                    <div class="flex-1 min-w-0 pr-3">
+                        <div class="flex items-center justify-between gap-2">
+                            <button type="button" onclick="event.stopPropagation(); openTimelineModal('${record.plate}', '${vehicleLabelEscaped}')" class="font-bold text-blue-600 hover:text-blue-800 text-sm inline-flex items-center gap-1.5 transition-colors">
+                                <span>${record.plate}</span>
+                                <i class="ph-bold ph-clock-counter-clockwise text-xs text-blue-500"></i>
+                            </button>
+                            <span class="text-xs font-bold text-slate-800 whitespace-nowrap">\u20B1${record.cost.toFixed(2)}</span>
+                        </div>
+                        <div class="font-bold text-slate-800 text-sm mt-1 truncate">${record.customer}</div>
+                        <div class="text-xs text-slate-500 mt-0.5 truncate">${vehicleLabel}</div>
+                        <div class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                            <i class="ph-bold ph-calendar-blank text-xs"></i> ${record.date} • ${record.time}
+                        </div>
+                    </div>
+                    <i class="ph-bold ph-caret-down m-card-chevron text-slate-400 text-lg shrink-0"></i>
+                </div>
+                <div class="m-card-body">
+                    <div class="m-card-body-inner">
+                        <div class="m-row">
+                            <span class="m-row-label">Lead Mechanic</span>
+                            <span class="m-row-value font-medium">${record.mechanic || 'N/A'}</span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-row-label">Services Done</span>
+                            <span class="m-row-value font-medium">${record.issueTitle || 'Standard Service'}</span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-row-label">Parts Used</span>
+                            <span class="m-row-value">${partsUsed}</span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-row-label">Total Cost</span>
+                            <span class="m-row-value font-bold text-slate-800">\u20B1${record.cost.toFixed(2)}</span>
+                        </div>
+                        <div class="m-row">
+                            <span class="m-row-label">Notes</span>
+                            <span class="m-row-value text-slate-600 font-normal">${record.issueDesc || 'No additional notes.'}</span>
+                        </div>
+                        <div class="m-actions grid-2">
+                            <button type="button" onclick="openHistoryDetailModal()" class="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors min-h-[44px]">
+                                <i class="ph-bold ph-file-text text-sm"></i> View Details
+                            </button>
+                            <button type="button" onclick="openHistoryDetailModal(); setTimeout(function(){ window.print(); }, 300);" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors min-h-[44px]">
+                                <i class="ph-bold ph-printer text-sm"></i> Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }).join('');
+    }
 }
+window.renderHistory = renderHistory;
 
 // Attach Event Listeners for History View
 document.addEventListener('input', function(e) {
@@ -5140,7 +5428,9 @@ document.addEventListener('input', function(e) {
 });
 
 document.addEventListener('change', function(e) {
-    if (e.target.id === 'history-mech-filter') renderHistory();
+    if (e.target.id === 'history-mech-filter' || e.target.id === 'history-date-filter') {
+        renderHistory();
+    }
 });
 
 // --- Interactive Reports & Monitoring Logic ---
@@ -5983,12 +6273,323 @@ function renderPermissionsMatrix() {
     }).join('');
 }
 
+let currentEditingUserId = null;
+let openPasswordResetUserId = null;
+let openDeactivateUserId = null;
+let currentResetPasswords = {};
+let passwordResetSuccessMessage = null;
+let passwordResetSuccessTimer = null;
+
+function generateRandomPassword() {
+    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%';
+    let pass = '';
+    for (let i = 0; i < 8; i++) {
+        pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+}
+
+function getRoleStyles(roleKey) {
+    if (roleKey === 'super_admin') {
+        return {
+            icon: 'ph-shield-check',
+            roleClass: 'bg-purple-50 text-purple-700 border border-purple-200',
+            avatarClass: 'bg-purple-100 text-purple-700'
+        };
+    } else if (roleKey === 'admin') {
+        return {
+            icon: 'ph-crown',
+            roleClass: 'bg-slate-800 text-white',
+            avatarClass: 'bg-slate-800 text-white'
+        };
+    } else if (roleKey === 'cashier') {
+        return {
+            icon: 'ph-storefront',
+            roleClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap',
+            avatarClass: 'bg-emerald-100 text-emerald-700'
+        };
+    }
+    return {
+        icon: 'ph-wrench',
+        roleClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+        avatarClass: 'bg-blue-100 text-blue-700'
+    };
+}
+
+function populateUserFormRoles() {
+    const roleSelect = document.getElementById('user-form-role');
+    if (!roleSelect || typeof ROLES_CONFIG === 'undefined') return;
+    const currentVal = roleSelect.value;
+    roleSelect.innerHTML = `
+        <option value="" disabled selected>Select Role Assignment...</option>
+        ${Object.values(ROLES_CONFIG).map(r => `
+            <option value="${r.id}">${r.label} (${r.description || ''})</option>
+        `).join('')}
+    `;
+    if (currentVal) roleSelect.value = currentVal;
+}
+
+function isCurrentUser(user) {
+    if (!user || !user.id) return false;
+    const activeRoleId = (typeof currentRole !== 'undefined' && currentRole) ||
+                         (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('currentUserRole')) ||
+                         'super_admin';
+    const activeSysUser = (typeof systemUsers !== 'undefined' && systemUsers[activeRoleId]) ? systemUsers[activeRoleId] : null;
+    if (activeSysUser && activeSysUser.id) {
+        return user.id === activeSysUser.id;
+    }
+    return user.id === 'u2' && activeRoleId === 'super_admin';
+}
+
+function getActiveSuperAdminCount() {
+    return mockUserData.filter(u => u.roleValue === 'super_admin' && u.status === 'Active').length;
+}
+
+function openEditUserModal(userId) {
+    const user = mockUserData.find(u => u.id === userId);
+    if (!user) return;
+    currentEditingUserId = userId;
+    const isCurrent = isCurrentUser(user);
+    populateUserFormRoles();
+    
+    const title = document.getElementById('user-form-title');
+    if (title) title.innerHTML = '<i class="ph-fill ph-pencil-simple text-blue-600 text-2xl"></i> Edit User Account';
+    
+    const btnText = document.getElementById('btn-save-user-text');
+    if (btnText) btnText.textContent = 'Save Changes';
+    
+    const nameInput = document.getElementById('user-form-name');
+    if (nameInput) {
+        nameInput.value = user.name || '';
+        nameInput.classList.remove('border-red-500');
+    }
+    
+    const phoneInput = document.getElementById('user-form-phone');
+    if (phoneInput) {
+        phoneInput.value = user.phone || '';
+    }
+    
+    const usernameInput = document.getElementById('user-form-username');
+    if (usernameInput) {
+        usernameInput.value = user.username ? user.username.replace(/^@/, '') : '';
+    }
+    
+    const roleSelect = document.getElementById('user-form-role');
+    if (roleSelect) {
+        roleSelect.value = user.roleValue || '';
+        if (isCurrent) {
+            roleSelect.disabled = true;
+            roleSelect.classList.add('bg-slate-100', 'cursor-not-allowed', 'text-slate-500');
+        } else {
+            roleSelect.disabled = false;
+            roleSelect.classList.remove('bg-slate-100', 'cursor-not-allowed', 'text-slate-500');
+        }
+    }
+
+    const roleWarning = document.getElementById('user-form-role-warning');
+    if (roleWarning) {
+        if (isCurrent) {
+            roleWarning.classList.remove('hidden');
+        } else {
+            roleWarning.classList.add('hidden');
+        }
+    }
+
+    const lastSuperAdminMsg = document.getElementById('user-form-role-last-super-admin');
+    if (lastSuperAdminMsg) lastSuperAdminMsg.classList.add('hidden');
+    
+    const nameErr = document.getElementById('user-form-name-error');
+    if (nameErr) nameErr.classList.add('hidden');
+    
+    const pwdSection = document.getElementById('user-form-password-fields');
+    if (pwdSection) pwdSection.classList.add('hidden');
+    
+    toggleModal('modal-user-form', 'user-form-backdrop', 'user-form-content', true);
+}
+window.openEditUserModal = openEditUserModal;
+
+function openUserModal() {
+    currentEditingUserId = null;
+    populateUserFormRoles();
+    
+    const title = document.getElementById('user-form-title');
+    if (title) title.innerHTML = '<i class="ph-fill ph-user-circle-plus text-blue-600 text-2xl"></i> Add New User';
+    
+    const btnText = document.getElementById('btn-save-user-text');
+    if (btnText) btnText.textContent = 'Save Account Details';
+    
+    const nameInput = document.getElementById('user-form-name');
+    if (nameInput) {
+        nameInput.value = '';
+        nameInput.classList.remove('border-red-500');
+    }
+    
+    const usernameInput = document.getElementById('user-form-username');
+    if (usernameInput) usernameInput.value = '';
+    
+    const phoneInput = document.getElementById('user-form-phone');
+    if (phoneInput) phoneInput.value = '';
+    
+    const pwdInput = document.getElementById('user-form-pwd');
+    if (pwdInput) pwdInput.value = '';
+    const pwdConfirm = document.getElementById('user-form-pwd-confirm');
+    if (pwdConfirm) pwdConfirm.value = '';
+
+    const roleSelect = document.getElementById('user-form-role');
+    if (roleSelect) {
+        roleSelect.value = '';
+        roleSelect.disabled = false;
+        roleSelect.classList.remove('bg-slate-100', 'cursor-not-allowed', 'text-slate-500');
+    }
+
+    const roleWarning = document.getElementById('user-form-role-warning');
+    if (roleWarning) roleWarning.classList.add('hidden');
+
+    const lastSuperAdminMsg = document.getElementById('user-form-role-last-super-admin');
+    if (lastSuperAdminMsg) lastSuperAdminMsg.classList.add('hidden');
+    
+    const nameErr = document.getElementById('user-form-name-error');
+    if (nameErr) nameErr.classList.add('hidden');
+    
+    const pwdSection = document.getElementById('user-form-password-fields');
+    if (pwdSection) pwdSection.classList.remove('hidden');
+    
+    toggleModal('modal-user-form', 'user-form-backdrop', 'user-form-content', true);
+}
+window.openUserModal = openUserModal;
+
+function closeUserModal() {
+    const nameErr = document.getElementById('user-form-name-error');
+    if (nameErr) nameErr.classList.add('hidden');
+    const nameInput = document.getElementById('user-form-name');
+    if (nameInput) {
+        nameInput.value = '';
+        nameInput.classList.remove('border-red-500');
+    }
+    const usernameInput = document.getElementById('user-form-username');
+    if (usernameInput) usernameInput.value = '';
+    const phoneInput = document.getElementById('user-form-phone');
+    if (phoneInput) phoneInput.value = '';
+    const pwdInput = document.getElementById('user-form-pwd');
+    if (pwdInput) pwdInput.value = '';
+    const pwdConfirm = document.getElementById('user-form-pwd-confirm');
+    if (pwdConfirm) pwdConfirm.value = '';
+    const roleWarning = document.getElementById('user-form-role-warning');
+    if (roleWarning) roleWarning.classList.add('hidden');
+    const lastSuperAdminMsg = document.getElementById('user-form-role-last-super-admin');
+    if (lastSuperAdminMsg) lastSuperAdminMsg.classList.add('hidden');
+    const roleSelect = document.getElementById('user-form-role');
+    if (roleSelect) {
+        roleSelect.value = '';
+        roleSelect.disabled = false;
+        roleSelect.classList.remove('bg-slate-100', 'cursor-not-allowed', 'text-slate-500');
+    }
+    toggleModal('modal-user-form', 'user-form-backdrop', 'user-form-content', false);
+    currentEditingUserId = null;
+}
+window.closeUserModal = closeUserModal;
+
+function saveUserForm() {
+    const nameInput = document.getElementById('user-form-name');
+    const nameVal = nameInput ? nameInput.value.trim() : '';
+    const nameErr = document.getElementById('user-form-name-error');
+    
+    if (!nameVal) {
+        if (nameErr) nameErr.classList.remove('hidden');
+        if (nameInput) {
+            nameInput.classList.add('border-red-500');
+            nameInput.focus();
+        }
+        return;
+    }
+    if (nameErr) nameErr.classList.add('hidden');
+    if (nameInput) nameInput.classList.remove('border-red-500');
+    
+    const usernameInput = document.getElementById('user-form-username');
+    let rawUsername = usernameInput ? usernameInput.value.trim() : '';
+    if (rawUsername && !rawUsername.startsWith('@')) rawUsername = '@' + rawUsername;
+    
+    const roleSelect = document.getElementById('user-form-role');
+    const selectedRole = roleSelect ? roleSelect.value : '';
+    
+    if (currentEditingUserId) {
+        const user = mockUserData.find(u => u.id === currentEditingUserId);
+        if (user) {
+            const isCurrent = isCurrentUser(user);
+
+            // Last-Super-Admin rule on role change:
+            // Block role change that would remove the last active Super Admin
+            if (user.roleValue === 'super_admin' && user.status === 'Active' && selectedRole && selectedRole !== 'super_admin' && getActiveSuperAdminCount() <= 1) {
+                const lastSuperAdminMsg = document.getElementById('user-form-role-last-super-admin');
+                if (lastSuperAdminMsg) lastSuperAdminMsg.classList.remove('hidden');
+                return;
+            }
+
+            user.name = nameVal;
+            user.initials = nameVal.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U';
+            if (rawUsername) user.username = rawUsername;
+            const phoneInput = document.getElementById('user-form-phone');
+            if (phoneInput) user.phone = phoneInput.value.trim();
+
+            // Enforce in handler: ignore any role change for the current user
+            if (!isCurrent && selectedRole && ROLES_CONFIG[selectedRole]) {
+                user.roleValue = selectedRole;
+                user.roleName = ROLES_CONFIG[selectedRole].label;
+                const roleStyle = getRoleStyles(selectedRole);
+                user.roleIcon = roleStyle.icon;
+                user.roleClass = roleStyle.roleClass;
+                user.avatarClass = roleStyle.avatarClass;
+            }
+
+            if (typeof systemUsers !== 'undefined' && systemUsers[user.roleValue] && isCurrent) {
+                systemUsers[user.roleValue].name = user.name;
+                systemUsers[user.roleValue].initials = user.initials;
+            }
+            if (typeof currentRole !== 'undefined' && currentRole === user.roleValue) {
+                const userNameEl = document.getElementById('user-name');
+                if (userNameEl) userNameEl.textContent = user.name;
+                const userAvatarEl = document.getElementById('user-avatar');
+                if (userAvatarEl) userAvatarEl.textContent = user.initials;
+            }
+        }
+    } else {
+        const newId = 'u' + Date.now();
+        const roleKey = (selectedRole && ROLES_CONFIG[selectedRole]) ? selectedRole : 'mechanic';
+        const roleStyle = getRoleStyles(roleKey);
+        const initials = nameVal.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U';
+        const newUser = {
+            id: newId,
+            initials: initials,
+            name: nameVal,
+            username: rawUsername || ('@' + nameVal.toLowerCase().replace(/\s+/g, '') + '.' + roleKey),
+            phone: (document.getElementById('user-form-phone')?.value.trim() || ''),
+            roleName: ROLES_CONFIG[roleKey].label,
+            roleValue: roleKey,
+            roleIcon: roleStyle.icon,
+            roleClass: roleStyle.roleClass,
+            status: 'Active',
+            statusValue: 'active',
+            statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            statusDot: 'bg-emerald-500',
+            lastLoginDate: 'Never',
+            lastLoginTime: '',
+            avatarClass: roleStyle.avatarClass
+        };
+        mockUserData.push(newUser);
+    }
+    
+    closeUserModal();
+    renderUsers();
+}
+window.saveUserForm = saveUserForm;
+
 function renderUsers() {
     if (typeof renderPermissionsMatrix === 'function') {
         renderPermissionsMatrix();
     }
     const tbody = document.getElementById('users-tbody');
-    if (!tbody) return;
+    const mobileContainer = document.getElementById('users-mobile-cards');
+    if (!tbody && !mobileContainer) return;
 
     // Get Active Filters
     const query = (document.getElementById('user-search')?.value || '').toLowerCase();
@@ -5997,63 +6598,415 @@ function renderUsers() {
 
     // Apply Filters
     const filtered = mockUserData.filter(u => {
-        const matchesSearch = u.name.toLowerCase().includes(query) || u.username.toLowerCase().includes(query);
+        const matchesSearch = u.name.toLowerCase().includes(query) || (u.username && u.username.toLowerCase().includes(query));
         const matchesRole = roleFilter === 'all' || u.roleValue === roleFilter;
         const matchesStatus = statusFilter === 'all' || u.statusValue === statusFilter;
 
         return matchesSearch && matchesRole && matchesStatus;
     });
 
-    // Render HTML
+    // Render Empty State
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No users match the current filters.</td></tr>`;
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No users match the current filters.</td></tr>`;
+        }
+        if (mobileContainer) {
+            mobileContainer.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-500 font-medium">No users match the current filters.</div>`;
+        }
+        if (typeof lucide !== 'undefined' && lucide.createIcons) {
+            lucide.createIcons();
+        }
         return;
     }
 
-    tbody.innerHTML = filtered.map(u => {
-        // Toggle the visible action buttons depending on the user's active/suspended status
-        const actionBtns = u.statusValue === 'active' 
-            ? `
-                <button class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-lg"></i></button>
-                <button class="text-slate-500 hover:text-orange-600 hover:bg-orange-50 p-2 rounded transition-colors" title="Reset Password"><i class="ph-bold ph-key text-lg"></i></button>
-                <button class="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Deactivate Account"><i class="ph-bold ph-user-minus text-lg"></i></button>
-              `
-            : `
-                <button class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-lg"></i></button>
-                <button class="text-emerald-600 hover:bg-emerald-50 p-2 rounded transition-colors font-bold text-xs flex items-center gap-1"><i class="ph-bold ph-user-plus text-lg"></i> Reactivate</button>
-              `;
+    // Render Desktop Table Rows
+    if (tbody) {
+        tbody.innerHTML = filtered.map(u => {
+            const roleLabel = (typeof ROLES_CONFIG !== 'undefined' && ROLES_CONFIG[u.roleValue]) 
+                ? (ROLES_CONFIG[u.roleValue].shortLabel || ROLES_CONFIG[u.roleValue].label) 
+                : (u.roleName || u.roleValue);
 
-        return `
-            <tr class="hover:bg-slate-50 transition-colors ${u.rowClass || ''}">
-                <td class="p-4">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold ${u.avatarClass}">${u.initials}</div>
-                        <div>
-                            <div class="font-bold text-slate-800">${u.name}</div>
-                            <div class="text-xs text-slate-500 font-mono mt-0.5">${u.username}</div>
+            const isCurrent = isCurrentUser(u);
+            const isLastSuperAdmin = u.roleValue === 'super_admin' && u.status === 'Active' && getActiveSuperAdminCount() <= 1;
+            const isResetActive = openPasswordResetUserId === u.id;
+            const isDeactActive = openDeactivateUserId === u.id;
+            const hasSuccess = passwordResetSuccessMessage && passwordResetSuccessMessage.userId === u.id;
+
+            let actionBtns = '';
+            if (hasSuccess) {
+                actionBtns = `
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">
+                        <i class="ph-bold ph-check-circle text-emerald-500"></i> Password reset for ${u.name}
+                    </div>
+                `;
+            } else if (u.statusValue === 'active') {
+                const deactBtn = isCurrent
+                    ? `<span class="p-2 rounded invisible inline-flex" aria-hidden="true"><i class="ph-bold ph-user-minus text-lg"></i></span>`
+                    : `<button type="button" data-user-id="${u.id}" data-action="deactivate" class="text-slate-500 hover:text-red-600 hover:bg-red-50 p-2 rounded transition-colors ${isDeactActive ? 'bg-red-100 text-red-700' : ''}" title="Deactivate Account" aria-label="Deactivate Account"><i class="ph-bold ph-user-minus text-lg"></i></button>`;
+
+                actionBtns = `
+                    <button type="button" data-user-id="${u.id}" data-action="edit" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Edit Role/Details" aria-label="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-lg"></i></button>
+                    <button type="button" data-user-id="${u.id}" data-action="reset-password" class="text-slate-500 hover:text-orange-600 hover:bg-orange-50 p-2 rounded transition-colors ${isResetActive ? 'bg-orange-100 text-orange-700' : ''}" title="Reset Password" aria-label="Reset Password"><i class="ph-bold ph-key text-lg"></i></button>
+                    ${deactBtn}
+                `;
+            } else {
+                actionBtns = `
+                    <button type="button" data-user-id="${u.id}" data-action="edit" class="text-slate-400 hover:text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Edit Role/Details" aria-label="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-lg"></i></button>
+                    <button type="button" data-user-id="${u.id}" data-action="reactivate" class="text-emerald-600 hover:bg-emerald-50 p-2 rounded transition-colors font-bold text-xs flex items-center gap-1" title="Reactivate Account" aria-label="Reactivate Account"><i class="ph-bold ph-user-plus text-lg"></i> Reactivate</button>
+                `;
+            }
+
+            let rowHtml = `
+                <tr class="hover:bg-slate-50 transition-colors ${u.rowClass || ''}">
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${u.avatarClass}">${u.initials}</div>
+                            <div>
+                                <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                                    <span>${u.name}</span>
+                                    ${isCurrent ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">You</span>' : ''}
+                                </div>
+                                <div class="text-xs text-slate-500 font-mono mt-0.5">${u.username || ''}</div>
+                            </div>
                         </div>
+                    </td>
+                    <td class="p-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${u.roleClass}">
+                            <i class="ph-fill ${u.roleIcon}"></i> ${roleLabel}
+                        </span>
+                    </td>
+                    <td class="p-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${u.statusClass}">
+                            <span class="w-1.5 h-1.5 rounded-full ${u.statusDot}"></span> ${u.status}
+                        </span>
+                    </td>
+                    <td class="p-4 text-slate-600 text-xs font-medium">${u.lastLoginDate}<br><span class="text-slate-400">${u.lastLoginTime}</span></td>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2 items-center">
+                            ${actionBtns}
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            // Inline Reset Password Panel for Desktop Row
+            if (isResetActive) {
+                rowHtml += `
+                    <tr class="bg-orange-50/50 border-b border-orange-200">
+                        <td colspan="5" class="px-6 py-3">
+                            <div class="flex flex-wrap items-center gap-3">
+                                <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-key text-orange-500"></i> New password for ${u.name}:</span>
+                                <input type="text" id="reset-pwd-input-${u.id}" value="${currentResetPasswords[u.id] || ''}" placeholder="New password" class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-mono outline-none focus:ring-2 focus:ring-orange-500/20 w-48">
+                                <button type="button" data-user-id="${u.id}" data-action="generate-password" class="px-2.5 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-300 shadow-sm flex items-center gap-1 transition-colors"><i class="ph-bold ph-arrows-clockwise"></i> Generate</button>
+                                <button type="button" data-user-id="${u.id}" data-action="save-password" class="px-3 py-1.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center gap-1 transition-colors"><i class="ph-bold ph-check"></i> Save</button>
+                                <button type="button" data-user-id="${u.id}" data-action="cancel-password" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300 transition-colors">Cancel</button>
+                                <span id="reset-pwd-error-${u.id}" class="hidden text-xs text-red-600 font-medium">Please enter a password.</span>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+
+            // Inline Deactivate Confirmation Panel for Desktop Row
+            if (isDeactActive && !isCurrent) {
+                if (isLastSuperAdmin) {
+                    rowHtml += `
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <td colspan="5" class="px-6 py-3">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                                        <i class="ph-bold ph-info text-slate-400 text-base shrink-0"></i>
+                                        <span>At least one active Super Admin is required.</span>
+                                    </div>
+                                    <button type="button" data-user-id="${u.id}" data-action="cancel-deactivate" class="px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 rounded-lg border border-slate-300 transition-colors">Close</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    rowHtml += `
+                        <tr class="bg-red-50/50 border-b border-red-200">
+                            <td colspan="5" class="px-6 py-3">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2 text-xs text-slate-700 font-medium">
+                                        <i class="ph-bold ph-warning-circle text-red-500 text-base shrink-0"></i>
+                                        <span>Deactivate <strong>${u.name}</strong>? They will not be able to sign in.</span>
+                                    </div>
+                                    <div class="flex items-center gap-2">
+                                        <button type="button" data-user-id="${u.id}" data-action="confirm-deactivate" class="px-3 py-1.5 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm transition-colors">Confirm</button>
+                                        <button type="button" data-user-id="${u.id}" data-action="cancel-deactivate" class="px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300 transition-colors">Cancel</button>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+            }
+
+            return rowHtml;
+        }).join('');
+    }
+
+    // Render Mobile Cards
+    if (mobileContainer) {
+        mobileContainer.innerHTML = filtered.map(u => {
+            const roleLabel = (typeof ROLES_CONFIG !== 'undefined' && ROLES_CONFIG[u.roleValue]) 
+                ? (ROLES_CONFIG[u.roleValue].shortLabel || ROLES_CONFIG[u.roleValue].label) 
+                : (u.roleName || u.roleValue);
+
+            const isCurrent = isCurrentUser(u);
+            const isLastSuperAdmin = u.roleValue === 'super_admin' && u.status === 'Active' && getActiveSuperAdminCount() <= 1;
+            const isResetActive = openPasswordResetUserId === u.id;
+            const isDeactActive = openDeactivateUserId === u.id;
+            const hasSuccess = passwordResetSuccessMessage && passwordResetSuccessMessage.userId === u.id;
+
+            let cardActionBtns = '';
+            if (u.statusValue === 'active') {
+                if (isCurrent) {
+                    cardActionBtns = `
+                        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                            <button type="button" data-user-id="${u.id}" data-action="edit" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors" title="Edit Role/Details" aria-label="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-base"></i> Edit</button>
+                            <button type="button" data-user-id="${u.id}" data-action="reset-password" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 ${isResetActive ? 'ring-2 ring-orange-500/30' : ''}" title="Reset Password" aria-label="Reset Password"><i class="ph-bold ph-key text-base"></i> Reset</button>
+                        </div>
+                    `;
+                } else {
+                    const mDeactBtn = `<button type="button" data-user-id="${u.id}" data-action="deactivate" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200 ${isDeactActive ? 'ring-2 ring-red-500/30' : ''}" title="Deactivate Account" aria-label="Deactivate Account"><i class="ph-bold ph-user-minus text-base"></i> Deactivate</button>`;
+
+                    cardActionBtns = `
+                        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+                            <button type="button" data-user-id="${u.id}" data-action="edit" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors" title="Edit Role/Details" aria-label="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-base"></i> Edit</button>
+                            <button type="button" data-user-id="${u.id}" data-action="reset-password" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors border border-orange-200 ${isResetActive ? 'ring-2 ring-orange-500/30' : ''}" title="Reset Password" aria-label="Reset Password"><i class="ph-bold ph-key text-base"></i> Reset</button>
+                            ${mDeactBtn}
+                        </div>
+                    `;
+                }
+            } else {
+                cardActionBtns = `
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                        <button type="button" data-user-id="${u.id}" data-action="edit" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors" title="Edit Role/Details" aria-label="Edit Role/Details"><i class="ph-bold ph-pencil-simple text-base"></i> Edit</button>
+                        <button type="button" data-user-id="${u.id}" data-action="reactivate" class="min-h-[44px] flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors border border-emerald-200" title="Reactivate Account" aria-label="Reactivate Account"><i class="ph-bold ph-user-plus text-base"></i> Reactivate</button>
                     </div>
-                </td>
-                <td class="p-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider whitespace-nowrap ${u.roleClass}">
-                        <i class="ph-fill ${u.roleIcon}"></i> ${ROLES_CONFIG[u.roleValue]?.shortLabel || ROLES_CONFIG[u.roleValue]?.label || u.roleName}
-                    </span>
-                </td>
-                <td class="p-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold border ${u.statusClass}">
-                        <span class="w-1.5 h-1.5 rounded-full ${u.statusDot}"></span> ${u.status}
-                    </span>
-                </td>
-                <td class="p-4 text-slate-600 text-xs font-medium">${u.lastLoginDate}<br><span class="text-slate-400">${u.lastLoginTime}</span></td>
-                <td class="p-4 text-right">
-                    <div class="flex justify-end gap-2">
-                        ${actionBtns}
+                `;
+            }
+
+            let mobilePanels = '';
+            if (hasSuccess) {
+                mobilePanels += `
+                    <div class="mt-2 p-2.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 flex items-center gap-2">
+                        <i class="ph-bold ph-check-circle text-emerald-500 text-base"></i> Password reset for ${u.name}
                     </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
+                `;
+            }
+
+            if (isResetActive) {
+                mobilePanels += `
+                    <div class="mt-2 p-3 bg-orange-50/70 border border-orange-200 rounded-xl flex flex-col gap-2.5">
+                        <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5"><i class="ph-bold ph-key text-orange-500"></i> New password for ${u.name}</div>
+                        <div class="flex gap-2">
+                            <input type="text" id="m-reset-pwd-input-${u.id}" value="${currentResetPasswords[u.id] || ''}" placeholder="New password" class="flex-1 min-h-[44px] px-3 py-2 rounded-lg border border-slate-300 bg-white text-xs font-mono outline-none focus:ring-2 focus:ring-orange-500/20">
+                            <button type="button" data-user-id="${u.id}" data-action="generate-password" class="min-h-[44px] px-3 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-300 shadow-sm flex items-center gap-1"><i class="ph-bold ph-arrows-clockwise"></i> Generate</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" data-user-id="${u.id}" data-action="save-password" class="flex-1 min-h-[44px] text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-sm flex items-center justify-center gap-1"><i class="ph-bold ph-check"></i> Save</button>
+                            <button type="button" data-user-id="${u.id}" data-action="cancel-password" class="min-h-[44px] px-4 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 rounded-lg border border-slate-300">Cancel</button>
+                        </div>
+                        <span id="m-reset-pwd-error-${u.id}" class="hidden text-xs text-red-600 font-medium">Please enter a password.</span>
+                    </div>
+                `;
+            }
+
+            if (isDeactActive && !isCurrent) {
+                if (isLastSuperAdmin) {
+                    mobilePanels += `
+                        <div class="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-col gap-2.5">
+                            <span class="text-xs text-slate-500 font-medium">At least one active Super Admin is required.</span>
+                            <button type="button" data-user-id="${u.id}" data-action="cancel-deactivate" class="min-h-[44px] px-4 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 rounded-lg border border-slate-300">Close</button>
+                        </div>
+                    `;
+                } else {
+                    mobilePanels += `
+                        <div class="mt-2 p-3 bg-red-50/70 border border-red-200 rounded-xl flex flex-col gap-2.5">
+                            <div class="text-xs text-slate-700 font-medium flex items-start gap-2">
+                                <i class="ph-bold ph-warning-circle text-red-500 text-base shrink-0 mt-0.5"></i>
+                                <span>Deactivate <strong>${u.name}</strong>? They will not be able to sign in.</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" data-user-id="${u.id}" data-action="confirm-deactivate" class="flex-1 min-h-[44px] text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-lg shadow-sm flex items-center justify-center">Confirm</button>
+                                <button type="button" data-user-id="${u.id}" data-action="cancel-deactivate" class="min-h-[44px] px-4 text-xs font-semibold text-slate-600 bg-white hover:bg-slate-50 rounded-lg border border-slate-300">Cancel</button>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            return `
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 flex flex-col gap-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0 ${u.avatarClass}">${u.initials}</div>
+                            <div class="min-w-0">
+                                <div class="font-bold text-slate-800 text-sm flex items-center gap-1.5 truncate">
+                                    <span class="truncate">${u.name}</span>
+                                    ${isCurrent ? '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 shrink-0">You</span>' : ''}
+                                </div>
+                                <div class="text-xs text-slate-500 font-mono truncate mt-0.5">${u.username || ''}</div>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shrink-0 ${u.roleClass}">
+                            <i class="ph-fill ${u.roleIcon}"></i> ${roleLabel}
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-500 pt-1">
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-bold border ${u.statusClass}">
+                            <span class="w-1.5 h-1.5 rounded-full ${u.statusDot}"></span> ${u.status}
+                        </span>
+                        <span class="text-[11px] text-slate-400">Last: ${u.lastLoginDate}</span>
+                    </div>
+                    ${cardActionBtns}
+                    ${mobilePanels}
+                </div>
+            `;
+        }).join('');
+    }
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
 }
+
+// Delegated click event listener for user directory action buttons (desktop & mobile)
+document.addEventListener('click', function(e) {
+    const actionBtn = e.target.closest('#tab-user-dir [data-action][data-user-id], [data-action][data-user-id]');
+    if (!actionBtn) return;
+
+    const action = actionBtn.getAttribute('data-action');
+    const userId = actionBtn.getAttribute('data-user-id');
+    if (!action || !userId) return;
+
+    if (action === 'edit') {
+        openEditUserModal(userId);
+    } else if (action === 'reset-password') {
+        if (openPasswordResetUserId === userId) {
+            openPasswordResetUserId = null;
+        } else {
+            openPasswordResetUserId = userId;
+            openDeactivateUserId = null;
+        }
+        renderUsers();
+    } else if (action === 'generate-password') {
+        const pass = generateRandomPassword();
+        currentResetPasswords[userId] = pass;
+        const deskIn = document.getElementById('reset-pwd-input-' + userId);
+        if (deskIn) deskIn.value = pass;
+        const mobIn = document.getElementById('m-reset-pwd-input-' + userId);
+        if (mobIn) mobIn.value = pass;
+    } else if (action === 'save-password') {
+        const deskIn = document.getElementById('reset-pwd-input-' + userId);
+        const mobIn = document.getElementById('m-reset-pwd-input-' + userId);
+        const pwdVal = (deskIn ? deskIn.value : (mobIn ? mobIn.value : '')) || currentResetPasswords[userId] || '';
+        const trimmed = pwdVal.trim();
+        if (!trimmed) {
+            const errDesk = document.getElementById('reset-pwd-error-' + userId);
+            if (errDesk) errDesk.classList.remove('hidden');
+            const errMob = document.getElementById('m-reset-pwd-error-' + userId);
+            if (errMob) errMob.classList.remove('hidden');
+            return;
+        }
+        const user = mockUserData.find(u => u.id === userId);
+        if (user) {
+            user.password = trimmed;
+            const savedPwds = JSON.parse(sessionStorage.getItem('mockUserPasswords') || '{}');
+            savedPwds[user.id] = trimmed;
+            if (user.roleValue) savedPwds[user.roleValue] = trimmed;
+            sessionStorage.setItem('mockUserPasswords', JSON.stringify(savedPwds));
+            if (typeof systemUsers !== 'undefined' && systemUsers[user.roleValue]) {
+                systemUsers[user.roleValue].password = trimmed;
+            }
+            delete currentResetPasswords[userId];
+            openPasswordResetUserId = null;
+            passwordResetSuccessMessage = { userId: user.id, name: user.name };
+            clearTimeout(passwordResetSuccessTimer);
+            passwordResetSuccessTimer = setTimeout(() => {
+                passwordResetSuccessMessage = null;
+                renderUsers();
+            }, 3000);
+        }
+        renderUsers();
+    } else if (action === 'cancel-password') {
+        delete currentResetPasswords[userId];
+        openPasswordResetUserId = null;
+        renderUsers();
+    } else if (action === 'deactivate') {
+        const user = mockUserData.find(u => u.id === userId);
+        if (!user || isCurrentUser(user)) return;
+        if (openDeactivateUserId === userId) {
+            openDeactivateUserId = null;
+        } else {
+            openDeactivateUserId = userId;
+            openPasswordResetUserId = null;
+        }
+        renderUsers();
+    } else if (action === 'confirm-deactivate') {
+        const user = mockUserData.find(u => u.id === userId);
+        if (user) {
+            if (isCurrentUser(user)) return;
+            if (user.roleValue === 'super_admin' && user.status === 'Active' && getActiveSuperAdminCount() <= 1) return;
+            user.status = 'Inactive';
+            user.statusValue = 'suspended';
+            user.statusClass = 'bg-slate-100 text-slate-600 border-slate-200';
+            user.statusDot = 'bg-slate-400';
+        }
+        openDeactivateUserId = null;
+        renderUsers();
+    } else if (action === 'cancel-deactivate') {
+        openDeactivateUserId = null;
+        renderUsers();
+    } else if (action === 'reactivate') {
+        const user = mockUserData.find(u => u.id === userId);
+        if (user) {
+            user.status = 'Active';
+            user.statusValue = 'active';
+            user.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            user.statusDot = 'bg-emerald-500';
+        }
+        openDeactivateUserId = null;
+        renderUsers();
+    }
+});
+
+// Real-time change listener for user role dropdown to enforce Last-Super-Admin warning
+document.addEventListener('change', function(e) {
+    if (e.target.id === 'user-form-role') {
+        const lastMsg = document.getElementById('user-form-role-last-super-admin');
+        if (currentEditingUserId) {
+            const u = mockUserData.find(item => item.id === currentEditingUserId);
+            if (u && u.roleValue === 'super_admin' && u.status === 'Active' && e.target.value !== 'super_admin' && getActiveSuperAdminCount() <= 1) {
+                if (lastMsg) lastMsg.classList.remove('hidden');
+            } else {
+                if (lastMsg) lastMsg.classList.add('hidden');
+            }
+        }
+    }
+});
+
+// Real-time input synchronization for user forms and inline reset inputs
+document.addEventListener('input', function(e) {
+    if (e.target.id === 'user-form-name') {
+        const nameErr = document.getElementById('user-form-name-error');
+        if (nameErr && e.target.value.trim()) {
+            nameErr.classList.add('hidden');
+            e.target.classList.remove('border-red-500');
+        }
+    }
+    if (e.target.id && (e.target.id.startsWith('reset-pwd-input-') || e.target.id.startsWith('m-reset-pwd-input-'))) {
+        const uId = e.target.id.replace('reset-pwd-input-', '').replace('m-reset-pwd-input-', '');
+        currentResetPasswords[uId] = e.target.value;
+        const errDesk = document.getElementById('reset-pwd-error-' + uId);
+        if (errDesk && e.target.value.trim()) errDesk.classList.add('hidden');
+        const errMob = document.getElementById('m-reset-pwd-error-' + uId);
+        if (errMob && e.target.value.trim()) errMob.classList.add('hidden');
+    }
+});
 
 // Global Event Listeners for User Directory Filtering
 document.addEventListener('input', function(e) {
@@ -7285,116 +8238,84 @@ const mockCustomersData = [
     }
 ];
 
+// Clear Filters for Customers view
+function clearCustomerFilters() {
+    const searchInput = document.getElementById('cust-search');
+    if (searchInput) searchInput.value = '';
+    const statusSelect = document.getElementById('cust-filter-status');
+    if (statusSelect) statusSelect.value = 'all';
+    renderCustomers();
+}
+window.clearCustomerFilters = clearCustomerFilters;
+
 function renderCustomers() {
     const tbody = document.getElementById('customers-tbody');
-    if (!tbody) return;
+    const mobileContainer = document.getElementById('customers-mobile-cards');
+    if (!tbody && !mobileContainer) return;
 
-    const query = (document.getElementById('cust-search')?.value || '').toLowerCase();
+    const query = (document.getElementById('cust-search')?.value || '').toLowerCase().trim();
     const statusFilter = document.getElementById('cust-filter-status')?.value || 'all';
 
     const filtered = mockCustomersData.filter(customer => {
         const matchesSearch = customer.name.toLowerCase().includes(query) || 
+                              customer.phone.toLowerCase().includes(query) ||
                               customer.vehicles.some(v => v.plate.toLowerCase().includes(query) || (v.make && v.make.toLowerCase().includes(query)) || (v.model && v.model.toLowerCase().includes(query)) || (getBrandLabel(v) && getBrandLabel(v).toLowerCase().includes(query)));
         const matchesStatus = statusFilter === 'all' || customer.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No customers or vehicles match the current filters.</td></tr>`;
-        const mobileContainer = document.getElementById('customers-mobile-cards');
-        if (mobileContainer) mobileContainer.innerHTML = `<div class="p-8 text-center bg-white rounded-xl border border-slate-200 text-slate-500 font-medium">No customers or vehicles match the current filters.</div>`;
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No customers found.</td></tr>`;
+        }
+        if (mobileContainer) {
+            mobileContainer.innerHTML = `
+                <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center justify-center gap-3 shadow-sm">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl">
+                        <i class="ph-bold ph-magnifying-glass"></i>
+                    </div>
+                    <div class="font-bold text-slate-700 text-base">No customers found</div>
+                    <p class="text-xs text-slate-400 max-w-xs">No customers or vehicles match the current search query or filter.</p>
+                    <button type="button" onclick="clearCustomerFilters()" class="mt-1 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs px-4 py-2.5 rounded-lg border border-blue-200 transition-colors inline-flex items-center gap-1.5 min-h-[44px]">
+                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Clear filters
+                    </button>
+                </div>
+            `;
+        }
         return;
     }
 
-    tbody.innerHTML = filtered.map(customer => {
-        const vehicleRows = customer.vehicles.map(vehicle => {
-            const bLabel = getBrandLabel(vehicle);
-            const vLabel = (bLabel ? `${bLabel} ${vehicle.model || ''}`.trim() : (vehicle.make || 'Motorcycle')).trim();
-            return `
-            <div class="flex items-center justify-between ml-2 py-3 px-3 hover:bg-white transition-colors">
-                <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
-                        <i class="ph-fill ph-motorcycle text-xl"></i>
-                    </div>
-                    <div>
-                        <div class="font-bold text-slate-800 flex items-center gap-2">
-                            ${vLabel}
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${vehicle.statusClass}">${vehicle.status}</span>
-                        </div>
-                        <div class="text-xs text-slate-500 font-mono mt-0.5 flex gap-3">
-                            <span>Plate: ${vehicle.plate}</span>
-                            <span class="text-slate-300">|</span>
-                            <span>Engine/Chassis: ${vehicle.engine}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex gap-2 pr-2">
-                    <!-- NEW: View History Button Action -->
-                    <button onclick="viewVehicleHistory('${vehicle.plate}')" class="text-slate-600 hover:text-blue-600 hover:bg-blue-50 font-medium text-xs border border-slate-200 bg-white px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5">
-                        <i class="ph-bold ph-eye"></i> View History
-                    </button>
-                    <!-- NEW: Create Ticket Button Action -->
-                    <button onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="text-white bg-blue-600 hover:bg-blue-700 font-bold text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
-                        <i class="ph-bold ph-wrench"></i> Create Ticket
-                    </button>
-                </div>
-            </div>
-        `;
-        }).join('');
-
-        return `
-            <tr class="hover:bg-slate-50 transition-colors cursor-pointer group" onclick="toggleCustomerRow('cust-row-${customer.id}')">
-                <td class="p-4 text-center">
-                    <i class="ph-bold ph-caret-down text-slate-400 transition-transform group-hover:text-blue-500" id="cust-icon-${customer.id}"></i>
-                </td>
-                <td class="p-4">
-                    <div class="font-bold text-slate-800 text-base">${customer.name}</div>
-                    <div class="text-xs text-slate-500 mt-0.5">Joined: ${customer.joined}</div>
-                </td>
-                <td class="p-4">
-                    <div class="flex items-center gap-2">
-                        <span class="bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded text-xs border border-slate-200">${customer.vehicles.length} Vehicle${customer.vehicles.length > 1 ? 's' : ''}</span>
-                        ${customer.statusHtml}
-                    </div>
-                </td>
-                <td class="p-4 text-center text-slate-600 font-mono">${customer.phone}</td>
-                <td class="p-4 text-right">
-                    <!-- NEW: Edit Profile Button Action -->
-                    <button class="text-blue-600 hover:bg-blue-50 font-medium text-xs border border-blue-200 bg-white px-3 py-1.5 rounded-md transition-colors" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)">Edit Profile</button>
-                </td>
-            </tr>
-            <tr id="cust-row-${customer.id}" class="hidden bg-slate-50/50 border-b border-slate-200">
-                <td class="p-0 border-r border-slate-100"></td>
-                <td colspan="4" class="p-0">
-                    <div class="divide-y divide-slate-100/50">
-                        ${vehicleRows}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    const mobileContainer = document.getElementById('customers-mobile-cards');
-    if (mobileContainer) {
-        mobileContainer.innerHTML = filtered.map(customer => {
-            const vehicleList = customer.vehicles.map(vehicle => {
+    if (tbody) {
+        tbody.innerHTML = filtered.map(customer => {
+            const vehicleRows = customer.vehicles.map(vehicle => {
                 const bLabel = getBrandLabel(vehicle);
                 const vLabel = (bLabel ? `${bLabel} ${vehicle.model || ''}`.trim() : (vehicle.make || 'Motorcycle')).trim();
                 return `
-                <div class="bg-slate-50 rounded-lg p-3 mb-3 border border-slate-100">
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="pr-2">
-                            <div class="font-bold text-slate-800 text-sm leading-tight">${vLabel}</div>
-                            <div class="text-[10px] text-slate-500 font-mono mt-1">Plate: ${vehicle.plate} <br> Engine: ${vehicle.engine}</div>
+                <div class="flex items-center justify-between ml-2 py-3 px-3 hover:bg-white transition-colors">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-400 shrink-0">
+                            <i class="ph-fill ph-motorcycle text-xl"></i>
                         </div>
-                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider shrink-0 ${vehicle.statusClass}">${vehicle.status}</span>
+                        <div>
+                            <div class="font-bold text-slate-800 flex items-center gap-2">
+                                ${vLabel}
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${vehicle.statusClass}">${vehicle.status}</span>
+                            </div>
+                            <div class="text-xs text-slate-500 font-mono mt-0.5 flex gap-3">
+                                <span>Plate: ${vehicle.plate}</span>
+                                <span class="text-slate-300">|</span>
+                                <span>Engine/Chassis: ${vehicle.engine}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex gap-2 mt-3">
-                        <button onclick="viewVehicleHistory('${vehicle.plate}')" class="flex-1 bg-white border border-slate-300 text-slate-700 font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px]">
-                            <i class="ph-bold ph-eye text-base"></i> History
+                    <div class="flex gap-2 pr-2">
+                        <!-- NEW: View History Button Action -->
+                        <button onclick="viewVehicleHistory('${vehicle.plate}')" class="text-slate-600 hover:text-blue-600 hover:bg-blue-50 font-medium text-xs border border-slate-200 bg-white px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5">
+                            <i class="ph-bold ph-eye"></i> View History
                         </button>
-                        <button onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="flex-1 bg-blue-600 text-white font-bold text-xs py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 min-h-[44px] shadow-sm">
-                            <i class="ph-bold ph-wrench text-base"></i> Ticket
+                        <!-- NEW: Create Ticket Button Action -->
+                        <button onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="text-white bg-blue-600 hover:bg-blue-700 font-bold text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
+                            <i class="ph-bold ph-wrench"></i> Create Ticket
                         </button>
                     </div>
                 </div>
@@ -7402,37 +8323,126 @@ function renderCustomers() {
             }).join('');
 
             return `
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
-                    <button onclick="toggleMobileCustomerCard('${customer.id}')" class="w-full p-4 flex items-center justify-between text-left active:bg-slate-50 transition-colors">
-                        <div class="flex-1 pr-4">
-                            <div class="font-bold text-slate-800 text-base leading-tight">${customer.name}</div>
-                            <div class="text-[11px] text-slate-400 mt-0.5 mb-2 font-medium">Joined: ${customer.joined}</div>
-                            <div class="flex flex-wrap items-center gap-1.5">
-                                <span class="bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded text-[10px] border border-slate-200">${customer.vehicles.length} Vehicle${customer.vehicles.length > 1 ? 's' : ''}</span>
-                                ${customer.statusHtml}
+                <tr class="hover:bg-slate-50 transition-colors cursor-pointer group" onclick="toggleCustomerRow('cust-row-${customer.id}')">
+                    <td class="p-4 text-center">
+                        <i class="ph-bold ph-caret-down text-slate-400 transition-transform group-hover:text-blue-500" id="cust-icon-${customer.id}"></i>
+                    </td>
+                    <td class="p-4">
+                        <div class="font-bold text-slate-800 text-base">${customer.name}</div>
+                        <div class="text-xs text-slate-500 mt-0.5">Joined: ${customer.joined}</div>
+                    </td>
+                    <td class="p-4">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded text-xs border border-slate-200">${customer.vehicles.length} Vehicle${customer.vehicles.length > 1 ? 's' : ''}</span>
+                            ${customer.statusHtml}
+                        </div>
+                    </td>
+                    <td class="p-4 text-center text-slate-600 font-mono">${customer.phone}</td>
+                    <td class="p-4 text-right">
+                        <!-- NEW: Edit Profile Button Action -->
+                        <button class="text-blue-600 hover:bg-blue-50 font-medium text-xs border border-blue-200 bg-white px-3 py-1.5 rounded-md transition-colors" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)">Edit Profile</button>
+                    </td>
+                </tr>
+                <tr id="cust-row-${customer.id}" class="hidden bg-slate-50/50 border-b border-slate-200">
+                    <td class="p-0 border-r border-slate-100"></td>
+                    <td colspan="4" class="p-0">
+                        <div class="divide-y divide-slate-100/50">
+                            ${vehicleRows}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    if (mobileContainer) {
+        mobileContainer.innerHTML = filtered.map(customer => {
+            const inShopCount = (customer.vehicles || []).filter(v => v.status !== 'Cleared').length;
+            const isCustomerInShop = customer.status === 'in-shop' || inShopCount > 0;
+            const statusBadge = isCustomerInShop
+                ? `<span class="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> ${inShopCount > 0 ? inShopCount : 1} IN-SHOP</span>`
+                : `<span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 uppercase tracking-wider"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> CLEARED</span>`;
+
+            const vehicleCount = (customer.vehicles || []).length;
+            const vehicleCountBadge = `<span class="bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded text-[10px] border border-slate-200">${vehicleCount} Vehicle${vehicleCount === 1 ? '' : 's'}</span>`;
+
+            const vehicleCardsHtml = (customer.vehicles || []).map(vehicle => {
+                const bLabel = getBrandLabel(vehicle);
+                const vLabel = (bLabel ? `${bLabel} ${vehicle.model || ''}`.trim() : (vehicle.make || 'Motorcycle')).trim();
+                const vStatusClass = vehicle.statusClass || 'bg-slate-100 text-slate-700 border-slate-200';
+                return `
+                <div class="bg-slate-50 rounded-xl p-3 border border-slate-200/80 flex flex-col gap-1">
+                    <div class="flex items-center justify-between pb-2 mb-1 border-b border-slate-200/60">
+                        <div class="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                            <i class="ph-fill ph-motorcycle text-blue-600"></i> ${vLabel}
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${vStatusClass}">
+                            ${vehicle.status}
+                        </span>
+                    </div>
+                    <div class="m-row">
+                        <span class="m-row-label">Brand</span>
+                        <span class="m-row-value">${bLabel || 'Other'}</span>
+                    </div>
+                    <div class="m-row">
+                        <span class="m-row-label">Model</span>
+                        <span class="m-row-value">${vehicle.model || 'Model TBC'}</span>
+                    </div>
+                    <div class="m-row">
+                        <span class="m-row-label">Plate</span>
+                        <span class="m-row-value font-mono">${vehicle.plate}</span>
+                    </div>
+                    <div class="m-row">
+                        <span class="m-row-label">Engine / Chassis</span>
+                        <span class="m-row-value font-mono">${vehicle.engine || 'N/A'}</span>
+                    </div>
+                    <div class="m-actions grid-2 mt-2">
+                        <button type="button" onclick="viewVehicleHistory('${vehicle.plate}')" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors min-h-[44px]">
+                            <i class="ph-bold ph-eye text-sm"></i> History
+                        </button>
+                        <button type="button" onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors shadow-sm min-h-[44px]">
+                            <i class="ph-bold ph-wrench text-sm"></i> Ticket
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="m-card" data-customer-id="${customer.id}">
+                    <div class="m-card-head" role="button" tabindex="0" aria-expanded="false">
+                        <div class="flex-1 pr-3 min-w-0">
+                            <div class="font-bold text-slate-800 text-base leading-tight truncate">${customer.name}</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5 font-medium">Joined: ${customer.joined}</div>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-2">
+                                ${vehicleCountBadge}
+                                ${statusBadge}
                             </div>
                         </div>
-                        <div class="shrink-0 w-8 h-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center transition-colors">
-                            <i id="m-cust-icon-${customer.id}" class="ph-bold ph-caret-down text-slate-400 transition-transform"></i>
-                        </div>
-                    </button>
-                    
-                    <div id="m-cust-body-${customer.id}" class="hidden border-t border-slate-100 p-4 bg-white flex flex-col">
-                        <div class="flex items-center justify-between gap-2 mb-5 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                            <div class="flex items-center gap-2">
-                                <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-                                    <i class="ph-fill ph-phone text-lg"></i>
+                        <i class="ph-bold ph-caret-down m-card-chevron text-slate-400 text-lg shrink-0"></i>
+                    </div>
+                    <div class="m-card-body">
+                        <div class="m-card-body-inner">
+                            <div class="m-row">
+                                <span class="m-row-label">Contact Number</span>
+                                <span class="m-row-value font-mono flex items-center gap-1.5">
+                                    <i class="ph-fill ph-phone text-blue-600"></i> ${customer.phone}
+                                </span>
+                            </div>
+                            <div class="m-actions grid-2">
+                                <button type="button" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)" class="bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors min-h-[44px]">
+                                    <i class="ph-bold ph-pencil-simple text-sm"></i> Edit Profile
+                                </button>
+                                <button type="button" onclick="openMotorcycleModal()" class="bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-300 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors min-h-[44px]">
+                                    <i class="ph-bold ph-motorcycle text-sm"></i> Register Vehicle
+                                </button>
+                            </div>
+                            <div class="mt-2 pt-3 border-t border-slate-100">
+                                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Registered Vehicles (${vehicleCount})</div>
+                                <div class="flex flex-col gap-2.5">
+                                    ${vehicleCardsHtml}
                                 </div>
-                                <span class="font-mono text-sm font-bold text-slate-700">${customer.phone}</span>
                             </div>
-                            <button class="text-blue-600 bg-blue-50 hover:bg-blue-100 font-bold text-xs px-3 py-1.5 rounded-md transition-colors border border-blue-200 min-h-[44px]" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)">
-                                Edit Profile
-                            </button>
-                        </div>
-                        
-                        <div>
-                            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 pl-1">Registered Vehicles</h4>
-                            ${vehicleList}
                         </div>
                     </div>
                 </div>
@@ -7440,6 +8450,7 @@ function renderCustomers() {
         }).join('');
     }
 }
+
 
 // 1. Edit Profile Logic (Pre-fills existing modal)
 window.editCustomerProfile = function(name, phone, event) {
@@ -7505,24 +8516,12 @@ window.toggleCustomerRow = function(rowId) {
 };
 
 window.toggleMobileCustomerCard = function(custId) {
-    const clickedBody = document.getElementById(`m-cust-body-${custId}`);
-    const clickedIcon = document.getElementById(`m-cust-icon-${custId}`);
-    
-    if (!clickedBody) return;
-    const isCurrentlyHidden = clickedBody.classList.contains('hidden');
-    
-    // Close all first
-    mockCustomersData.forEach(c => {
-        const b = document.getElementById(`m-cust-body-${c.id}`);
-        const i = document.getElementById(`m-cust-icon-${c.id}`);
-        if (b) b.classList.add('hidden');
-        if (i) i.classList.remove('rotate-180', 'text-blue-500');
-    });
-    
-    // Open the clicked one if it was hidden
-    if (isCurrentlyHidden) {
-        clickedBody.classList.remove('hidden');
-        if (clickedIcon) clickedIcon.classList.add('rotate-180', 'text-blue-500');
+    const card = document.querySelector(`.m-card[data-customer-id="${custId}"]`);
+    if (card) {
+        const head = card.querySelector('.m-card-head');
+        if (head && typeof toggleMCard === 'function') {
+            toggleMCard(head);
+        }
     }
 };
 
@@ -7791,84 +8790,84 @@ const inspectionSections = [
     {
         id: 'tires', title: 'Tires & Wheels', short: 'Tires', icon: 'ph-circle-notch',
         items: [
-            { id: 'tire_f', label: 'Front Tire', hint: 'Tread depth, cracks, sidewall bulges',
+            { id: 'tire_f', label: 'Front Tire',
               tags: ['Worn tread', 'Cracked sidewall', 'Puncture / nail', 'Uneven wear', 'Bulge'] },
-            { id: 'tire_r', label: 'Rear Tire', hint: 'Tread depth, cracks, sidewall bulges',
+            { id: 'tire_r', label: 'Rear Tire',
               tags: ['Worn tread', 'Cracked sidewall', 'Puncture / nail', 'Uneven wear', 'Bulge'] },
-            { id: 'psi_f', label: 'Front Tire Pressure', hint: 'Check cold, set to spec',
+            { id: 'psi_f', label: 'Front Tire Pressure',
               tags: ['Too low', 'Too high', 'Slow leak'] },
-            { id: 'psi_r', label: 'Rear Tire Pressure', hint: 'Check cold, set to spec',
+            { id: 'psi_r', label: 'Rear Tire Pressure',
               tags: ['Too low', 'Too high', 'Slow leak'] },
-            { id: 'wheels', label: 'Wheels / Rims', hint: 'Bends, cracks, loose spokes, bearing play',
+            { id: 'wheels', label: 'Wheels / Rims',
               tags: ['Bent rim', 'Loose spokes', 'Bearing play', 'Cracked'] }
         ]
     },
     {
         id: 'brakes', title: 'Brakes', short: 'Brakes', icon: 'ph-stop-circle',
         items: [
-            { id: 'pad_f', label: 'Front Brake Pads', hint: 'Pad thickness and even wear',
+            { id: 'pad_f', label: 'Front Brake Pads',
               tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'], part: 'PROTO-B01' },
-            { id: 'pad_r', label: 'Rear Pads / Shoes', hint: 'Lining thickness and even wear',
+            { id: 'pad_r', label: 'Rear Pads / Shoes',
               tags: ['Below minimum', 'Uneven wear', 'Glazed', 'Squealing'] },
-            { id: 'brake_fluid', label: 'Brake Fluid', hint: 'Level and colour (change every 1–2 years)',
+            { id: 'brake_fluid', label: 'Brake Fluid',
               tags: ['Low level', 'Dark / dirty', 'Contaminated', 'Leak'] },
-            { id: 'brake_feel', label: 'Lever / Pedal Feel', hint: 'Firm, no sponginess or drag',
+            { id: 'brake_feel', label: 'Lever / Pedal Feel',
               tags: ['Spongy', 'Too soft', 'Dragging', 'Needs adjustment'] },
-            { id: 'brake_disc', label: 'Discs / Drums', hint: 'Scoring, warp, rust',
+            { id: 'brake_disc', label: 'Discs / Drums',
               tags: ['Warped', 'Scored', 'Rusted', 'Below min thickness'] }
         ]
     },
     {
         id: 'engine', title: 'Engine & Fluids', short: 'Engine', icon: 'ph-engine',
         items: [
-            { id: 'oil', label: 'Engine Oil', hint: 'Level and colour on the dipstick / sight glass',
+            { id: 'oil', label: 'Engine Oil',
               tags: ['Low level', 'Black / dirty', 'Milky', 'Overdue change'], part: 'p4' },
-            { id: 'coolant', label: 'Coolant', hint: 'Liquid-cooled only. Use N/A for air-cooled engines',
+            { id: 'coolant', label: 'Coolant',
               tags: ['Low level', 'Discoloured', 'Leak'] },
-            { id: 'air_filter', label: 'Air Filter', hint: 'Clogged, oily or torn',
+            { id: 'air_filter', label: 'Air Filter',
               tags: ['Clogged', 'Oily', 'Torn'] },
-            { id: 'spark', label: 'Spark Plug', hint: 'Electrode wear and fouling',
+            { id: 'spark', label: 'Spark Plug',
               tags: ['Fouled', 'Worn electrode', 'Wet / oily', 'Wrong gap'], part: 'p5' },
-            { id: 'leaks', label: 'Leaks (visual)', hint: 'Look under the unit and around gaskets',
+            { id: 'leaks', label: 'Leaks (visual)',
               tags: ['Engine oil', 'Coolant', 'Fuel', 'Fork oil', 'Gasket'] }
         ]
     },
     {
         id: 'drive', title: 'Drivetrain', short: 'Drive', icon: 'ph-link',
         items: [
-            { id: 'chain', label: 'Chain / CVT Belt', hint: 'Chain slack, rust, belt cracks',
+            { id: 'chain', label: 'Chain / CVT Belt',
               tags: ['Too loose', 'Too tight', 'Dry / rusty', 'Cracked belt', 'Stretched'], part: 'p3' },
-            { id: 'sprocket', label: 'Sprockets / CVT Rollers', hint: 'Hooked teeth, flat-spotted rollers',
+            { id: 'sprocket', label: 'Sprockets / CVT Rollers',
               tags: ['Hooked teeth', 'Worn rollers', 'Noise', 'Flat spots'] },
-            { id: 'clutch', label: 'Clutch / Free Play', hint: 'Engagement and lever free play',
+            { id: 'clutch', label: 'Clutch / Free Play',
               tags: ['Slipping', 'Too stiff', 'Free play off', 'Cable frayed'] }
         ]
     },
     {
         id: 'electrical', title: 'Electrical', short: 'Electrical', icon: 'ph-lightning',
         items: [
-            { id: 'battery', label: 'Battery Voltage', hint: 'Engine off, battery rested',
+            { id: 'battery', label: 'Battery Voltage',
               tags: ['Weak', 'Corroded terminals', 'Swollen', 'Old (2+ years)'] },
-            { id: 'charging', label: 'Charging Voltage', hint: 'Engine running at ~3,000 rpm',
+            { id: 'charging', label: 'Charging Voltage',
               tags: ['Undercharging', 'Overcharging', 'Bad regulator', 'Stator issue'] },
-            { id: 'lights', label: 'Lights & Signals', hint: 'Head, brake, tail, turn signals',
+            { id: 'lights', label: 'Lights & Signals',
               tags: ['Headlight out', 'Brake light out', 'Signal out', 'Dim'] },
-            { id: 'horn', label: 'Horn / Switches', hint: 'Horn, kill switch, handlebar controls',
+            { id: 'horn', label: 'Horn / Switches',
               tags: ['Weak horn', 'No sound', 'Sticky switch'] },
-            { id: 'starter', label: 'Starter / Wiring', hint: 'Cranking speed, burnt or loose wiring',
+            { id: 'starter', label: 'Starter / Wiring',
               tags: ['Slow crank', 'Clicking', 'Loose / burnt wiring'] }
         ]
     },
     {
         id: 'chassis', title: 'Suspension & Steering', short: 'Chassis', icon: 'ph-steering-wheel',
         items: [
-            { id: 'fork', label: 'Front Fork', hint: 'Seal leaks, stiction, bottoming',
+            { id: 'fork', label: 'Front Fork',
               tags: ['Leaking seals', 'Bottoming out', 'Stiff', 'Bent'] },
-            { id: 'shock', label: 'Rear Shock(s)', hint: 'Leaks, weak damping, worn bushings',
+            { id: 'shock', label: 'Rear Shock(s)',
               tags: ['Leaking', 'Weak / soft', 'Noisy', 'Worn bushings'] },
-            { id: 'steering', label: 'Steering Bearings', hint: 'Free play and notchiness',
+            { id: 'steering', label: 'Steering Bearings',
               tags: ['Loose', 'Notchy', 'Too tight'] },
-            { id: 'frame', label: 'Frame / Swingarm', hint: 'Cracks, bends, rust, loose bolts',
+            { id: 'frame', label: 'Frame / Swingarm',
               tags: ['Crack', 'Bent', 'Rust', 'Loose bolts'] }
         ]
     }
@@ -7976,22 +8975,23 @@ function renderInspectionItem(item) {
 
     return `
         <div class="insp-item rounded-xl border border-slate-200" data-item="${item.id}" data-status="${st.status || 'none'}">
-            <div class="p-3 flex flex-col gap-3">
-                <div class="min-w-0">
-                    <p class="text-sm font-extrabold text-slate-800 leading-tight">${item.label}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">${item.hint}</p>
+            <div class="p-2 sm:p-2.5 flex flex-col gap-2">
+                <div class="insp-item-row flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2">
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs sm:text-sm font-extrabold text-slate-800 leading-snug">${item.label}</p>
+                    </div>
+                    <div class="insp-btn-group grid grid-cols-4 gap-1 shrink-0 w-full sm:w-auto">
+                        ${inspectionStatuses.map(s => `
+                            <button type="button" data-insp="status" data-item="${item.id}" data-status="${s.key}" class="insp-btn ${s.key} ${st.status === s.key ? 'is-active' : ''}">
+                                <i class="ph-bold ${s.icon}"></i> <span>${s.label}</span>
+                            </button>`).join('')}
+                    </div>
                 </div>
-                <div class="grid grid-cols-4 gap-1.5">
-                    ${inspectionStatuses.map(s => `
-                        <button type="button" data-insp="status" data-item="${item.id}" data-status="${s.key}" class="insp-btn ${s.key} ${st.status === s.key ? 'is-active' : ''}">
-                            <i class="ph-bold ${s.icon} text-base"></i> ${s.label}
-                        </button>`).join('')}
-                </div>
-                <div class="insp-detail ${showDetail ? '' : 'hidden'} flex flex-col gap-2.5 pt-3 border-t border-slate-200/70" data-detail="${item.id}">
-                    <div class="flex flex-wrap gap-1.5">
+                <div class="insp-detail ${showDetail ? '' : 'hidden'} flex flex-col gap-2 pt-2 border-t border-slate-200/70" data-detail="${item.id}">
+                    <div class="flex flex-wrap gap-1">
                         ${item.tags.map(tag => `<button type="button" data-insp="tag" data-item="${item.id}" data-tag="${inspEsc(tag)}" class="insp-chip ${st.tags.includes(tag) ? 'is-active' : ''}">${tag}</button>`).join('')}
                     </div>
-                    <input type="text" placeholder="Add a note (optional)" value="${inspEsc(st.note)}" data-insp-input="note" data-item="${item.id}" class="w-full px-3 py-2.5 rounded-lg border border-slate-300 bg-white text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                    <input type="text" placeholder="Add a note (optional)" value="${inspEsc(st.note)}" data-insp-input="note" data-item="${item.id}" class="w-full px-2.5 py-1.5 sm:py-2 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <div class="flex flex-wrap items-center gap-2">
                         <label class="insp-photo-btn"><i class="ph-bold ph-camera text-base"></i> Photo
                             <input type="file" accept="image/*" capture="environment" class="hidden" data-insp-file data-item="${item.id}">
@@ -8005,20 +9005,22 @@ function renderInspectionItem(item) {
 }
 
 function renderInspectionSection(sec) {
+    const done = sec.items.filter(i => getInspItem(i.id).status).length;
+    const countText = done === sec.items.length ? `All ${done} checked ✓` : `${done}/${sec.items.length} checked`;
     return `
         <div class="insp-section ${isInspectionCollapsed(sec.id) ? 'is-collapsed' : ''} bg-white border border-slate-200 rounded-xl overflow-hidden" id="insp-sec-${sec.id}" data-section="${sec.id}">
-            <div class="flex items-center gap-2 px-3.5 py-3 bg-slate-50 border-b border-slate-200">
+            <div class="insp-sec-header flex items-center gap-2 px-3 sm:px-3.5 py-2 sm:py-2.5 bg-slate-50 border-b border-slate-200">
                 <button type="button" data-insp="toggle-section" data-section="${sec.id}" class="flex items-center gap-2.5 flex-1 min-w-0 text-left">
-                    <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-lg shrink-0"><i class="ph-fill ${sec.icon}"></i></span>
-                    <span class="min-w-0">
-                        <span class="block text-sm font-extrabold text-slate-800">${sec.title}</span>
-                        <span class="block text-[11px] font-semibold text-slate-400" data-sec-count="${sec.id}"></span>
+                    <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center text-base shrink-0"><i class="ph-fill ${sec.icon}"></i></span>
+                    <span class="min-w-0 flex-1">
+                        <span class="block text-sm font-extrabold text-slate-800 leading-tight truncate">${sec.title}</span>
+                        <span class="block text-[11px] font-semibold text-slate-400 leading-tight" data-sec-count="${sec.id}">${countText}</span>
                     </span>
-                    <i class="ph-bold ph-caret-down insp-caret text-slate-400 ml-auto"></i>
+                    <i class="ph-bold ph-caret-down insp-caret text-slate-400 ml-auto mr-1"></i>
                 </button>
-                <button type="button" data-insp="section-ok" data-section="${sec.id}" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2.5 rounded-lg active:scale-95 transition-transform whitespace-nowrap">Rest OK</button>
+                <button type="button" data-insp="section-ok" data-section="${sec.id}" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg active:scale-95 transition-all whitespace-nowrap shrink-0">Rest OK</button>
             </div>
-            <div class="insp-section-body p-2.5 flex flex-col gap-2.5">
+            <div class="insp-section-body p-2 sm:p-2.5 flex flex-col gap-1.5 sm:gap-2">
                 ${sec.items.map(renderInspectionItem).join('')}
             </div>
         </div>`;
@@ -8123,7 +9125,7 @@ window.selectModelSuggestion = function(modelName) {
     if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
 };
 
-window.setMotoMode = function(mode, skipSave = false) {
+function setMotoMode(mode, skipSave = false) {
     if (!skipSave) {
         inspectionState.vehicle.mode = mode;
         if (mode === 'identified' && !inspectionState.vehicle.brandId) {
@@ -8154,7 +9156,8 @@ window.setMotoMode = function(mode, skipSave = false) {
         if (!skipSave) restoreMotorcycleCard();
     }
     if (typeof updateDtcReferenceUi === 'function') updateDtcReferenceUi();
-};
+}
+window.setMotoMode = setMotoMode;
 
 window.setMotoBrand = function(brandOrId) {
     const config = MOTORCYCLE_BRANDS_CONFIG.find(b => b.id === brandOrId || b.label === brandOrId);
@@ -8231,7 +9234,7 @@ function restoreCustomerCard() {
     }
 }
 
-window.setCustomerMode = function(mode, skipSave = false) {
+function setCustomerMode(mode, skipSave = false) {
     if (!skipSave) {
         inspectionState.customer.mode = mode;
         if (mode === 'walk-in') {
@@ -8272,6 +9275,7 @@ window.setCustomerMode = function(mode, skipSave = false) {
     }
     if (typeof updateStep3Summaries === 'function') updateStep3Summaries();
 }
+window.setCustomerMode = setCustomerMode;
 
 window.updateCustomerField = function(field, value) {
     inspectionState.customer.selectedCustomerId = null;
@@ -8310,7 +9314,7 @@ function refreshInspectionRow(id) {
 
     row.dataset.status = st.status || 'none';
     row.querySelectorAll('.insp-btn').forEach(btn => btn.classList.toggle('is-active', btn.dataset.status === st.status));
-    row.querySelector('.insp-detail').classList.toggle('hidden', !(st.status === 'watch' || st.status === 'fix'));
+    row.querySelector('.insp-detail')?.classList.toggle('hidden', !(st.status === 'watch' || st.status === 'fix'));
     row.querySelectorAll('.insp-chip[data-tag]').forEach(chip => chip.classList.toggle('is-active', st.tags.includes(chip.dataset.tag)));
 
     refreshInspectionSummary();
@@ -8318,11 +9322,12 @@ function refreshInspectionRow(id) {
 
 function inspectionFormatEntry(item) {
     const st = getInspItem(item.id);
-    return `• ${item.label}${st.tags.length ? ` — ${st.tags.join(', ')}` : ''}${st.note ? ` [${st.note}]` : ''}`;
+    const label = (item && item.label) || (item && item.id) || '';
+    return `• ${label}${st.tags && st.tags.length ? ` — ${st.tags.join(', ')}` : ''}${st.note ? ` [${st.note}]` : ''}`;
 }
 
 function buildInspectionFindings() {
-    const { odo, fuel, complaints } = inspectionState.intake;
+    const { odo, fuel, complaints } = (inspectionState && inspectionState.intake) || {};
     const fix = inspectionItems.filter(i => getInspItem(i.id).status === 'fix');
     const watch = inspectionItems.filter(i => getInspItem(i.id).status === 'watch');
     const checked = inspectionItems.filter(i => getInspItem(i.id).status).length;
@@ -8333,7 +9338,7 @@ function buildInspectionFindings() {
     if (odo) meta.push(`Odometer: ${Number(odo).toLocaleString()} km`);
     if (fuel) meta.push(`Fuel: ${fuel}`);
     if (meta.length) lines.push(meta.join(' | '));
-    if (complaints.length) lines.push(`Complaint: ${complaints.join(', ')}`);
+    if (complaints && complaints.length) lines.push(`Complaint: ${complaints.join(', ')}`);
     if (fix.length) lines.push('', 'NEEDS REPAIR / REPLACEMENT:', ...fix.map(inspectionFormatEntry));
     if (watch.length) lines.push('', 'MONITOR / ADVISE CUSTOMER:', ...watch.map(inspectionFormatEntry));
     if (!fix.length && !watch.length && checked) lines.push('', 'No issues found on the checked items.');
@@ -8360,20 +9365,7 @@ function refreshInspectionSummary() {
         fill.classList.toggle('bg-blue-500', checked !== total);
     }
 
-    // Section jump pills + per-section counters
-    const pills = document.getElementById('insp-pills');
-    if (pills) {
-        pills.innerHTML = inspectionSections.map(sec => {
-            const done = sec.items.filter(i => getInspItem(i.id).status).length;
-            const hasFix = sec.items.some(i => getInspItem(i.id).status === 'fix');
-            const isDone = done === sec.items.length;
-            const iconHTML = isDone 
-                ? `<i class="ph-fill ph-check-circle text-emerald-500"></i>` 
-                : `<i class="ph-fill ${sec.icon}"></i>`;
-            return `<button type="button" data-insp="jump" data-section="${sec.id}" class="insp-pill ${isDone ? 'is-done' : ''} ${hasFix ? 'has-fix' : ''}">
-                ${iconHTML} ${sec.short} ${done}/${sec.items.length}</button>`;
-        }).join('');
-    }
+    // Per-section counters
     inspectionSections.forEach(sec => {
         const done = sec.items.filter(i => getInspItem(i.id).status).length;
         const label = document.querySelector(`[data-sec-count="${sec.id}"]`);
@@ -8431,6 +9423,7 @@ function refreshInspectionSummary() {
         </div>`;
     
     validateStep1();
+    if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
 }
 
 function validateStep1() {
@@ -8525,15 +9518,6 @@ document.addEventListener('click', function(e) {
         const id = el.dataset.section;
         inspectionCollapsed[id] = !isInspectionCollapsed(id);
         document.getElementById(`insp-sec-${id}`)?.classList.toggle('is-collapsed', inspectionCollapsed[id]);
-
-    } else if (action === 'jump') {
-        const id = el.dataset.section;
-        inspectionCollapsed[id] = false;
-        const section = document.getElementById(`insp-sec-${id}`);
-        if (section) {
-            section.classList.remove('is-collapsed');
-            section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
 
     } else if (action === 'complaint') {
         const list = inspectionState.intake.complaints;
@@ -9663,9 +10647,9 @@ window.syncPlanFromDiagnosis = function(firstTime = false, restoreRemoved = fals
             complaintsContainer.innerHTML = inspectionState.intake.complaints.map(c => 
                 `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200"><i class="ph-fill ph-warning-circle text-amber-500"></i> ${escHTML(c)}</span>`
             ).join('');
-            complaintsContainer.parentElement.classList.remove('hidden');
+            complaintsContainer.parentElement?.classList.remove('hidden');
         } else {
-            complaintsContainer.parentElement.classList.add('hidden');
+            complaintsContainer.parentElement?.classList.add('hidden');
         }
     }
 
@@ -9804,7 +10788,7 @@ function updateDiagStepper() {
     });
 }
 
-window.updateStep3Summaries = function() {
+function updateStep3Summaries() {
     const v = inspectionState.vehicle;
     const c = inspectionState.customer;
     
@@ -9836,6 +10820,7 @@ window.updateStep3Summaries = function() {
         }
     }
 }
+window.updateStep3Summaries = updateStep3Summaries;
 
 function renderStep3Summary() {
     const setText = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
@@ -9849,16 +10834,20 @@ function renderStep3Summary() {
     
     // Calculate total and determine if waiting for parts
     const partsHtml = repairPlanParts.filter(p => !p.obsolete).map(p => {
-        partsTotal += p.part.price * p.qty;
-        const outOfStock = (p.stock === 0 || p.stock < p.qty) && p.handling === 'order';
+        const partObj = p.part || (typeof mockInventory !== 'undefined' ? mockInventory.find(m => m.id === p.id) : null) || {};
+        const partName = partObj.name || p.name || p.id || 'Part';
+        const price = Number(partObj.price !== undefined ? partObj.price : (p.price || 0));
+        const qty = Number(p.qty || 1);
+        partsTotal += price * qty;
+        const outOfStock = ((p.stock === 0 || p.stock < qty) && p.handling === 'order');
         if (outOfStock) isWaitingForParts = true;
         
         return `<li class="flex justify-between py-2 items-start gap-3">
             <div class="flex flex-col min-w-0">
-                <span class="text-sm text-slate-800 font-semibold truncate">${p.qty} × ${escHTML(p.part.name)}</span>
+                <span class="text-sm text-slate-800 font-semibold truncate">${qty} × ${escHTML(partName)}</span>
                 ${outOfStock ? `<span class="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 w-max mt-1 font-bold uppercase">Out of Stock</span>` : ''}
             </div>
-            <span class="text-sm font-bold text-slate-700 mt-0.5 shrink-0">${fmtPeso(p.part.price * p.qty)}</span>
+            <span class="text-sm font-bold text-slate-700 mt-0.5 shrink-0">${fmtPeso(price * qty)}</span>
         </li>`;
     }).join('') || '<li class="text-sm text-slate-500 py-2 italic">No parts added</li>';
 
@@ -10666,4 +11655,67 @@ document.addEventListener('keydown', function(e) {
             document.getElementById('restock-search-input').focus();
         }
     }
+});
+
+// --- Reusable Mobile Card Accordion Helper & Listeners ---
+function toggleMCard(headEl) {
+    if (!headEl) return;
+    const card = headEl.closest('.m-card');
+    if (!card) return;
+
+    const head = card.querySelector('.m-card-head') || headEl;
+    const list = card.closest('.m-cards, .m-card-list') || card.parentElement;
+    const isCurrentlyOpen = card.classList.contains('open');
+
+    // Close other open cards in the same container/list
+    if (list) {
+        const siblingCards = list.querySelectorAll('.m-card.open');
+        siblingCards.forEach(sibling => {
+            if (sibling !== card) {
+                sibling.classList.remove('open');
+                const sibHead = sibling.querySelector('.m-card-head');
+                if (sibHead) {
+                    sibHead.setAttribute('aria-expanded', 'false');
+                }
+            }
+        });
+    }
+
+    // Toggle current card
+    if (isCurrentlyOpen) {
+        card.classList.remove('open');
+        if (head && head.setAttribute) {
+            head.setAttribute('aria-expanded', 'false');
+        }
+        if (card.hasAttribute('data-txn-id') && typeof openedTxnCardId !== 'undefined' && openedTxnCardId === card.getAttribute('data-txn-id')) {
+            openedTxnCardId = null;
+        }
+    } else {
+        card.classList.add('open');
+        if (head && head.setAttribute) {
+            head.setAttribute('aria-expanded', 'true');
+        }
+        if (card.hasAttribute('data-txn-id') && typeof openedTxnCardId !== 'undefined') {
+            openedTxnCardId = card.getAttribute('data-txn-id');
+        }
+    }
+}
+window.toggleMCard = toggleMCard;
+
+// Delegated click listener for mobile cards
+document.addEventListener('click', function(e) {
+    const head = e.target.closest('.m-card-head');
+    if (!head) return;
+    if (e.target.closest('button, a, input, select, textarea, [data-prevent-toggle]')) return;
+    toggleMCard(head);
+});
+
+// Delegated keyboard support (Enter or Space) for mobile cards
+document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+    const head = e.target.closest('.m-card-head');
+    if (!head) return;
+    if (e.target.matches('button, a, input, select, textarea')) return;
+    e.preventDefault();
+    toggleMCard(head);
 });
