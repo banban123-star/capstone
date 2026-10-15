@@ -64,9 +64,6 @@
             <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="reports">
                 <i class="ph ph-chart-line-up text-lg w-6"></i> Reports & Monitoring
             </button>
-            <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="audit">
-                <i class="ph ph-shield-check text-lg w-6"></i> Audit Logs
-            </button>
             <button class="nav-link flex items-center w-full px-3 py-2.5 rounded-lg transition-colors hover:bg-slate-800 hover:text-white" data-target="users">
                 <i class="ph ph-user-gear text-lg w-6"></i> User Management
             </button>
@@ -75,14 +72,14 @@
             </button>
 
             <!-- System Settings -->
-            <div id="nav-header-settings" class="px-3 py-2 mt-2 bg-slate-800/50 rounded-lg border border-slate-700/50">
+            <div id="nav-header-settings" class="px-3 py-2 mt-2 bg-slate-800/50 rounded-lg border border-slate-700/50" style="display: none;">
                 <div class="text-[10px] text-slate-500 uppercase font-bold mb-2">System Settings</div>
                 <button class="nav-link flex items-center w-full py-1.5 text-slate-300 hover:text-white transition-colors" data-target="backup">
                     <i class="ph ph-database text-base w-6"></i> Backup & Restore
                 </button>
             </div>
             <!-- Desktop to Mobile Toggle -->
-            <button class="flex items-center w-full px-3 py-2 mt-2 text-blue-400 hover:text-blue-300 transition-colors font-semibold" id="desktop-mobile-toggle" onclick="toggleOwnerMobileMode()">
+            <button class="flex items-center w-full px-3 py-2 mt-2 text-blue-400 hover:text-blue-300 transition-colors font-semibold" id="desktop-mobile-toggle" onclick="toggleOwnerMobileMode()" style="display: none;">
                 <i class="ph ph-device-mobile text-base w-6"></i> Switch to Mobile UI
             </button>
         </nav>
@@ -3706,13 +3703,24 @@
         </div>
 
         <!-- Mobile to Desktop Toggle -->
-        <button id="m-more-desktop-toggle" onclick="toggleOwnerMobileMode()" class="flex items-center justify-center gap-2 p-4 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm active:scale-[0.98] transition-transform">
+        <button id="m-more-desktop-toggle" onclick="toggleOwnerMobileMode()" class="flex items-center justify-center gap-2 p-4 bg-blue-50 text-blue-600 rounded-xl font-bold text-sm active:scale-[0.98] transition-transform" style="display: none;">
             <i class="ph-bold ph-desktop text-lg"></i> Switch to Desktop UI
         </button>
 
         <button onclick="handleLogout()" class="w-full p-4 rounded-xl bg-red-50 text-red-600 font-bold text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform mt-2">
             <i class="ph-bold ph-sign-out text-lg"></i> Sign Out
         </button>
+
+        <!-- Development Role Switcher (Mobile) -->
+        <div class="pt-2 border-t border-slate-200">
+            <label class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1.5 px-1 block">Simulate Login As:</label>
+            <select id="m-role-switcher" class="w-full bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl p-3 outline-none focus:border-blue-500 transition-colors shadow-sm" onchange="switchRole(this.value)">
+                <option value="super_admin">Super Admin (System)</option>
+                <option value="admin">Owner/Cashier (Admin) (User)</option>
+                <option value="cashier">Cashier (Cashier)</option>
+                <option value="mechanic">Mechanic (Larpus)</option>
+            </select>
+        </div>
     </div>
 </div>
 </template>

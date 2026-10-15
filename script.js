@@ -797,7 +797,7 @@ const ROLES_CONFIG = {
         description: 'Shop operations: owner and cashier',
         demoEmail: 'ownercashier@gmail.com',
         defaultUI: 'desktop',
-        canSwitchUI: true
+        canSwitchUI: false
     },
     cashier: {
         id: 'cashier',
@@ -1029,14 +1029,13 @@ function updateRoleLabels() {
     }
 
     // 5. "Simulate Login As" dropdown
-    const roleSwitcher = document.getElementById('role-switcher');
-    if (roleSwitcher) {
+    document.querySelectorAll('#role-switcher, #m-role-switcher').forEach(switcher => {
         const suffixes = { super_admin: ' (System)', admin: ' (User)', cashier: ' (Cashier)', mechanic: ' (Larpus)' };
-        roleSwitcher.innerHTML = Object.values(ROLES_CONFIG).map(r => 
+        switcher.innerHTML = Object.values(ROLES_CONFIG).map(r => 
             `<option value="${r.id}">${r.label}${suffixes[r.id] || ''}</option>`
         ).join('');
-        roleSwitcher.value = currentRole;
-    }
+        switcher.value = currentRole;
+    });
 
     // 6. User Management: role filter dropdown
     const userFilterRole = document.getElementById('user-filter-role');
@@ -1120,9 +1119,10 @@ function updateRoleLabels() {
 }
 
 function updateMobileMoreNav(roleId) {
+    const activeRole = roleId || currentRole || 'mechanic';
     const moreView = document.getElementById('m-more-view');
     if (!moreView) return;
-    const allowed = rolePermissions[roleId] || [];
+    const allowed = rolePermissions[activeRole] || [];
     
     moreView.querySelectorAll('button[data-mtab]').forEach(el => {
         const target = el.getAttribute('data-mtab');
@@ -1130,18 +1130,18 @@ function updateMobileMoreNav(roleId) {
             el.style.display = allowed.includes(target) ? '' : 'none';
         }
     });
-    
-    // Hide parent sections if all children are hidden
-    moreView.querySelectorAll('div.bg-white.rounded-2xl').forEach(parentDiv => {
-        const anyVisible = Array.from(parentDiv.querySelectorAll('button[data-mtab]')).some(b => b.style.display !== 'none');
-        const sectionContainer = parentDiv.parentElement;
-        if (sectionContainer) sectionContainer.style.display = anyVisible ? '' : 'none';
-    });
 
     const deskToggle = document.getElementById('m-more-desktop-toggle');
     if (deskToggle) {
-        deskToggle.style.display = canSwitchUI(roleId) ? '' : 'none';
+        deskToggle.style.display = canSwitchUI(activeRole) ? '' : 'none';
     }
+    
+    // Hide parent sections if all children are hidden
+    moreView.querySelectorAll('div.bg-white.rounded-2xl').forEach(parentDiv => {
+        const anyVisible = Array.from(parentDiv.querySelectorAll('button[data-mtab], #m-more-desktop-toggle')).some(b => b.style.display !== 'none');
+        const sectionContainer = parentDiv.parentElement;
+        if (sectionContainer) sectionContainer.style.display = anyVisible ? '' : 'none';
+    });
 }
 
 function switchRole(roleId, isLogin) {
@@ -1150,7 +1150,7 @@ function switchRole(roleId, isLogin) {
         return;
     }
     const user = systemUsers[roleId];
-    if (roleId !== currentRole) {
+    if (!canSwitchUI(roleId) || roleId !== currentRole) {
         forceOwnerMobile = false;
         sessionStorage.removeItem('forceOwnerMobile');
         localStorage.removeItem('forceOwnerMobile');
@@ -1166,11 +1166,15 @@ function switchRole(roleId, isLogin) {
     document.querySelectorAll('#role-switcher, #m-role-switcher').forEach(s => { s.value = roleId; });
     
     // 1. Update Profile UI
-    document.getElementById('user-name').textContent = user.name;
-    document.getElementById('user-role-text').textContent = ROLES_CONFIG[roleId].label;
+    const userNameEl = document.getElementById('user-name');
+    if (userNameEl) userNameEl.textContent = user.name;
+    const userRoleEl = document.getElementById('user-role-text');
+    if (userRoleEl) userRoleEl.textContent = ROLES_CONFIG[roleId]?.label || '';
     const avatar = document.getElementById('user-avatar');
-    avatar.textContent = user.initials;
-    avatar.className = `w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-inner ${user.color}`;
+    if (avatar) {
+        avatar.textContent = user.initials;
+        avatar.className = `w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-inner ${user.color}`;
+    }
 
     // 2. Hide/Show Nav Links based on rolePermissions map
     const allNavLinks = document.querySelectorAll('.nav-link[data-target]');
@@ -1197,19 +1201,17 @@ function switchRole(roleId, isLogin) {
     const desktopMobileToggle = document.getElementById('desktop-mobile-toggle');
     
     if (adminHeader) {
-        const adminTargets = ['reports', 'audit', 'users'];
-        const hasVisibleAdmin = adminTargets.some(target => 
-            rolePermissions[roleId] && rolePermissions[roleId].includes(target)
-        );
+        const adminTargets = ['reports', 'users'];
+        const hasVisibleAdmin = adminTargets.some(target => {
+            const link = document.querySelector(`.nav-link[data-target="${target}"]`);
+            return link && link.style.display !== 'none';
+        });
         adminHeader.style.display = hasVisibleAdmin ? 'block' : 'none';
     }
 
     if (settingsHeader) {
         const hasVisibleSettings = Array.from(settingsHeader.querySelectorAll('.nav-link[data-target]'))
-            .some(link => {
-                const target = link.getAttribute('data-target');
-                return rolePermissions[roleId] && rolePermissions[roleId].includes(target);
-            });
+            .some(link => link.style.display !== 'none');
         settingsHeader.style.display = hasVisibleSettings ? 'block' : 'none';
     }
 
@@ -1237,7 +1239,8 @@ function switchRole(roleId, isLogin) {
         setActiveNavLink('dashboard');
         loadView('dashboard');
     } else if (wasMobile !== isMobile) {
-        const targetView = (currentActiveTarget && (isMobile || currentActiveTarget !== 'more')) ? currentActiveTarget : 'dashboard';
+        const isCurrentlyOnMore = !!document.getElementById('m-more-view');
+        const targetView = (!isMobile && isCurrentlyOnMore) ? 'dashboard' : ((currentActiveTarget && (isMobile || currentActiveTarget !== 'more')) ? currentActiveTarget : 'dashboard');
         setActiveNavLink(targetView);
         loadView(targetView);
     } else if (isCurrentlyOnUsers && typeof renderUsers === 'function') {
@@ -1295,14 +1298,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             forceOwnerMobile = sessionStorage.getItem('forceOwnerMobile') === 'true';
         }
-        switchRole(activeRole, true);
+        try {
+            switchRole(activeRole, true);
+        } catch (e) {
+            console.error('Error restoring active role:', e);
+        }
         const loginScreen = document.getElementById('login-screen');
         if (loginScreen) {
             loginScreen.classList.add('hidden');
             loginScreen.classList.remove('flex');
         }
-        setActiveNavLink('dashboard');
-        loadView('dashboard');
+        if (typeof setActiveNavLink === 'function') setActiveNavLink('dashboard');
+        if (typeof loadView === 'function') loadView('dashboard');
     } else {
         localStorage.removeItem('activeRole');
         sessionStorage.removeItem('currentUserRole');
@@ -7235,72 +7242,84 @@ window.closeLoginScreen = function() {
 window.promptPin = function(roleId, name, initials, colorClass) {
     currentLoginRole = roleId;
     enteredPin = "";
-    updatePinDisplay();
+    if (typeof updatePinDisplay === 'function') updatePinDisplay();
 
     // Update PIN screen UI with the selected user's details
-    document.getElementById('pin-name').textContent = name;
+    const pinName = document.getElementById('pin-name');
+    if (pinName) pinName.textContent = name;
     const avatar = document.getElementById('pin-avatar');
-    avatar.textContent = initials;
-    avatar.className = `w-16 h-16 rounded-full text-white flex items-center justify-center font-bold text-2xl shadow-inner ${colorClass}`;
+    if (avatar) {
+        avatar.textContent = initials;
+        avatar.className = `w-16 h-16 rounded-full text-white flex items-center justify-center font-bold text-2xl shadow-inner ${colorClass}`;
+    }
 
     // Switch Views inside the modal
-    document.getElementById('login-profile-view').classList.add('hidden');
-    document.getElementById('login-pin-view').classList.remove('hidden');
+    const profileView = document.getElementById('login-profile-view');
+    if (profileView) profileView.classList.add('hidden');
+    const pinView = document.getElementById('login-pin-view');
+    if (pinView) pinView.classList.remove('hidden');
 };
 
 window.backToProfiles = function() {
     currentLoginRole = null;
     enteredPin = "";
-    updatePinDisplay();
+    if (typeof updatePinDisplay === 'function') updatePinDisplay();
     
-    document.getElementById('login-pin-view').classList.add('hidden');
-    document.getElementById('login-profile-view').classList.remove('hidden');
+    const pinView = document.getElementById('login-pin-view');
+    if (pinView) pinView.classList.add('hidden');
+    const profileView = document.getElementById('login-profile-view');
+    if (profileView) profileView.classList.remove('hidden');
 };
 
 // Numpad Functions
 window.addPin = function(num) {
     if (enteredPin.length < 4) {
         enteredPin += num;
-        updatePinDisplay();
+        if (typeof updatePinDisplay === 'function') updatePinDisplay();
     }
 };
 
 window.removePin = function() {
     if (enteredPin.length > 0) {
         enteredPin = enteredPin.slice(0, -1);
-        updatePinDisplay();
+        if (typeof updatePinDisplay === 'function') updatePinDisplay();
     }
 };
 
 window.clearPin = function() {
     enteredPin = "";
-    updatePinDisplay();
+    if (typeof updatePinDisplay === 'function') updatePinDisplay();
 };
 
 function updatePinDisplay() {
     const dots = document.querySelectorAll('.pin-dot');
-    dots.forEach((dot, index) => {
-        if (index < enteredPin.length) {
-            dot.classList.add('bg-blue-600', 'border-blue-600');
-            dot.classList.remove('border-slate-300', 'bg-transparent');
-        } else {
-            dot.classList.remove('bg-blue-600', 'border-blue-600');
-            dot.classList.add('border-slate-300', 'bg-transparent');
-        }
-    });
+    if (dots.length > 0) {
+        dots.forEach((dot, index) => {
+            if (index < enteredPin.length) {
+                dot.classList.add('bg-blue-600', 'border-blue-600');
+                dot.classList.remove('border-slate-300', 'bg-transparent');
+            } else {
+                dot.classList.remove('bg-blue-600', 'border-blue-600');
+                dot.classList.add('border-slate-300', 'bg-transparent');
+            }
+        });
+    }
 
     const submitBtn = document.getElementById('btn-login-submit');
-    if (enteredPin.length === 4) {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-    } else {
-        submitBtn.disabled = true;
-        submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    if (submitBtn && enteredPin) {
+        if (enteredPin.length === 4) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        }
     }
 }
 
 window.submitLogin = function() {
-    const roleId = document.getElementById('login-selected-role').value;
+    const roleInput = document.getElementById('login-selected-role');
+    const roleId = roleInput ? roleInput.value : '';
     const roleErrorMsg = document.getElementById('login-role-error');
     if (roleErrorMsg) {
         roleErrorMsg.textContent = 'Please choose an account.';
@@ -7318,17 +7337,19 @@ window.submitLogin = function() {
     }
     
     const btn = document.getElementById('btn-login-submit');
-    const originalContent = btn.innerHTML;
+    const originalContent = btn ? btn.innerHTML : '';
     
-    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Authenticating...';
+    if (btn) btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Authenticating...';
     
     setTimeout(() => {
-        btn.innerHTML = originalContent; 
+        if (btn) btn.innerHTML = originalContent; 
         
         // Hide the login screen overlay
         const loginScreen = document.getElementById('login-screen');
-        loginScreen.classList.add('hidden');
-        loginScreen.classList.remove('flex');
+        if (loginScreen) {
+            loginScreen.classList.add('hidden');
+            loginScreen.classList.remove('flex');
+        }
         
         // Sync the bottom-left dropdown to match the selected role
         const targetRole = currentLoginRole || roleId;
@@ -8541,7 +8562,7 @@ document.addEventListener('change', function(e) {
 // add the screen name to `mobileViews` once views/mobile/<name>.html exists.
 // =====================================================================
 
-let forceOwnerMobile = sessionStorage.getItem('forceOwnerMobile') === 'true';
+let forceOwnerMobile = canSwitchUI() ? (sessionStorage.getItem('forceOwnerMobile') === 'true') : false;
 
 function isMobileForRole(roleId) {
     const role = roleId || currentRole || 'admin';
@@ -11070,7 +11091,8 @@ document.addEventListener('keydown', function(e) {
 
 // --- Overridden Login Logic ---
 window.submitLogin = function() {
-    const roleId = document.getElementById('login-selected-role').value;
+    const roleInput = document.getElementById('login-selected-role');
+    const roleId = roleInput ? roleInput.value : '';
     const roleErrorMsg = document.getElementById('login-role-error');
     if (roleErrorMsg) {
         roleErrorMsg.textContent = 'Please choose an account.';
@@ -11088,34 +11110,45 @@ window.submitLogin = function() {
     }
     
     const btn = document.getElementById('btn-login-submit');
-    const originalContent = btn.innerHTML;
+    const originalContent = btn ? btn.innerHTML : '';
     
-    btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Authenticating...';
+    if (btn) btn.innerHTML = '<i class="ph-bold ph-spinner animate-spin text-xl"></i> Authenticating...';
     
     setTimeout(() => {
-        btn.innerHTML = originalContent; 
+        if (btn) btn.innerHTML = originalContent; 
         
-        const loginScreen = document.getElementById('login-screen');
-        if (loginScreen) {
-            loginScreen.classList.add('hidden');
-            loginScreen.classList.remove('flex');
+        try {
+            // 1. Set the role & storage
+            currentRole = roleId;
+            localStorage.setItem('activeRole', roleId);
+            sessionStorage.setItem('currentUserRole', roleId);
+            sessionStorage.setItem('roles_version', 'v4_cashier');
+            
+            forceOwnerMobile = false;
+            sessionStorage.removeItem('forceOwnerMobile');
+            localStorage.removeItem('forceOwnerMobile');
+            
+            // 2. Apply UI mode & 3. Build sidebar
+            switchRole(roleId, true);
+        } catch (err) {
+            console.error('Error during post-login setup:', err);
+        } finally {
+            // 4. Hide the login screen overlay
+            const loginScreen = document.getElementById('login-screen');
+            if (loginScreen) {
+                loginScreen.classList.add('hidden');
+                loginScreen.classList.remove('flex');
+            }
+            
+            // 5. Call loadView() once for the role's first screen
+            const targetView = 'dashboard';
+            try {
+                if (typeof setActiveNavLink === 'function') setActiveNavLink(targetView);
+                if (typeof loadView === 'function') loadView(targetView);
+            } catch (viewErr) {
+                console.error('Error loading initial view:', viewErr);
+            }
         }
-        
-        localStorage.setItem('activeRole', roleId);
-        sessionStorage.setItem('currentUserRole', roleId);
-        sessionStorage.setItem('roles_version', 'v4_cashier');
-        
-        forceOwnerMobile = false;
-        sessionStorage.removeItem('forceOwnerMobile');
-        localStorage.removeItem('forceOwnerMobile');
-        
-        const switcher = document.getElementById('role-switcher');
-        if (switcher) switcher.value = roleId;
-        
-        switchRole(roleId, true);
-        setActiveNavLink('dashboard');
-        loadView('dashboard');
-        
     }, 600);
 };
 
@@ -11126,7 +11159,12 @@ window.handleLogout = function() {
         loginScreen.classList.add('flex');
     }
     document.body.classList.remove('mobile-app');
-    showLoginForm();
+    try {
+        if (typeof backToProfiles === 'function') backToProfiles();
+    } catch (e) {
+        console.error('Error during backToProfiles on logout:', e);
+    }
+    if (typeof showLoginForm === 'function') showLoginForm();
     sessionStorage.removeItem('currentUserRole');
     localStorage.removeItem('activeRole');
     forceOwnerMobile = false;
