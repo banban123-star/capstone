@@ -1,8 +1,7 @@
 const shopConfig = {
     name: "MotoCare OS",
     address: "123 Example Street, City",
-    phone: "+1 (555) 123-4567",
-    hours: "Mon-Fri: 8am - 6pm"
+    phone: "+1 (555) 123-4567"
 };
 
 // --- Shared Motorcycle Brands Configuration ---
@@ -1270,15 +1269,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (typeof applyShopDetails === 'function') {
         applyShopDetails();
-    } else {
-        const shopName = document.getElementById('landing-shop-name');
-        if (shopName) shopName.textContent = shopConfig.name;
-        const shopAddr = document.getElementById('landing-shop-address');
-        if (shopAddr) shopAddr.textContent = shopConfig.address;
-        const shopPhone = document.getElementById('landing-shop-phone');
-        if (shopPhone) shopPhone.textContent = shopConfig.phone;
-        const shopHours = document.getElementById('landing-shop-hours');
-        if (shopHours) shopHours.textContent = shopConfig.hours;
     }
 
     // Reset old sessions so swapped roles don't grant mismatched access
@@ -11038,27 +11028,8 @@ window.toggleStep3RegistrationMode = function(checkbox) {
     // Dummy handler for legacy template (diagnostics_temp)
     console.log('toggleStep3RegistrationMode called', checkbox.checked);
 };
-// --- Login Toggles ---
-window.showSignedOutView = function() {
-    const loginForm = document.getElementById('login-form-view');
-    const signedOut = document.getElementById('signed-out-view');
-    if (loginForm) {
-        loginForm.classList.add('hidden');
-        loginForm.classList.remove('flex');
-    }
-    if (signedOut) {
-        signedOut.classList.remove('hidden');
-        signedOut.classList.add('flex');
-    }
-};
-
 window.showLoginForm = function() {
     const loginForm = document.getElementById('login-form-view');
-    const signedOut = document.getElementById('signed-out-view');
-    if (signedOut) {
-        signedOut.classList.add('hidden');
-        signedOut.classList.remove('flex');
-    }
     if (loginForm) {
         loginForm.classList.remove('hidden');
         loginForm.classList.add('flex');
@@ -11079,12 +11050,6 @@ document.addEventListener('keydown', function(e) {
         if (typeof isLoginEmailListOpen === 'function' && isLoginEmailListOpen()) {
             e.preventDefault();
             closeLoginEmailList();
-            return;
-        }
-        const loginScreen = document.getElementById('login-screen');
-        const loginForm = document.getElementById('login-form-view');
-        if (loginScreen && !loginScreen.classList.contains('hidden') && loginForm && !loginForm.classList.contains('hidden')) {
-            showSignedOutView();
         }
     }
 });
@@ -11210,13 +11175,6 @@ function applyShopDetails() {
         shopConfig.address = details.address;
         shopConfig.phone = details.phone;
     }
-
-    const landingName = document.getElementById('landing-shop-name');
-    if (landingName) landingName.textContent = details.name;
-    const landingAddr = document.getElementById('landing-shop-address');
-    if (landingAddr) landingAddr.textContent = details.address;
-    const landingPhone = document.getElementById('landing-shop-phone');
-    if (landingPhone) landingPhone.textContent = details.phone;
 
     const receiptName = document.getElementById('receipt-shop-name');
     if (receiptName) receiptName.textContent = details.receiptHeader || details.name;
