@@ -961,11 +961,11 @@ const roleFeatures = {
     },
     mechanic: {
         viewStock: true,
-        walkInSale: true,
-        addPart: true,
-        editPart: true,
-        restock: true,
-        autoAssign: true,
+        walkInSale: false,
+        addPart: false,
+        editPart: false,
+        restock: false,
+        autoAssign: false,
         viewMovements: true
     }
 };
@@ -1239,7 +1239,7 @@ function switchRole(roleId, isLogin) {
         loadView('dashboard');
     } else if (wasMobile !== isMobile) {
         const isCurrentlyOnMore = !!document.getElementById('m-more-view');
-        const targetView = (!isMobile && isCurrentlyOnMore) ? 'dashboard' : ((currentActiveTarget && (isMobile || currentActiveTarget !== 'more')) ? currentActiveTarget : 'dashboard');
+        const targetView = (!isMobile && isCurrentlyOnMore) ? 'dashboard' : (isCurrentlyOnInventory ? 'inventory' : ((currentActiveTarget && (isMobile || currentActiveTarget !== 'more')) ? currentActiveTarget : 'dashboard'));
         setActiveNavLink(targetView);
         loadView(targetView);
     } else if (isCurrentlyOnUsers && typeof renderUsers === 'function') {
@@ -1253,6 +1253,7 @@ function switchRole(roleId, isLogin) {
         }
         if (!hasFeature('restock')) closeRestockModal();
         if (!hasFeature('addPart') && !hasFeature('editPart')) closeAddPartModal();
+        if (!hasFeature('walkInSale') && typeof closeWalkInModalInv === 'function') closeWalkInModalInv();
         renderInventory();
     } else if (currentActiveTarget === 'dashboard') {
         setActiveNavLink('dashboard');
@@ -3917,8 +3918,6 @@ function renderInventory() {
         let html = '';
         
         if (isMobile) {
-            btnWrap.className = 'w-full shrink-0 flex flex-col gap-2 mt-1';
-            
             let topButtons = [];
             if (canAutoAssign) {
                 topButtons.push(`<button onclick="openAutoAssignLinks()" class="flex-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 h-[44px] rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"><i class="ph-bold ph-magic-wand"></i> Auto Assign</button>`);
@@ -3936,7 +3935,6 @@ function renderInventory() {
             }
             
         } else {
-            btnWrap.className = 'flex flex-wrap gap-2 w-full lg:w-auto shrink-0';
             if (canAutoAssign) {
                 html += `<button onclick="openAutoAssignLinks()" class="flex-1 lg:flex-none bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
                     <i class="ph-bold ph-magic-wand"></i> Auto Assign
@@ -3954,8 +3952,13 @@ function renderInventory() {
             }
         }
         
-        btnWrap.innerHTML = html;
-        btnWrap.classList.toggle('hidden', html === '');
+        if (!html) {
+            btnWrap.className = 'hidden';
+            btnWrap.innerHTML = '';
+        } else {
+            btnWrap.className = isMobile ? 'w-full shrink-0 flex flex-col gap-2 mt-1' : 'flex flex-wrap gap-2 w-full lg:w-auto shrink-0';
+            btnWrap.innerHTML = html;
+        }
     }
 
     // Adjust table classes on mobile and action header
@@ -4261,7 +4264,7 @@ function renderInventory() {
                     </div>
                 </div>
                 <div id="m-inv-body-${item.id}" class="hidden border-t border-slate-100 bg-slate-50/50 p-3">
-                    <div class="flex flex-col gap-2 text-xs text-slate-600 mb-4">
+                    <div class="flex flex-col gap-2 text-xs text-slate-600 ${showActions ? 'mb-4' : ''}">
                         <div class="flex justify-between items-center"><span class="font-bold">Category</span><span class="inline-flex items-center gap-1 ${catConf.bg} ${catConf.text} px-1.5 py-0.5 rounded font-bold">${catConf.name}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Compatible</span><span class="text-slate-500">${item.comp}</span></div>
                         <div class="flex justify-between items-center"><span class="font-bold">Reserved</span><span class="text-slate-500">${item.reserved}</span></div>
@@ -4582,6 +4585,11 @@ window.calcWalkinChange = function() {
 
 // 4. Override Open Modal to clear previous data
 window.openWalkInCheckout = function() {
+    if (!hasFeature('walkInSale')) {
+        if (typeof closeWalkInCheckout === 'function') closeWalkInCheckout();
+        showToast("You don't have permission to do this.");
+        return;
+    }
     walkinCart = []; // Reset Cart Array
     walkinTotalDue = 0;
     
