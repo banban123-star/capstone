@@ -1660,6 +1660,30 @@ body.mobile-app .sh-btn-export {
     }
 }
 
+/* Diagnostic Summary Modal (.m-row support on desktop) */
+#modal-diag-summary .m-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    padding: 6px 0;
+    width: 100%;
+}
+#modal-diag-summary .m-row-label {
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+}
+#modal-diag-summary .m-row-value {
+    color: #1e293b;
+    font-weight: 600;
+    text-align: right;
+    word-break: break-word;
+}
+
+
 
 
 

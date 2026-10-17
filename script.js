@@ -448,6 +448,7 @@ window.switchDiagStep = function(step, fromStepper = false) {
     }
 
     if (step === 1) {
+        window._currentDiagSaved = false;
         if (typeof restoreMotorcycleCard === 'function') restoreMotorcycleCard();
         if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
         if (typeof refreshDtcPlanButtons === 'function') refreshDtcPlanButtons();
@@ -537,9 +538,11 @@ const mainContentArea = document.getElementById('main-content-area');
 let viewLoadToken = 0;
 
 async function loadView(viewName) {
-    const allowedScreens = rolePermissions[currentRole] || [];
-    const screenAccess = typeof getAccessLevel === 'function' ? getAccessLevel(viewName) : (allowedScreens.includes(viewName) ? 'full' : 'none');
-    if (viewName !== 'more' && (!allowedScreens.includes(viewName) || screenAccess === 'none')) {
+    if (typeof checkTempGrantsExpiry === 'function') {
+        checkTempGrantsExpiry();
+    }
+    const screenAccessLevel = typeof getScreenAccess === 'function' ? getScreenAccess(viewName) : (typeof getAccessLevel === 'function' ? getAccessLevel(viewName) : 'none');
+    if (viewName !== 'more' && screenAccessLevel === 'none') {
         const backBtnText = currentRole === 'cashier' ? 'Back to Home' : 'Back to Dashboard';
         mainContentArea.innerHTML = `
             <div class="p-8 text-center bg-white rounded-2xl border border-slate-200 max-w-md mx-auto my-12 shadow-sm">
@@ -567,6 +570,15 @@ async function loadView(viewName) {
         if (viewName === 'dashboard' && currentRole === 'cashier') {
             templateId = 'view-cashier-home';
             useMobileView = false;
+        }
+        if (viewName === 'diagnostics') {
+            if (typeof hasFeature === 'function' && hasFeature('diagnosticsAudit')) {
+                templateId = 'view-diagnostics-admin';
+                useMobileView = false;
+            } else if (typeof hasFeature === 'function' && hasFeature('diagnosticsRecords')) {
+                templateId = 'view-diagnostic-records';
+                useMobileView = false;
+            }
         }
         const template = document.getElementById(templateId);
         
@@ -632,23 +644,29 @@ async function loadView(viewName) {
                     const canUsers = rolePermissions[currentRole] && rolePermissions[currentRole].includes('users');
                     el.style.display = canUsers ? '' : 'none';
                 });
+                if (typeof updateDashboardQuickActions === 'function') updateDashboardQuickActions();
+                if (typeof updateSystemHealthCard === 'function') updateSystemHealthCard();
             }
         }
 
         // Initialize Diagnostics view state
         if (viewName === 'diagnostics') {
-            isScannerConnected = false;
-            const isPhysicalOn = document.getElementById('toggle-physical')?.checked;
-            const isEcuOn = document.getElementById('toggle-ecu')?.checked;
-            if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
-            if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
-            updateSectionNumbering();
-            renderInspection();
-            planReviewed = false;
-            currentDiagStep = 1;
-            updatePlanTotals();
-            if (typeof updateDiagStepper === 'function') updateDiagStepper();
-            if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
+            if (typeof hasFeature === 'function' && (hasFeature('diagnosticsRecords') || hasFeature('diagnosticsAudit'))) {
+                if (typeof renderDiagnosticRecordsView === 'function') renderDiagnosticRecordsView();
+            } else {
+                isScannerConnected = false;
+                const isPhysicalOn = document.getElementById('toggle-physical')?.checked;
+                const isEcuOn = document.getElementById('toggle-ecu')?.checked;
+                if (document.getElementById('physical-inspection-card')) document.getElementById('physical-inspection-card').classList.toggle('hidden', !isPhysicalOn);
+                if (document.getElementById('ecu-scan-card')) document.getElementById('ecu-scan-card').classList.toggle('hidden', !isEcuOn);
+                updateSectionNumbering();
+                renderInspection();
+                planReviewed = false;
+                currentDiagStep = 1;
+                updatePlanTotals();
+                if (typeof updateDiagStepper === 'function') updateDiagStepper();
+                if (typeof renderInspectionOverview === 'function') renderInspectionOverview();
+            }
         }
 
         // Initialize Inventory view
@@ -694,6 +712,10 @@ async function loadView(viewName) {
 
         if (typeof updateRoleLabels === 'function') {
             updateRoleLabels();
+        }
+
+        if (typeof updateViewOnlyPill === 'function') {
+            updateViewOnlyPill(viewName);
         }
 
     } catch (error) {
@@ -834,22 +856,22 @@ function createRolePerms(screenMap) {
     return arr;
 }
 
-const rolePermissions = {
-    super_admin: createRolePerms({
-        dashboard: 'full',
-        customers: 'full',
-        diagnostics: 'full',
-        repairs: 'full',
-        inventory: 'full',
-        transactions: 'full',
-        history: 'full',
-        reports: 'full',
-        audit: 'full',
-        users: 'full',
+const screenAccess = {
+    super_admin: {
+        dashboard: 'view',
+        customers: 'view',
+        diagnostics: 'view',
+        repairs: 'view',
+        inventory: 'view',
+        transactions: 'view',
+        history: 'view',
+        reports: 'view',
+        audit: 'view',
         settings: 'full',
+        users: 'full',
         backup: 'full'
-    }),
-    admin: createRolePerms({
+    },
+    admin: {
         dashboard: 'full',
         customers: 'full',
         diagnostics: 'full',
@@ -858,39 +880,96 @@ const rolePermissions = {
         transactions: 'full',
         history: 'full',
         reports: 'full',
-        audit: 'read',
-        settings: 'full'
-    }),
-    cashier: createRolePerms({
+        audit: 'view',
+        audit: 'none',
+        settings: 'full',
+        users: 'none',
+        backup: 'none'
+    },
+    cashier: {
         dashboard: 'full',
+        customers: 'none',
+        diagnostics: 'none',
+        repairs: 'full',
         inventory: 'full',
         transactions: 'full',
         history: 'full',
-        settings: 'full'
-    }),
-    mechanic: createRolePerms({
+        reports: 'none',
+        audit: 'none',
+        settings: 'full',
+        users: 'none',
+        backup: 'none'
+    },
+    mechanic: {
         dashboard: 'full',
         customers: 'full',
         diagnostics: 'full',
         repairs: 'full',
         inventory: 'full',
+        transactions: 'none',
         history: 'full',
-        settings: 'full'
-    })
+        reports: 'none',
+        audit: 'none',
+        settings: 'full',
+        users: 'none',
+        backup: 'none'
+    }
+};
+window.screenAccess = screenAccess;
+
+const rolePermissions = {
+    super_admin: createRolePerms(screenAccess.super_admin),
+    admin: createRolePerms(screenAccess.admin),
+    cashier: createRolePerms(screenAccess.cashier),
+    mechanic: createRolePerms(screenAccess.mechanic)
 };
 window.rolePermissions = rolePermissions;
 
-function getAccessLevel(screen, role) {
-    const rawRole = role || currentRole || sessionStorage.getItem('currentUserRole');
-    const activeRole = (rawRole && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
-    const perms = rolePermissions[activeRole];
-    if (!perms) return 'none';
-    const level = perms[screen];
-    if (typeof level === 'string') return level;
-    if (perms.includes && perms.includes(screen)) return 'full';
+function getScreenAccess(screen, role) {
+    const rawRole = role || currentRole || (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('currentUserRole'));
+    const activeRole = (rawRole && ROLES_CONFIG && ROLES_CONFIG[rawRole]) ? rawRole : 'admin';
+    if (activeRole === 'mechanic' && screen === 'transactions') {
+        if (typeof hasActiveTempGrantFeature === 'function' && (hasActiveTempGrantFeature('walkInSale') || hasActiveTempGrantFeature('recordPayment') || hasActiveTempGrantFeature('payment'))) {
+            return 'full';
+        }
+    }
+    const roleConfig = screenAccess && screenAccess[activeRole];
+    if (!roleConfig || !screen) return 'none';
+    const access = roleConfig[screen];
+    if (access === 'full' || access === 'view' || access === 'none') {
+        return access;
+    }
+    if (access === 'read') return 'view';
     return 'none';
 }
+window.getScreenAccess = getScreenAccess;
+
+function isViewOnly(screen, role) {
+    return getScreenAccess(screen, role) === 'view';
+}
+window.isViewOnly = isViewOnly;
+
+function getAccessLevel(screen, role) {
+    return getScreenAccess(screen, role);
+}
 window.getAccessLevel = getAccessLevel;
+
+function updateViewOnlyPill(viewName) {
+    const activeView = viewName || (document.querySelector('.nav-link.active')?.getAttribute('data-target')) || 'dashboard';
+    const isVO = typeof isViewOnly === 'function' ? isViewOnly(activeView) : false;
+    const pills = document.querySelectorAll('.screen-view-only-pill, #audit-readonly-pill');
+    pills.forEach(pill => {
+        pill.classList.toggle('hidden', !isVO);
+        if (activeView === 'repairs' || pill.closest('#view-repairs')) {
+            pill.textContent = 'View-only (Monitoring Mode)';
+        } else if (pill.id === 'audit-readonly-pill') {
+            pill.textContent = 'Read-only';
+        } else {
+            pill.textContent = 'View-only';
+        }
+    });
+}
+window.updateViewOnlyPill = updateViewOnlyPill;
 
 function canSwitchUI(role) {
     const rawRole = role || currentRole || sessionStorage.getItem('currentUserRole');
@@ -934,12 +1013,26 @@ window.getDemoAccounts = getDemoAccounts;
 const roleFeatures = {
     super_admin: {
         viewStock: true,
-        walkInSale: true,
-        addPart: true,
-        editPart: true,
-        restock: true,
-        autoAssign: true,
-        viewMovements: true
+        walkInSale: false,
+        addPart: false,
+        editPart: false,
+        restock: false,
+        autoAssign: false,
+        viewMovements: true,
+        assignMechanic: false,
+        checkStock: false,
+        markOrdered: false,
+        markReceived: false,
+        moveToBilling: false,
+        markRepairDone: false,
+        completePostScan: false,
+        receivePayment: false,
+        diagnosticsForm: false,
+        diagnosticsRecords: true,
+        diagnosticsAudit: true,
+        diagnosticsKnowledgeBase: true,
+        dtcManage: true,
+        manageTempAccess: false
     },
     admin: {
         viewStock: true,
@@ -948,7 +1041,21 @@ const roleFeatures = {
         editPart: true,
         restock: true,
         autoAssign: true,
-        viewMovements: true
+        viewMovements: true,
+        assignMechanic: true,
+        checkStock: true,
+        markOrdered: true,
+        markReceived: true,
+        moveToBilling: true,
+        markRepairDone: true,
+        completePostScan: true,
+        receivePayment: true,
+        diagnosticsForm: false,
+        diagnosticsRecords: true,
+        diagnosticsAudit: false,
+        diagnosticsKnowledgeBase: false,
+        dtcManage: false,
+        manageTempAccess: true
     },
     cashier: {
         viewStock: true,
@@ -957,7 +1064,21 @@ const roleFeatures = {
         editPart: false,
         restock: false,
         autoAssign: false,
-        viewMovements: true
+        viewMovements: true,
+        assignMechanic: false,
+        checkStock: true,
+        markOrdered: true,
+        markReceived: true,
+        moveToBilling: true,
+        markRepairDone: false,
+        completePostScan: false,
+        receivePayment: true,
+        diagnosticsForm: false,
+        diagnosticsRecords: false,
+        diagnosticsAudit: false,
+        diagnosticsKnowledgeBase: false,
+        dtcManage: false,
+        manageTempAccess: false
     },
     mechanic: {
         viewStock: true,
@@ -966,14 +1087,115 @@ const roleFeatures = {
         editPart: false,
         restock: false,
         autoAssign: false,
-        viewMovements: true
+        viewMovements: true,
+        assignMechanic: false,
+        checkStock: false,
+        markOrdered: false,
+        markReceived: false,
+        moveToBilling: false,
+        markRepairDone: true,
+        completePostScan: true,
+        receivePayment: false,
+        diagnosticsForm: true,
+        diagnosticsRecords: false,
+        diagnosticsAudit: false,
+        diagnosticsKnowledgeBase: false,
+        dtcManage: false,
+        manageTempAccess: false
     }
 };
 window.roleFeatures = roleFeatures;
 
-function hasFeature(featureName) {
-    const role = (typeof currentRole !== 'undefined' && currentRole) ? currentRole : 'admin';
-    return !!(roleFeatures[role] && roleFeatures[role][featureName]);
+// --- Temporary Access Store & Helpers ---
+const TEMP_GRANTS_STORAGE_KEY = 'motocare_temp_grants';
+let tempGrants = [];
+let lastStoredTempGrantsJson = null;
+
+function readRawTempGrants() {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem(TEMP_GRANTS_STORAGE_KEY);
+            if (stored !== lastStoredTempGrantsJson) {
+                lastStoredTempGrantsJson = stored;
+                const parsed = stored ? JSON.parse(stored) : [];
+                tempGrants = Array.isArray(parsed) ? parsed.filter(g => g && typeof g === 'object') : [];
+                if (typeof window !== 'undefined') window.tempGrants = tempGrants;
+            }
+        }
+    } catch (e) {
+        console.error(e);
+    }
+    return tempGrants;
+}
+
+function getTempGrants() {
+    const raw = readRawTempGrants();
+    const now = Date.now();
+    return raw.filter(g => g && typeof g === 'object' && g.expiresAt > now);
+}
+window.getTempGrants = getTempGrants;
+
+function saveTempGrants(grants) {
+    tempGrants = Array.isArray(grants) ? grants.filter(g => g && typeof g === 'object') : [];
+    if (typeof window !== 'undefined') window.tempGrants = tempGrants;
+    try {
+        const json = JSON.stringify(tempGrants);
+        lastStoredTempGrantsJson = json;
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(TEMP_GRANTS_STORAGE_KEY, json);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+window.saveTempGrants = saveTempGrants;
+
+readRawTempGrants();
+
+function getActiveTempGrants() {
+    return getTempGrants();
+}
+window.getActiveTempGrants = getActiveTempGrants;
+
+function hasActiveTempGrantFeature(featureName) {
+    if (!Array.isArray(tempGrants) || tempGrants.length === 0) return false;
+    const now = Date.now();
+    const activeGrants = tempGrants.filter(g => g && typeof g === 'object' && g.expiresAt > now);
+    if (activeGrants.length === 0) return false;
+
+    const currentMechId = (typeof systemUsers !== 'undefined' && systemUsers.mechanic && systemUsers.mechanic.id) || 'u3';
+    const currentMechName = (typeof systemUsers !== 'undefined' && systemUsers.mechanic && systemUsers.mechanic.name) || 'Larpus';
+
+    const matching = activeGrants.filter(g => g.userId === currentMechId || g.userName === currentMechName);
+    const applicable = matching.length > 0 ? matching : activeGrants;
+
+    const invFeatures = ['inventory', 'restock', 'addPart'];
+    const payFeatures = ['payment', 'walkInSale', 'recordPayment', 'moveToBilling', 'proceedToPayment', 'completePayment', 'receivePayment'];
+
+    for (const g of applicable) {
+        if (!g.permissions || !Array.isArray(g.permissions)) continue;
+        if (g.permissions.includes('inventory') && invFeatures.includes(featureName)) {
+            return true;
+        }
+        if (g.permissions.includes('payment') && payFeatures.includes(featureName)) {
+            return true;
+        }
+    }
+    return false;
+}
+window.hasActiveTempGrantFeature = hasActiveTempGrantFeature;
+
+function hasFeature(featureName, roleParam) {
+    const role = roleParam || ((typeof window !== 'undefined' && window.currentRole) ? window.currentRole : ((typeof currentRole !== 'undefined' && currentRole) ? currentRole : 'admin'));
+    if (roleFeatures[role] && roleFeatures[role][featureName]) {
+        return true;
+    }
+    if (role === 'mechanic' && typeof hasActiveTempGrantFeature === 'function') {
+        if (hasActiveTempGrantFeature(featureName)) {
+            return true;
+        }
+    }
+    return false;
 }
 window.hasFeature = hasFeature;
 
@@ -991,6 +1213,192 @@ window.can = function(role, permission) {
     }
     return hasFeature(permission);
 };
+
+// --- Activity Log Engine & Persistence ---
+const ACTIVITY_LOG_STORAGE_KEY = 'motocare_activity_log';
+
+function generateSampleActivityLog() {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    return [
+        {
+            id: 'act_sample_1',
+            timestamp: new Date(now - 0.25 * day).toISOString(),
+            userName: 'User',
+            roleId: 'admin',
+            module: 'Inventory',
+            action: 'Stock Edited',
+            recordRef: 'Front Disc Brake Pads',
+            before: '5 pcs',
+            after: '2 pcs',
+            severity: 'modification'
+        },
+        {
+            id: 'act_sample_2',
+            timestamp: new Date(now - 1.2 * day).toISOString(),
+            userName: 'System Admin',
+            roleId: 'super_admin',
+            module: 'Users',
+            action: 'User Created',
+            recordRef: 'Elena Cruz (Cashier)',
+            severity: 'standard'
+        },
+        {
+            id: 'act_sample_3',
+            timestamp: new Date(now - 2.5 * day).toISOString(),
+            userName: 'User',
+            roleId: 'admin',
+            module: 'Repairs',
+            action: 'Status Changed',
+            recordRef: 'Job #RO-2024-001 (ABC 123)',
+            before: 'In Progress',
+            after: 'Ready for Billing',
+            severity: 'standard'
+        },
+        {
+            id: 'act_sample_4',
+            timestamp: new Date(now - 3.8 * day).toISOString(),
+            userName: 'User',
+            roleId: 'admin',
+            module: 'Inventory',
+            action: 'Price Updated',
+            recordRef: 'Tube Tire (Krx 2.50x17)',
+            before: '₱480.00',
+            after: '₱500.00',
+            severity: 'modification'
+        },
+        {
+            id: 'act_sample_5',
+            timestamp: new Date(now - 5.1 * day).toISOString(),
+            userName: 'System Admin',
+            roleId: 'super_admin',
+            module: 'Backup',
+            action: 'Backup Created',
+            recordRef: 'motocare_backup_20261020.sql',
+            severity: 'standard'
+        },
+        {
+            id: 'act_sample_6',
+            timestamp: new Date(now - 6.5 * day).toISOString(),
+            userName: 'User',
+            roleId: 'admin',
+            module: 'Repairs',
+            action: 'Mechanic Assigned',
+            recordRef: 'Job #RO-2024-002 (XYZ 987)',
+            before: 'Unassigned',
+            after: 'Larpus (Mechanic)',
+            severity: 'standard'
+        },
+        {
+            id: 'act_sample_7',
+            timestamp: new Date(now - 8.3 * day).toISOString(),
+            userName: 'System Admin',
+            roleId: 'super_admin',
+            module: 'Users',
+            action: 'Password Reset',
+            recordRef: 'Cashier (u5)',
+            severity: 'critical'
+        },
+        {
+            id: 'act_sample_8',
+            timestamp: new Date(now - 9.7 * day).toISOString(),
+            userName: 'User',
+            roleId: 'admin',
+            module: 'Settings',
+            action: 'Shop Details Saved',
+            recordRef: 'Shop Information',
+            severity: 'modification'
+        },
+        {
+            id: 'act_sample_9',
+            timestamp: new Date(now - 11.4 * day).toISOString(),
+            userName: 'User',
+            roleId: 'admin',
+            module: 'Inventory',
+            action: 'Restocked',
+            recordRef: 'Front Fork Seals',
+            before: '0 pcs',
+            after: '10 pcs',
+            severity: 'modification'
+        },
+        {
+            id: 'act_sample_10',
+            timestamp: new Date(now - 13.5 * day).toISOString(),
+            userName: 'System Admin',
+            roleId: 'super_admin',
+            module: 'Users',
+            action: 'User Deactivated',
+            recordRef: 'Miguel Torres (@miguel.mech)',
+            severity: 'critical'
+        }
+    ];
+}
+
+let activityLog = [];
+try {
+    const rawStoredLog = (typeof localStorage !== 'undefined') ? localStorage.getItem(ACTIVITY_LOG_STORAGE_KEY) : null;
+    if (rawStoredLog) {
+        activityLog = JSON.parse(rawStoredLog);
+    }
+} catch (e) {
+    activityLog = [];
+}
+
+if (!Array.isArray(activityLog) || activityLog.length === 0) {
+    activityLog = generateSampleActivityLog();
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(ACTIVITY_LOG_STORAGE_KEY, JSON.stringify(activityLog));
+        }
+    } catch (e) {}
+}
+
+window.activityLog = activityLog;
+
+function logActivity(params) {
+    try {
+        if (!params || typeof params !== 'object') return null;
+        const role = (typeof currentRole !== 'undefined' && currentRole)
+            ? currentRole
+            : ((typeof localStorage !== 'undefined' && localStorage.getItem('activeRole')) || 'admin');
+        const userObj = (typeof systemUsers !== 'undefined' && systemUsers[role]) ? systemUsers[role] : null;
+        const currentUserName = userObj ? userObj.name : (role === 'super_admin' ? 'System Admin' : 'User');
+
+        const entry = {
+            id: 'act_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            timestamp: new Date().toISOString(),
+            userName: currentUserName,
+            roleId: role,
+            module: params.module || 'Settings',
+            action: params.action || 'Updated',
+            recordRef: params.recordRef ? String(params.recordRef) : '',
+            severity: params.severity || 'standard'
+        };
+
+        if (params.before !== undefined && params.before !== null && params.before !== '') {
+            entry.before = String(params.before);
+        }
+        if (params.after !== undefined && params.after !== null && params.after !== '') {
+            entry.after = String(params.after);
+        }
+
+        if (typeof activityLog !== 'undefined' && Array.isArray(activityLog)) {
+            activityLog.unshift(entry);
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem(ACTIVITY_LOG_STORAGE_KEY, JSON.stringify(activityLog));
+                }
+            } catch (e) {}
+            if (typeof renderSettingsAuditTable === 'function') {
+                renderSettingsAuditTable();
+            }
+        }
+        return entry;
+    } catch (err) {
+        return null;
+    }
+}
+window.logActivity = logActivity;
 
 function updateRoleLabels() {
     // 1. Sidebar role label
@@ -1126,7 +1534,11 @@ function updateMobileMoreNav(roleId) {
     moreView.querySelectorAll('button[data-mtab]').forEach(el => {
         const target = el.getAttribute('data-mtab');
         if (target) {
-            el.style.display = allowed.includes(target) ? '' : 'none';
+            let isAllowed = allowed.includes(target);
+            if (activeRole === 'mechanic' && target === 'transactions') {
+                isAllowed = typeof hasFeature === 'function' && (hasFeature('walkInSale') || hasFeature('recordPayment'));
+            }
+            el.style.display = isAllowed ? '' : 'none';
         }
     });
 
@@ -1175,14 +1587,14 @@ function switchRole(roleId, isLogin) {
         avatar.className = `w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-inner ${user.color}`;
     }
 
-    // 2. Hide/Show Nav Links based on rolePermissions map
+    // 2. Hide/Show Nav Links based on screenAccess / rolePermissions map
     const allNavLinks = document.querySelectorAll('.nav-link[data-target]');
     let isCurrentViewAllowed = false;
     const currentActiveTarget = document.querySelector('.nav-link.active')?.getAttribute('data-target');
 
     allNavLinks.forEach(link => {
         const target = link.getAttribute('data-target');
-        const allowed = rolePermissions[roleId] && rolePermissions[roleId].includes(target);
+        const allowed = typeof getScreenAccess === 'function' ? (getScreenAccess(target, roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes(target));
         
         if (allowed) {
             link.style.display = 'flex'; // Show link
@@ -1221,20 +1633,26 @@ function switchRole(roleId, isLogin) {
     updateRoleLabels();
     updateMobileMoreNav(roleId);
 
+    if (typeof updateViewOnlyPill === 'function') {
+        updateViewOnlyPill(currentActiveTarget || 'dashboard');
+    }
+
     if (isLogin) return;
 
     // 4. Force redirect to Dashboard if the user is currently on a restricted page
     const isCurrentlyOnBackup = !!document.querySelector('#main-content-area #view-backup') || currentActiveTarget === 'backup';
-    const roleHasBackupAccess = rolePermissions[roleId] && rolePermissions[roleId].includes('backup');
+    const roleHasBackupAccess = typeof getScreenAccess === 'function' ? (getScreenAccess('backup', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('backup'));
 
     const isCurrentlyOnUsers = !!document.querySelector('#main-content-area #view-users') || currentActiveTarget === 'users';
+    const roleHasUsersAccess = typeof getScreenAccess === 'function' ? (getScreenAccess('users', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('users'));
 
     const isCurrentlyOnAudit = !!document.querySelector('#main-content-area #view-audit') || currentActiveTarget === 'audit';
-    const roleHasAuditAccess = typeof getAccessLevel === 'function' ? (getAccessLevel('audit', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('audit'));
+    const roleHasAuditAccess = typeof getScreenAccess === 'function' ? (getScreenAccess('audit', roleId) !== 'none') : (rolePermissions[roleId] && rolePermissions[roleId].includes('audit'));
 
     const isCurrentlyOnInventory = !!document.querySelector('#main-content-area #view-inventory') || currentActiveTarget === 'inventory';
+    const isCurrentlyOnDiagnostics = !!document.querySelector('#main-content-area #view-diagnostics') || !!document.querySelector('#main-content-area #view-diagnostic-records') || !!document.querySelector('#main-content-area #view-diagnostics-admin') || currentActiveTarget === 'diagnostics';
 
-    if ((isCurrentlyOnBackup && !roleHasBackupAccess) || (isCurrentlyOnAudit && !roleHasAuditAccess) || !isCurrentViewAllowed) {
+    if ((isCurrentlyOnBackup && !roleHasBackupAccess) || (isCurrentlyOnUsers && !roleHasUsersAccess) || (isCurrentlyOnAudit && !roleHasAuditAccess) || !isCurrentViewAllowed) {
         setActiveNavLink('dashboard');
         loadView('dashboard');
     } else if (wasMobile !== isMobile) {
@@ -1260,7 +1678,25 @@ function switchRole(roleId, isLogin) {
         loadView('dashboard');
     } else if (isCurrentlyOnAudit && typeof renderAudit === 'function') {
         renderAudit();
+    } else if (isCurrentlyOnDiagnostics) {
+        loadView('diagnostics');
+    } else if (currentActiveTarget === 'customers' && typeof renderCustomers === 'function') {
+        renderCustomers();
+    } else if (currentActiveTarget === 'transactions' && typeof renderTransactions === 'function') {
+        renderTransactions();
+    } else if (currentActiveTarget === 'repairs' && typeof renderRepairs === 'function') {
+        renderRepairs();
+    } else if ((isCurrentlyOnBackup || currentActiveTarget === 'backup') && typeof renderBackupHistory === 'function') {
+        renderBackupHistory();
+    } else if (currentActiveTarget === 'reports' && typeof renderReports === 'function') {
+        renderReports(typeof currentReportRange !== 'undefined' ? currentReportRange : 'today');
+    } else if (currentActiveTarget === 'settings' || !!document.querySelector('#main-content-area #view-settings')) {
+        if (typeof initSettingsView === 'function') initSettingsView();
     }
+    if (typeof updateDashboardQuickActions === 'function') updateDashboardQuickActions();
+    if (typeof updateSystemHealthCard === 'function') updateSystemHealthCard();
+    if (typeof renderPermissionsMatrix === 'function') renderPermissionsMatrix();
+    if (typeof syncTempGrantsTimer === 'function') syncTempGrantsTimer(roleId);
 }
 
 // Trigger initial setup
@@ -1302,6 +1738,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof setActiveNavLink === 'function') setActiveNavLink('dashboard');
         if (typeof loadView === 'function') loadView('dashboard');
     } else {
+        if (typeof stopTempGrantsTimer === 'function') stopTempGrantsTimer();
         localStorage.removeItem('activeRole');
         sessionStorage.removeItem('currentUserRole');
         const loginScreen = document.getElementById('login-screen');
@@ -1920,6 +2357,7 @@ function updatePlanTotals() {
 
 
 function resetDiagnosticsWorkflow() {
+    window._currentDiagSaved = false;
     // Restore UI for next time
     const reviewGrid = document.querySelector('#step-3-register .grid');
     if(reviewGrid) reviewGrid.classList.remove('hidden');
@@ -1961,6 +2399,7 @@ function resetDiagnosticsWorkflow() {
 function openRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop', 'repair-modal-content', true); }
 function closeRepairModal() { toggleModal('repair-modal', 'repair-modal-backdrop', 'repair-modal-content', false); }
 function completeJob(event) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.disabled = true;
@@ -2049,6 +2488,7 @@ function clearAddPartForm() {
 }
 
 function openAddPartModal() { 
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (!hasFeature('addPart')) { closeAddPartModal(); showToast("You don't have permission to do this."); return; }
     clearAddPartForm();
     const isMobile = document.body.classList.contains('mobile-app');
@@ -2211,6 +2651,7 @@ window.clearRestockSelection = function() {
 };
 
 window.confirmRestock = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (!hasFeature('restock')) {
         showToast("You don't have permission to do this.");
         return;
@@ -2257,6 +2698,17 @@ window.confirmRestock = function() {
             });
         }
         
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Inventory',
+                action: 'Restocked',
+                recordRef: part.name,
+                before: `${stockBefore} pcs`,
+                after: `${stockAfter} pcs`,
+                severity: 'modification'
+            });
+        }
+        
         // Optionally update minStock or anything else, but just stock is fine
         showToast(`Restocked ${qty} units of ${part.name}`, 'success');
         updateDashboardWidgets();
@@ -2266,6 +2718,7 @@ window.confirmRestock = function() {
 };
 
 function openEditPartModal(partId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (!hasFeature('editPart')) { showToast("You don't have permission to do this."); return; }
     
     const part = fullInventoryData.find(p => p.id === partId);
@@ -2319,6 +2772,7 @@ function openEditPartModal(partId) {
 }
 
 function savePartForm() {
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (currentEditingPartId && !hasFeature('editPart')) {
         showToast("You don't have permission to do this.");
         return;
@@ -2388,6 +2842,10 @@ function savePartForm() {
         const oldStock = Number(part.stock) || 0;
         const newStock = Number(newData.stock) || 0;
         const stockDiff = newStock - oldStock;
+        const oldPrice = Number(part.price) || 0;
+        const newPrice = Number(newData.price) || 0;
+        const priceChanged = (oldPrice !== newPrice);
+        const stockChanged = (stockDiff !== 0);
 
         // Update existing part in place
         Object.assign(part, newData);
@@ -2400,6 +2858,27 @@ function savePartForm() {
                 stockBefore: oldStock,
                 stockAfter: newStock,
                 reference: 'Manual edit'
+            });
+        }
+
+        if (priceChanged && typeof logActivity === 'function') {
+            logActivity({
+                module: 'Inventory',
+                action: 'Price Updated',
+                recordRef: part.name,
+                before: '₱' + oldPrice.toFixed(2),
+                after: '₱' + newPrice.toFixed(2),
+                severity: 'modification'
+            });
+        }
+        if (stockChanged && typeof logActivity === 'function') {
+            logActivity({
+                module: 'Inventory',
+                action: 'Stock Edited',
+                recordRef: part.name,
+                before: oldStock + ' pcs',
+                after: newStock + ' pcs',
+                severity: 'modification'
             });
         }
     } else {
@@ -2423,6 +2902,16 @@ function savePartForm() {
                 reference: 'New part'
             });
         }
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Inventory',
+                action: 'Part Added',
+                recordRef: newPart.name,
+                after: `Stock: ${initialStock} pcs, Price: ₱${Number(newPart.price || 0).toFixed(2)}`,
+                severity: 'standard'
+            });
+        }
     }
 
     closeAddPartModal();
@@ -2434,6 +2923,7 @@ function savePartForm() {
 let currentWalkInPartName = '';
 
 function openWalkInModalInv(itemName, itemPrice) {
+    if (typeof isViewOnly === 'function' && (isViewOnly('inventory') || isViewOnly('transactions'))) return;
     if (!hasFeature('walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     currentWalkInPartName = itemName || '';
     document.getElementById('walkin-inv-item-name').textContent = itemName;
@@ -2442,6 +2932,7 @@ function openWalkInModalInv(itemName, itemPrice) {
 }
 function closeWalkInModalInv() { toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', false); }
 function confirmWalkInSaleInv(event) {
+    if (typeof isViewOnly === 'function' && (isViewOnly('inventory') || isViewOnly('transactions'))) return;
     if (!hasFeature('walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
@@ -2465,6 +2956,16 @@ function confirmWalkInSaleInv(event) {
                     stockBefore,
                     stockAfter,
                     reference: `Walk-in sale ${txnId}`
+                });
+            }
+            if (typeof logActivity === 'function') {
+                logActivity({
+                    module: 'Inventory',
+                    action: 'Walk-in Sale',
+                    recordRef: part.name,
+                    before: `${stockBefore} pcs`,
+                    after: `${stockAfter} pcs`,
+                    severity: 'standard'
                 });
             }
             if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
@@ -2499,6 +3000,7 @@ function confirmWalkInSaleInv(event) {
 
 // --- Transactions & Billing Logic ---
 function openWalkInCheckout() { 
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions')) return;
     if (!window.can('inventory.walkInSale')) { closeWalkInCheckout(); showToast("You don't have permission to do this."); return; }
     document.getElementById('walkin-tendered').value = "";
     document.getElementById('walkin-change').textContent = "0.00";
@@ -2522,6 +3024,7 @@ function calcWalkinChange() {
 }
 
 function processWalkinPayment(event) {
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions')) return;
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Processing...`;
@@ -2550,6 +3053,16 @@ function processWalkinPayment(event) {
                             stockBefore,
                             stockAfter,
                             reference: `Walk-in sale ${txnId}`
+                        });
+                    }
+                    if (typeof logActivity === 'function') {
+                        logActivity({
+                            module: 'Inventory',
+                            action: 'Walk-in Sale',
+                            recordRef: part.name,
+                            before: `${stockBefore} pcs`,
+                            after: `${stockAfter} pcs`,
+                            severity: 'standard'
                         });
                     }
                 }
@@ -2605,7 +3118,247 @@ function processWalkinPayment(event) {
     }, 800);
 }
 
+function tMatchJob(txn, job) {
+    if (!txn || !job) return false;
+    if (job.txnId && txn.id === job.txnId) return true;
+    if (txn.type === 'Repair Service') {
+        if (job.plate && txn.details && txn.details.includes(job.plate)) return true;
+        if (job.id && txn.details && txn.details.includes(job.id)) return true;
+    }
+    return false;
+}
+window.tMatchJob = tMatchJob;
+
+window.recordTransactionPayment = function(txnId, amount, method, isAdvance) {
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions') && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("You don't have permission to receive payments.");
+        return;
+    }
+
+    if (typeof mockTxnData === 'undefined' || !Array.isArray(mockTxnData)) return;
+
+    let txn = mockTxnData.find(t => t.id === txnId);
+    let job = null;
+    if (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) {
+        job = mockRepairsData.find(j => j.txnId === txnId || (txn && tMatchJob(txn, j)));
+    }
+
+    if (!txn && job && typeof findOrLinkJobTransaction === 'function') {
+        txn = findOrLinkJobTransaction(job);
+    }
+    if (!txn) return;
+
+    const payAmount = Number(amount) || 0;
+    const payMethod = method || 'Cash';
+    const oldStatus = txn.status || 'Unpaid';
+
+    let currentAdv = 0;
+    if (txn.status && txn.status.includes('Adv Paid')) {
+        const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+        if (match) currentAdv = parseFloat(match[2].replace(/,/g, ''));
+    } else if (job && job.advancePaid) {
+        currentAdv = Number(job.advancePaid) || 0;
+    }
+
+    const totalCost = Number(txn.amount) || (job ? (job.repairPlan?.estimatedTotal || 1500) : 1500);
+    const balanceDueBefore = Math.max(0, totalCost - currentAdv);
+
+    const isFull = !isAdvance || payAmount >= balanceDueBefore;
+
+    if (isFull) {
+        txn.category = 'completed';
+        txn.status = 'Fully Paid';
+        txn.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        txn.statusDot = 'bg-emerald-500';
+        txn.btnText = 'View Receipt';
+        txn.btnClass = 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300';
+        txn.btnIcon = 'ph-receipt';
+        txn.btnAction = 'openReceiptModal()';
+        txn.date = new Date().toISOString();
+        txn.paymentMethod = payMethod;
+
+        if (job) {
+            job.statusId = 'paid';
+            job.statusName = 'Paid / Completed';
+            job.statusClass = 'bg-slate-100 text-slate-600 border-slate-200';
+            job.dotClass = 'bg-slate-400';
+            job.advancePaid = totalCost;
+
+            if (job.repairPlan && job.repairPlan.parts && (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory))) {
+                job.repairPlan.parts.forEach(p => {
+                    if (p.partStatus === 'Received' || !p.partStatus) {
+                        const invItem = mockInventory.find(inv => inv.name && inv.name.toLowerCase() === (p.part?.name || '').toLowerCase());
+                        if (invItem) {
+                            invItem.stock = Math.max(0, invItem.stock - p.qty);
+                        }
+                    }
+                });
+            }
+
+            if (typeof syncMobileJobStatus === 'function') syncMobileJobStatus(job.id, 'paid');
+        }
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Repairs',
+                action: 'Payment Settled',
+                recordRef: `${txn.id} (${job ? job.plate : txn.details})`,
+                before: oldStatus,
+                after: `Fully Paid (\u20B1${payAmount.toFixed(2)} via ${payMethod})`,
+                severity: 'standard'
+            });
+        }
+    } else {
+        const newAdv = currentAdv + payAmount;
+        txn.status = `Partial/Adv Paid (\u20B1${newAdv.toFixed(0)})`;
+        txn.statusClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+        txn.statusDot = 'bg-yellow-500';
+        txn.btnText = 'Settle Balance';
+        txn.btnClass = 'bg-blue-600 hover:bg-blue-700 text-white shadow-md';
+        txn.btnIcon = 'ph-check-circle';
+        txn.btnAction = 'openRepairCheckout(true)';
+        txn.category = 'settle';
+        txn.date = new Date().toISOString();
+        txn.paymentMethod = payMethod;
+
+        if (job) {
+            job.advancePaid = newAdv;
+        }
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Repairs',
+                action: 'Advance Payment Received',
+                recordRef: `${txn.id} (${job ? job.plate : txn.details})`,
+                before: oldStatus,
+                after: `Partial/Adv Paid (\u20B1${newAdv.toFixed(0)} via ${payMethod})`,
+                severity: 'standard'
+            });
+        }
+    }
+
+    if (typeof updateRepairCounters === 'function') updateRepairCounters();
+    if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+    if (typeof renderCashierHome === 'function') renderCashierHome();
+    if (typeof renderTransactions === 'function') renderTransactions();
+    if (typeof renderRepairs === 'function') renderRepairs();
+};
+
+window.openInlinePaymentForm = function(jobId, type) {
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
+    window.activeInlinePaymentJobId = jobId;
+    window.activeInlinePaymentType = type || 'settle';
+    if (typeof renderRepairs === 'function') renderRepairs();
+};
+
+window.closeInlinePaymentForm = function(jobId) {
+    window.activeInlinePaymentJobId = null;
+    window.activeInlinePaymentType = null;
+    if (typeof renderRepairs === 'function') renderRepairs();
+};
+
+window.confirmInlinePayment = function(jobId, type) {
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
+
+    const safeId = jobId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const amtInput = document.getElementById('inline-pay-amount-' + safeId);
+    const methodSelect = document.getElementById('inline-pay-method-' + safeId);
+    const errEl = document.getElementById('inline-pay-error-' + safeId);
+    const successEl = document.getElementById('inline-pay-success-' + safeId);
+
+    if (errEl) {
+        errEl.classList.add('hidden');
+        errEl.textContent = '';
+    }
+    if (successEl) {
+        successEl.classList.add('hidden');
+        successEl.textContent = '';
+    }
+
+    const job = (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) ? mockRepairsData.find(j => j.id === jobId) : null;
+    if (!job) return;
+
+    let txn = null;
+    if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+        if (job.txnId) {
+            txn = mockTxnData.find(t => t.id === job.txnId);
+        }
+        if (!txn) {
+            txn = mockTxnData.find(t => t.type === 'Repair Service' && ((job.plate && t.details && t.details.includes(job.plate)) || (job.id && t.details && t.details.includes(job.id))));
+        }
+    }
+    if (!txn && typeof findOrLinkJobTransaction === 'function') {
+        txn = findOrLinkJobTransaction(job);
+    }
+    if (!txn) return;
+
+    let advancePaid = 0;
+    if (txn.status && txn.status.includes('Adv Paid')) {
+        const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+        if (match) advancePaid = parseFloat(match[2].replace(/,/g, ''));
+    } else if (job.advancePaid) {
+        advancePaid = Number(job.advancePaid) || 0;
+    }
+    const totalAmount = Number(txn.amount) || (job.repairPlan?.estimatedTotal || 1500);
+    const balanceDue = Math.max(0, totalAmount - advancePaid);
+
+    const enteredAmount = parseFloat(amtInput ? amtInput.value : 0);
+
+    if (isNaN(enteredAmount) || enteredAmount <= 0) {
+        if (errEl) {
+            errEl.textContent = 'Amount must be greater than 0.';
+            errEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (enteredAmount > balanceDue) {
+        if (errEl) {
+            errEl.textContent = `Amount cannot exceed balance due (\u20B1${balanceDue.toFixed(2)}).`;
+            errEl.classList.remove('hidden');
+        }
+        return;
+    }
+
+    const payMethod = methodSelect ? methodSelect.value : 'Cash';
+    const isAdv = (type === 'advance');
+
+    if (successEl) {
+        successEl.textContent = isAdv ? 'Advance payment recorded successfully!' : 'Payment settled successfully!';
+        successEl.classList.remove('hidden');
+    }
+
+    window.inlinePaymentSuccessMsg = {
+        jobId: jobId,
+        text: isAdv ? 'Advance payment recorded successfully!' : 'Payment settled successfully!'
+    };
+
+    window.activeInlinePaymentJobId = null;
+    window.activeInlinePaymentType = null;
+
+    recordTransactionPayment(txn.id, enteredAmount, payMethod, isAdv);
+
+    setTimeout(() => {
+        if (window.inlinePaymentSuccessMsg && window.inlinePaymentSuccessMsg.jobId === jobId) {
+            window.inlinePaymentSuccessMsg = null;
+            if (typeof renderRepairs === 'function') renderRepairs();
+        }
+    }, 2500);
+};
+
 function openRepairCheckout(isFinalSettlement) {
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
     document.getElementById('repair-tendered').value = "";
     document.getElementById('repair-change').textContent = "0.00";
     
@@ -2639,6 +3392,11 @@ function calcRepairChange() {
 }
 
 function processRepairPayment(event) {
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Finalizing Job...`;
@@ -2647,23 +3405,8 @@ function processRepairPayment(event) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeRepairCheckout();
-        if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
-            const settleTxn = mockTxnData.find(t => t.id === 'TXN-103' || t.category === 'settle');
-            if (settleTxn) {
-                settleTxn.category = 'completed';
-                settleTxn.status = 'Fully Paid';
-                settleTxn.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                settleTxn.statusDot = 'bg-emerald-500';
-                settleTxn.btnText = 'View Receipt';
-                settleTxn.btnClass = 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300';
-                settleTxn.btnIcon = 'ph-receipt';
-                settleTxn.btnAction = 'openReceiptModal()';
-                settleTxn.date = new Date().toISOString();
-            }
-        }
-        if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
-        if (typeof renderCashierHome === 'function') renderCashierHome();
-        if (typeof renderTransactions === 'function') renderTransactions();
+        const tendered = parseFloat(document.getElementById('repair-tendered')?.value) || 2000;
+        recordTransactionPayment('TXN-103', tendered, 'Cash', false);
         openReceiptModal();
     }, 1000);
 }
@@ -2714,7 +3457,10 @@ function toggleCustomerRow(rowId) {
     }
 }
 
-function openCustomerModal() { toggleModal('modal-customer', 'customer-backdrop', 'customer-content', true); }
+function openCustomerModal() {
+    if (typeof isViewOnly === 'function' && isViewOnly('customers')) return;
+    toggleModal('modal-customer', 'customer-backdrop', 'customer-content', true);
+}
 function closeCustomerModal() { toggleModal('modal-customer', 'customer-backdrop', 'customer-content', false); }
 
 let regMotoState = {
@@ -2812,6 +3558,7 @@ window.updateRegMotoField = function(field, value) {
 };
 
 window.openMotorcycleModal = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('customers')) return;
     regMotoState = {
         brandId: 'yamaha',
         brandText: '',
@@ -2838,6 +3585,7 @@ function closeMotorcycleModal() {
 }
 
 window.submitRegisterMotorcycle = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('customers')) return;
     const brandName = getBrandLabel(regMotoState);
     const model = regMotoState.model || '';
     const plateInput = document.getElementById('reg-moto-plate');
@@ -2871,10 +3619,15 @@ document.addEventListener('keydown', function(event) {
     if (event.key === 'Escape') {
         closeCustomerModal();
         closeMotorcycleModal();
+        if (typeof closeDiagnosticSummaryModal === 'function') {
+            closeDiagnosticSummaryModal();
+        }
     }
 });
 
 function createRepairTicket(modelName, plateNumber) {
+    if (typeof isViewOnly === 'function' && (isViewOnly('customers') || isViewOnly('diagnostics'))) return;
+    if (typeof hasFeature === 'function' && !hasFeature('diagnosticsForm')) return;
     if(confirm(`Do you want to create a new active repair ticket and run a diagnostic scan for:\n\n${modelName} (${plateNumber})?`)) {
         const diagLink = document.querySelector('.nav-link[data-target="diagnostics"]');
         if (diagLink) {
@@ -2885,6 +3638,11 @@ function createRepairTicket(modelName, plateNumber) {
 
 // --- New Advance Payment Modal Logic ---
 function openAdvanceModal() { 
+    if (typeof isViewOnly === 'function' && (isViewOnly('repairs') || isViewOnly('transactions'))) return;
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
     document.getElementById('advance-amount').value = "";
     document.getElementById('advance-remaining').textContent = "\u20B11,800.00";
     toggleModal('modal-advance', 'advance-backdrop', 'advance-content', true); 
@@ -2903,6 +3661,11 @@ function calcRemainingAdvance() {
 }
 
 function confirmAdvancePayment(event) {
+    if (typeof isViewOnly === 'function' && (isViewOnly('repairs') || isViewOnly('transactions'))) return;
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
     const btn = event.currentTarget;
     const originalHTML = btn.innerHTML;
     btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Recording...`;
@@ -2911,26 +3674,11 @@ function confirmAdvancePayment(event) {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
         closeAdvanceModal();
-        if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
-            const advTxn = mockTxnData.find(t => t.id === 'TXN-102' || t.category === 'advance');
-            const advanceVal = parseFloat(document.getElementById('advance-amount')?.value) || 500;
-            if (advTxn) {
-                advTxn.status = `Partial/Adv Paid (\u20B1${advanceVal.toFixed(0)})`;
-                advTxn.statusClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
-                advTxn.statusDot = 'bg-yellow-500';
-                advTxn.btnText = 'Settle Balance';
-                advTxn.btnClass = 'bg-blue-600 hover:bg-blue-700 text-white shadow-md';
-                advTxn.btnAction = 'openRepairCheckout(true)';
-                advTxn.category = 'settle';
-                advTxn.date = new Date().toISOString();
-            }
-        }
+        const advanceVal = parseFloat(document.getElementById('advance-amount')?.value) || 500;
+        recordTransactionPayment('TXN-102', advanceVal, 'Cash', true);
         if (typeof showToast === 'function') {
             showToast("Advance Payment successfully recorded!", "success");
         }
-        if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
-        if (typeof renderCashierHome === 'function') renderCashierHome();
-        if (typeof renderTransactions === 'function') renderTransactions();
     }, 800);
 }
 
@@ -3888,6 +4636,9 @@ Object.keys(inspectionToPartMapping).forEach(itemId => {
     }
 });
 function renderInventory() {
+    if (typeof renderDtcKbTable === 'function' && document.getElementById('dtc-kb-tbody')) {
+        renderDtcKbTable();
+    }
     const tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
 
@@ -3958,6 +4709,21 @@ function renderInventory() {
         } else {
             btnWrap.className = isMobile ? 'w-full shrink-0 flex flex-col gap-2 mt-1' : 'flex flex-wrap gap-2 w-full lg:w-auto shrink-0';
             btnWrap.innerHTML = html;
+        }
+    }
+
+    // Rebalance desktop toolbar so nothing overlaps or leaves a gap
+    const hasTopButtons = !isMobile && (canAutoAssign || canRestock || canAdd);
+    const searchWrap = document.getElementById('inv-search-wrap');
+    if (searchWrap) {
+        if (!isMobile) {
+            searchWrap.classList.toggle('sm:w-64', hasTopButtons);
+            searchWrap.classList.toggle('md:w-72', hasTopButtons);
+            searchWrap.classList.toggle('shrink-0', hasTopButtons);
+            searchWrap.classList.toggle('sm:flex-1', !hasTopButtons);
+        } else {
+            searchWrap.classList.remove('sm:flex-1');
+            searchWrap.classList.add('sm:w-64', 'md:w-72', 'shrink-0');
         }
     }
 
@@ -4113,7 +4879,7 @@ function renderInventory() {
     }
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria. <button onclick="clearInvFilters()" class="text-blue-600 font-bold hover:underline ml-2">Clear filters</button></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${showActions ? 5 : 4}" class="p-8 text-center text-slate-500 font-medium">No items found matching your criteria. <button onclick="clearInvFilters()" class="text-blue-600 font-bold hover:underline ml-2">Clear filters</button></td></tr>`;
         if (mobileContainer) {
             mobileContainer.innerHTML = mobileHtml + `<div class="py-12 px-6 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 font-medium flex flex-col items-center gap-3"><i class="ph-bold ph-magnifying-glass text-4xl text-slate-300"></i> <div>No parts found</div><button onclick="clearInvFilters()" class="px-5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-100 shadow-sm mt-2 transition-colors">Clear filters</button></div></div>`;
         }
@@ -4585,6 +5351,7 @@ window.calcWalkinChange = function() {
 
 // 4. Override Open Modal to clear previous data
 window.openWalkInCheckout = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions')) return;
     if (!hasFeature('walkInSale')) {
         if (typeof closeWalkInCheckout === 'function') closeWalkInCheckout();
         showToast("You don't have permission to do this.");
@@ -4719,6 +5486,20 @@ function renderTransactions() {
     const mobileContainer = document.getElementById('transactions-mobile-cards');
     if (!tbody && !mobileContainer) return;
 
+    const isTxnVO = typeof isViewOnly === 'function' && isViewOnly('transactions');
+
+    // Rebalance toolbar on desktop when view-only
+    const newBtn = document.querySelector('#view-transactions .txn-btn-new');
+    if (newBtn) {
+        newBtn.classList.toggle('hidden', isTxnVO);
+    }
+    const searchWrap = document.querySelector('#view-transactions .txn-search-wrap');
+    if (searchWrap) {
+        searchWrap.classList.toggle('sm:max-w-md', !isTxnVO);
+        searchWrap.classList.toggle('sm:max-w-none', isTxnVO);
+        searchWrap.classList.toggle('w-full', true);
+    }
+
     // Keep active filter chips visually highlighted
     updateTxnFilterButtons();
 
@@ -4764,6 +5545,9 @@ function renderTransactions() {
             const statusIndicator = isCompleted ? 
                 `<i class="ph-bold ph-check"></i> ${txn.status}` : 
                 `<span class="w-1.5 h-1.5 rounded-full ${txn.statusDot}"></span> ${txn.status}`;
+
+            const isReceipt = isCompleted || (txn.btnText && txn.btnText.toLowerCase().includes('receipt'));
+            const showActionBtn = !isTxnVO || isReceipt;
                 
             return `
                 <tr class="${rowClass}">
@@ -4784,9 +5568,11 @@ function renderTransactions() {
                         </span>
                     </td>
                     <td class="p-4 text-right">
-                        <button onclick="${txn.btnAction}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
-                            <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
-                        </button>
+                        ${showActionBtn ? `
+                            <button onclick="${txn.btnAction}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
+                                <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                            </button>
+                        ` : `<span class="text-slate-400 font-mono text-xs select-none">—</span>`}
                     </td>
                 </tr>
             `;
@@ -5759,6 +6545,16 @@ function renderReports(range = 'today') {
         setTimeout(() => syncText.textContent = "Synced: Just now", 500);
     }
 
+    const isReportsVO = typeof isViewOnly === 'function' ? isViewOnly('reports') : false;
+    const exportContainer = document.getElementById('reports-export-container');
+    if (exportContainer) {
+        exportContainer.classList.toggle('hidden', isReportsVO);
+    }
+    const csvBtn = document.getElementById('btn-export-reports-csv');
+    const pdfBtn = document.getElementById('btn-export-reports-pdf');
+    if (csvBtn) csvBtn.classList.toggle('hidden', isReportsVO);
+    if (pdfBtn) pdfBtn.classList.toggle('hidden', isReportsVO);
+
     const safeSet = (id, val, prefix = '') => {
         const el = document.getElementById(id);
         if (el) {
@@ -5813,6 +6609,7 @@ function renderReports(range = 'today') {
 window.renderReports = renderReports;
 
 window.exportReportsCSV = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('reports')) return;
     const tab = activeReportTab || 'financial';
     const range = currentReportRange || 'today';
     const data = getReportData(range);
@@ -5931,6 +6728,7 @@ window.exportReportsCSV = function() {
 };
 
 window.exportReportsPDF = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('reports')) return;
     const tab = activeReportTab || 'financial';
     const range = currentReportRange || 'today';
     const originalTitle = document.title;
@@ -6240,39 +7038,58 @@ function renderPermissionsMatrix() {
     if (!tbody) return;
 
     const matrixRows = [
+        { key: 'dashboard', label: 'Dashboard' },
         { key: 'customers', label: 'Customers & Motorcycles' },
         { key: 'diagnostics', label: 'Diagnostics & Inspections' },
-        { key: 'repairs', label: 'Active Repairs', notes: { mechanic: 'Can Finalize' } },
-        { key: 'inventory', label: 'Inventory Management', notes: { super_admin: 'Full Access', admin: 'Full Access', cashier: 'Stock Lookup', mechanic: 'View / Request' } },
-        { key: 'transactions', label: 'Transactions & Billing', notes: { cashier: 'Full Access' } },
+        { key: 'repairs', label: 'Active Repairs' },
+        { key: 'inventory', label: 'Inventory Management' },
+        { key: 'transactions', label: 'Transactions & Billing' },
+        { key: 'history', label: 'Service History' },
         { key: 'reports', label: 'Reports & Monitoring' },
-        { key: 'audit', label: 'Audit Logs', notes: { super_admin: 'Full Access', admin: 'Read-only' } },
+        { key: 'audit', label: 'Audit Logs' },
         { key: 'users', label: 'User Management' },
         { key: 'settings', label: 'Settings' },
         { key: 'backup', label: 'Backup & Restore' }
     ];
 
-    const iconHtml = (allowed, note) => {
-        if (allowed) {
-            return `<i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i>` +
-                (note ? `<br><span class="text-[10px] font-semibold text-slate-500">${note}</span>` : '');
+    const formatCell = (access) => {
+        if (access === 'full') {
+            return `
+                <div class="inline-flex flex-col items-center justify-center gap-0.5">
+                    <i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i>
+                    <span class="text-[10px] font-bold text-emerald-700">Full</span>
+                </div>
+            `;
         }
-        return `<i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i>`;
+        if (access === 'view') {
+            return `
+                <div class="inline-flex flex-col items-center justify-center gap-0.5">
+                    <i class="ph-fill ph-eye text-blue-500 text-xl"></i>
+                    <span class="text-[10px] font-bold text-slate-600">View-only</span>
+                </div>
+            `;
+        }
+        return `
+            <div class="inline-flex flex-col items-center justify-center gap-0.5">
+                <i class="ph-fill ph-minus-circle text-slate-300 text-xl"></i>
+                <span class="text-[10px] font-semibold text-slate-400">None</span>
+            </div>
+        `;
     };
 
     tbody.innerHTML = matrixRows.map(row => {
-        const canSuper = rolePermissions.super_admin && rolePermissions.super_admin.includes(row.key);
-        const canAdmin = rolePermissions.admin && rolePermissions.admin.includes(row.key);
-        const canCashier = rolePermissions.cashier && rolePermissions.cashier.includes(row.key);
-        const canMech = rolePermissions.mechanic && rolePermissions.mechanic.includes(row.key);
+        const canSuper = typeof getScreenAccess === 'function' ? getScreenAccess(row.key, 'super_admin') : 'none';
+        const canAdmin = typeof getScreenAccess === 'function' ? getScreenAccess(row.key, 'admin') : 'none';
+        const canCashier = typeof getScreenAccess === 'function' ? getScreenAccess(row.key, 'cashier') : 'none';
+        const canMech = typeof getScreenAccess === 'function' ? getScreenAccess(row.key, 'mechanic') : 'none';
 
         return `
             <tr class="hover:bg-slate-50" data-matrix-module="${row.key}">
                 <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">${row.label}</td>
-                <td class="p-4 border-r border-slate-200">${iconHtml(canSuper, row.notes?.super_admin)}</td>
-                <td class="p-4 border-r border-slate-200">${iconHtml(canAdmin, row.notes?.admin)}</td>
-                <td class="p-4 border-r border-slate-200">${iconHtml(canCashier, row.notes?.cashier)}</td>
-                <td class="p-4">${iconHtml(canMech, row.notes?.mechanic)}</td>
+                <td class="p-4 border-r border-slate-200">${formatCell(canSuper)}</td>
+                <td class="p-4 border-r border-slate-200">${formatCell(canAdmin)}</td>
+                <td class="p-4 border-r border-slate-200">${formatCell(canCashier)}</td>
+                <td class="p-4">${formatCell(canMech)}</td>
             </tr>
         `;
     }).join('');
@@ -6530,20 +7347,27 @@ function saveUserForm() {
                 return;
             }
 
+            const oldRole = user.roleValue;
+            const oldName = user.name;
+            const oldUsername = user.username;
+            const oldPhone = user.phone;
+
             user.name = nameVal;
             user.initials = nameVal.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || 'U';
             if (rawUsername) user.username = rawUsername;
             const phoneInput = document.getElementById('user-form-phone');
             if (phoneInput) user.phone = phoneInput.value.trim();
 
+            let roleChanged = false;
             // Enforce in handler: ignore any role change for the current user
-            if (!isCurrent && selectedRole && ROLES_CONFIG[selectedRole]) {
+            if (!isCurrent && selectedRole && ROLES_CONFIG[selectedRole] && selectedRole !== oldRole) {
                 user.roleValue = selectedRole;
                 user.roleName = ROLES_CONFIG[selectedRole].label;
                 const roleStyle = getRoleStyles(selectedRole);
                 user.roleIcon = roleStyle.icon;
                 user.roleClass = roleStyle.roleClass;
                 user.avatarClass = roleStyle.avatarClass;
+                roleChanged = true;
             }
 
             if (typeof systemUsers !== 'undefined' && systemUsers[user.roleValue] && isCurrent) {
@@ -6555,6 +7379,27 @@ function saveUserForm() {
                 if (userNameEl) userNameEl.textContent = user.name;
                 const userAvatarEl = document.getElementById('user-avatar');
                 if (userAvatarEl) userAvatarEl.textContent = user.initials;
+            }
+
+            if (roleChanged && typeof logActivity === 'function') {
+                logActivity({
+                    module: 'Users',
+                    action: 'Role Changed',
+                    recordRef: user.name,
+                    before: ROLES_CONFIG[oldRole]?.label || oldRole,
+                    after: ROLES_CONFIG[selectedRole]?.label || selectedRole,
+                    severity: 'critical'
+                });
+            } else if (typeof logActivity === 'function') {
+                const detailsChanged = (oldName !== user.name) || (oldUsername !== user.username) || (oldPhone !== user.phone);
+                if (detailsChanged) {
+                    logActivity({
+                        module: 'Users',
+                        action: 'User Edited',
+                        recordRef: user.name,
+                        severity: 'modification'
+                    });
+                }
             }
         }
     } else {
@@ -6581,6 +7426,15 @@ function saveUserForm() {
             avatarClass: roleStyle.avatarClass
         };
         mockUserData.push(newUser);
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Users',
+                action: 'User Created',
+                recordRef: `${newUser.name} (${newUser.roleName})`,
+                severity: 'standard'
+            });
+        }
     }
     
     closeUserModal();
@@ -6935,6 +7789,15 @@ document.addEventListener('click', function(e) {
                 passwordResetSuccessMessage = null;
                 renderUsers();
             }, 3000);
+
+            if (typeof logActivity === 'function') {
+                logActivity({
+                    module: 'Users',
+                    action: 'Password Reset',
+                    recordRef: `${user.name} (${user.username || user.id})`,
+                    severity: 'critical'
+                });
+            }
         }
         renderUsers();
     } else if (action === 'cancel-password') {
@@ -6960,6 +7823,15 @@ document.addEventListener('click', function(e) {
             user.statusValue = 'suspended';
             user.statusClass = 'bg-slate-100 text-slate-600 border-slate-200';
             user.statusDot = 'bg-slate-400';
+
+            if (typeof logActivity === 'function') {
+                logActivity({
+                    module: 'Users',
+                    action: 'User Deactivated',
+                    recordRef: `${user.name} (${user.username || user.id})`,
+                    severity: 'critical'
+                });
+            }
         }
         openDeactivateUserId = null;
         renderUsers();
@@ -6973,6 +7845,15 @@ document.addEventListener('click', function(e) {
             user.statusValue = 'active';
             user.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
             user.statusDot = 'bg-emerald-500';
+
+            if (typeof logActivity === 'function') {
+                logActivity({
+                    module: 'Users',
+                    action: 'User Reactivated',
+                    recordRef: `${user.name} (${user.username || user.id})`,
+                    severity: 'critical'
+                });
+            }
         }
         openDeactivateUserId = null;
         renderUsers();
@@ -7025,6 +7906,248 @@ document.addEventListener('change', function(e) {
 });
 // --- Interactive Backup & Restore Logic ---
 
+const SYNC_STATE_STORAGE_KEY = 'motocare_sync_state';
+
+function initSyncState() {
+    // Default sample: about 2 hours ago
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    let state = {
+        lastSyncedAt: twoHoursAgo,
+        status: 'Online'
+    };
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem(SYNC_STATE_STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed && typeof parsed === 'object') {
+                    state = {
+                        lastSyncedAt: parsed.lastSyncedAt || twoHoursAgo,
+                        status: parsed.status || 'Online'
+                    };
+                }
+            } else {
+                localStorage.setItem(SYNC_STATE_STORAGE_KEY, JSON.stringify(state));
+            }
+        }
+    } catch (e) {}
+    return state;
+}
+
+let syncState = initSyncState();
+window.syncState = syncState;
+
+function getPendingChanges() {
+    try {
+        const log = (typeof activityLog !== 'undefined' && Array.isArray(activityLog)) ? activityLog : ((typeof window !== 'undefined' && Array.isArray(window.activityLog)) ? window.activityLog : []);
+        if (!syncState || !syncState.lastSyncedAt || !Array.isArray(log)) return 0;
+        const lastSyncTime = new Date(syncState.lastSyncedAt).getTime();
+        return log.filter(entry => {
+            if (!entry || !entry.timestamp) return false;
+            const entryTime = new Date(entry.timestamp).getTime();
+            return !isNaN(entryTime) && entryTime > lastSyncTime;
+        }).length;
+    } catch (e) {
+        return 0;
+    }
+}
+window.getPendingChanges = getPendingChanges;
+
+function formatSyncTime(isoStr) {
+    if (!isoStr) return 'Never';
+    const diffMs = Date.now() - new Date(isoStr).getTime();
+    if (diffMs < 60 * 1000) return 'just now';
+    const mins = Math.floor(diffMs / (60 * 1000));
+    if (mins < 60) return `${mins} min${mins > 1 ? 's' : ''} ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    return new Date(isoStr).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function updateSystemHealthCard() {
+    const isDesktopSuperAdmin = (typeof isViewOnly === 'function' ? isViewOnly('dashboard') : (currentRole === 'super_admin')) && !document.body.classList.contains('mobile-app');
+    const healthCard = document.getElementById('dashboard-system-health-card');
+    if (!healthCard) return;
+
+    if (!isDesktopSuperAdmin) {
+        healthCard.classList.add('hidden');
+        return;
+    }
+    healthCard.classList.remove('hidden');
+
+    const lastSyncEl = document.getElementById('health-last-synced');
+    if (lastSyncEl) {
+        const lastSyncIso = (typeof syncState !== 'undefined' && syncState && syncState.lastSyncedAt) ? syncState.lastSyncedAt : null;
+        lastSyncEl.textContent = lastSyncIso ? formatSyncTime(lastSyncIso) : 'Never';
+    }
+
+    const pendingEl = document.getElementById('health-pending-changes');
+    if (pendingEl) {
+        const pending = (typeof getPendingChanges === 'function') ? getPendingChanges() : 0;
+        pendingEl.textContent = String(pending);
+    }
+
+    const recordsEl = document.getElementById('health-stored-records');
+    const breakdownEl = document.getElementById('health-stored-breakdown');
+    if (recordsEl) {
+        const partsCount = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory.length : 0;
+        const jobsCount = (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) ? mockRepairsData.length : 0;
+        const txnsCount = (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) ? mockTxnData.length : 0;
+        const usersCount = (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData)) ? mockUserData.length : 0;
+        const total = partsCount + jobsCount + txnsCount + usersCount;
+        recordsEl.textContent = String(total);
+        if (breakdownEl) {
+            breakdownEl.textContent = `${partsCount} parts, ${jobsCount} jobs, ${txnsCount} txns, ${usersCount} users`;
+        }
+    }
+}
+window.updateSystemHealthCard = updateSystemHealthCard;
+
+function updateBackupSyncUI() {
+    const isFullAccess = (typeof getScreenAccess === 'function') ? (getScreenAccess('backup') === 'full') : (currentRole === 'super_admin');
+    
+    const syncBtn = document.getElementById('btn-sync-now-backup');
+    const downloadBtn = document.getElementById('btn-download-backup');
+    const restoreInput = document.getElementById('restore-file-input');
+    const restoreExecuteBtn = document.getElementById('btn-execute-restore');
+
+    // Controls show only for roles with full access to "backup"
+    if (!isFullAccess) {
+        if (syncBtn) syncBtn.classList.add('hidden');
+        if (downloadBtn) downloadBtn.classList.add('hidden');
+        if (restoreInput) restoreInput.disabled = true;
+        if (restoreExecuteBtn) restoreExecuteBtn.classList.add('hidden');
+    } else {
+        if (syncBtn) syncBtn.classList.remove('hidden');
+        if (downloadBtn) downloadBtn.classList.remove('hidden');
+        if (restoreInput) restoreInput.disabled = false;
+        if (restoreExecuteBtn) restoreExecuteBtn.classList.remove('hidden');
+    }
+
+    const pendingCount = getPendingChanges();
+    const pendingTextEl = document.getElementById('sync-pending-changes-text');
+    if (pendingTextEl) {
+        pendingTextEl.textContent = `${pendingCount} pending change${pendingCount === 1 ? '' : 's'} to sync`;
+    }
+
+    const lastSyncTextEl = document.getElementById('sync-last-synced-text');
+    if (lastSyncTextEl && syncState && syncState.lastSyncedAt) {
+        lastSyncTextEl.textContent = `Last synced: ${formatSyncTime(syncState.lastSyncedAt)}`;
+    }
+
+    const settingsPending = document.getElementById('settings-sync-pending');
+    if (settingsPending) {
+        settingsPending.textContent = `${pendingCount} pending change${pendingCount === 1 ? '' : 's'} to sync`;
+    }
+    const settingsLastSync = document.getElementById('settings-sync-last-synced');
+    if (settingsLastSync && syncState && syncState.lastSyncedAt) {
+        settingsLastSync.textContent = `Last synced: ${formatSyncTime(syncState.lastSyncedAt)}`;
+    }
+
+    if (typeof updateSystemHealthCard === 'function') {
+        updateSystemHealthCard();
+    }
+}
+window.updateBackupSyncUI = updateBackupSyncUI;
+
+window.triggerBackupSyncNow = function(e) {
+    if (typeof getScreenAccess === 'function' && getScreenAccess('backup') !== 'full') return;
+    
+    const btn = document.getElementById('btn-sync-now-backup');
+    const dashBtn = document.getElementById('btn-sync-now-dashboard');
+    const settingsBtn = document.getElementById('btn-settings-sync-now');
+    const msgEl = document.getElementById('sync-inline-msg');
+    const dashMsg = document.getElementById('dashboard-sync-msg');
+    const settingsMsg = document.getElementById('settings-sync-inline-msg');
+    const lastSyncTextEl = document.getElementById('sync-last-synced-text');
+    const pendingTextEl = document.getElementById('sync-pending-changes-text');
+    const settingsLastSyncEl = document.getElementById('settings-sync-last-synced');
+    const settingsPendingEl = document.getElementById('settings-sync-pending');
+    const icon = document.getElementById('sync-cloud-icon');
+    const healthLastSync = document.getElementById('health-last-synced');
+    const healthPending = document.getElementById('health-pending-changes');
+    
+    [btn, dashBtn, settingsBtn].forEach(b => {
+        if (b) {
+            b.disabled = true;
+            b.innerHTML = `<i class="ph-bold ph-arrows-clockwise animate-spin text-sm"></i> Syncing...`;
+        }
+    });
+    if (icon) {
+        icon.classList.add('animate-spin');
+    }
+    [msgEl, dashMsg, settingsMsg].forEach(m => {
+        if (m) {
+            m.textContent = 'Syncing...';
+            m.classList.remove('hidden', 'text-emerald-600');
+            m.classList.add('text-slate-500');
+        }
+    });
+
+    setTimeout(() => {
+        const now = new Date();
+        syncState.lastSyncedAt = now.toISOString();
+        syncState.status = 'Online';
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem(SYNC_STATE_STORAGE_KEY, JSON.stringify(syncState));
+            }
+        } catch (err) {}
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Sync',
+                action: 'Cloud Sync Completed',
+                recordRef: 'Cloud Server',
+                severity: 'standard'
+            });
+        }
+
+        [btn, dashBtn, settingsBtn].forEach(b => {
+            if (b) {
+                b.disabled = false;
+                b.innerHTML = `<i class="ph-bold ph-arrows-clockwise text-sm"></i> Sync Now`;
+            }
+        });
+        if (icon) {
+            icon.classList.remove('animate-spin');
+        }
+
+        [msgEl, dashMsg, settingsMsg].forEach(m => {
+            if (m) {
+                m.textContent = 'Last synced just now';
+                m.classList.remove('hidden', 'text-slate-500');
+                m.classList.add('text-emerald-600');
+            }
+        });
+
+        if (lastSyncTextEl) {
+            lastSyncTextEl.textContent = 'Last synced just now';
+        }
+        if (pendingTextEl) {
+            pendingTextEl.textContent = '0 pending changes to sync';
+        }
+        if (settingsLastSyncEl) {
+            settingsLastSyncEl.textContent = 'Last synced: just now';
+        }
+        if (settingsPendingEl) {
+            settingsPendingEl.textContent = '0 pending changes to sync';
+        }
+        if (healthLastSync) {
+            healthLastSync.textContent = 'just now';
+        }
+        if (healthPending) {
+            healthPending.textContent = '0';
+        }
+
+        updateBackupSyncUI();
+        updateSystemHealthCard();
+        if (typeof updateSettingsBackupTabUI === 'function') {
+            updateSettingsBackupTabUI();
+        }
+    }, 1500);
+};
+
 const mockBackupHistory = [
     { id: 1, datetime: 'Oct 12, 2026 - 04:30 PM', action: 'Backup Created (motocare_backup_20261012.sql)', type: 'backup', user: `User (${ROLES_CONFIG.admin.label})` },
     { id: 2, datetime: 'Oct 05, 2026 - 10:15 AM', action: 'Backup Created (motocare_backup_20261005.sql)', type: 'backup', user: `User (${ROLES_CONFIG.admin.label})` },
@@ -7058,8 +8181,7 @@ function renderBackupHistory() {
 
     const statusContainer = document.getElementById('backup-status-container');
     if (statusContainer) {
-        // Simple logic for the prototype: if the first history item is from today/Oct 24, show as Up to Date
-        const isUpToDate = mockBackupHistory[0].datetime.includes('Oct 24');
+        const isUpToDate = mockBackupHistory[0].datetime.includes('Oct 24') || mockBackupHistory[0].datetime.includes('Oct 16');
         
         if (isUpToDate) {
             statusContainer.innerHTML = `
@@ -7069,109 +8191,421 @@ function renderBackupHistory() {
             `;
         } else {
             statusContainer.innerHTML = `
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200">
-                    <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> Backup Older Than 7 Days (Action Recommended)
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span class="w-2 h-2 rounded-full bg-amber-500"></span> Backup Recommended
                 </span>
             `;
         }
     }
+
+    updateBackupSyncUI();
 }
 
-// Global functions for Backup & Restore UI triggers
-window.updateRestoreFileName = function(input) {
-    const fileNameSpan = document.getElementById('restore-file-name');
-    if (!fileNameSpan) return;
+window.downloadBackupData = function(e) {
+    if (typeof getScreenAccess === 'function' && getScreenAccess('backup') !== 'full') return;
     
-    if (input.files && input.files.length > 0) {
-        fileNameSpan.textContent = input.files[0].name;
-        fileNameSpan.classList.replace('text-slate-700', 'text-blue-600');
-    } else {
-        fileNameSpan.textContent = 'Choose database file (.sql or .json)';
-        fileNameSpan.classList.replace('text-blue-600', 'text-slate-700');
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const filename = `motocare-backup-${year}-${month}-${day}.json`;
+
+    let dtcOverrides = null;
+    try {
+        if (typeof dtcRuleOverrides !== 'undefined') {
+            dtcOverrides = dtcRuleOverrides;
+        } else if (typeof localStorage !== 'undefined' && localStorage.getItem('dtc_rule_overrides')) {
+            dtcOverrides = JSON.parse(localStorage.getItem('dtc_rule_overrides'));
+        }
+    } catch (err) {}
+
+    const backupPayload = {
+        header: {
+            appName: (typeof shopConfig !== 'undefined' && shopConfig.name) ? shopConfig.name : "MotoCare OS",
+            version: "2.0",
+            date: now.toISOString()
+        },
+        inventory: (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData)) ? fullInventoryData : (typeof mockInventory !== 'undefined' ? mockInventory : []),
+        movements: (typeof inventoryMovements !== 'undefined' && Array.isArray(inventoryMovements)) ? inventoryMovements : [],
+        repairs: (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) ? mockRepairsData : [],
+        users: (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData)) ? mockUserData : [],
+        customers: (typeof mockCustomersData !== 'undefined' && Array.isArray(mockCustomersData)) ? mockCustomersData : (typeof mockCustomers !== 'undefined' ? mockCustomers : []),
+        transactions: (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) ? mockTxnData : [],
+        diagnosticRecords: (typeof diagnosticRecords !== 'undefined' && Array.isArray(diagnosticRecords)) ? diagnosticRecords : [],
+        activityLog: (typeof activityLog !== 'undefined' && Array.isArray(activityLog)) ? activityLog : [],
+        tempGrants: (typeof getTempGrants === 'function') ? getTempGrants() : []
+    };
+
+    if (dtcOverrides) {
+        backupPayload.dtcRuleOverrides = dtcOverrides;
+    }
+
+    try {
+        const jsonStr = JSON.stringify(backupPayload, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        console.error('Download error:', err);
+    }
+
+    const formattedDate = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + " - " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    mockBackupHistory.unshift({
+        id: Date.now(),
+        datetime: formattedDate,
+        action: `Backup Created (${filename})`,
+        type: 'backup',
+        user: `${systemUsers[currentRole]?.name || 'System Admin'} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
+    });
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Backup',
+            action: 'Backup Created',
+            recordRef: filename,
+            severity: 'standard'
+        });
+    }
+
+    renderBackupHistory();
+
+    const successMsg = document.getElementById('backup-download-success-msg');
+    if (successMsg) {
+        successMsg.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-500 text-base shrink-0"></i> <span>Downloaded <strong>${filename}</strong> successfully.</span>`;
+        successMsg.classList.remove('hidden');
+        clearTimeout(window._backupDownloadTimer);
+        window._backupDownloadTimer = setTimeout(() => {
+            successMsg.classList.add('hidden');
+        }, 4000);
+    }
+
+    const settingsSuccessMsg = document.getElementById('settings-backup-download-success');
+    if (settingsSuccessMsg) {
+        settingsSuccessMsg.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-500 text-base shrink-0"></i> <span>Downloaded <strong>${filename}</strong> successfully.</span>`;
+        settingsSuccessMsg.classList.remove('hidden');
+        clearTimeout(window._settingsBackupDownloadTimer);
+        window._settingsBackupDownloadTimer = setTimeout(() => {
+            settingsSuccessMsg.classList.add('hidden');
+        }, 4000);
     }
 };
+window.createManualBackup = window.downloadBackupData;
 
-window.createManualBackup = function(e) {
-    if (!rolePermissions[currentRole] || !rolePermissions[currentRole].includes('backup')) return;
-    const btn = e.currentTarget;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> Generating Backup...`;
-    btn.disabled = true;
+let pendingRestorePayload = null;
+let pendingRestoreFileName = '';
 
-    // Simulate backend delay, update history table dynamically
-    setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        
-        const now = new Date();
-        const formattedDate = "Oct 24, 2026 - " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        
-        mockBackupHistory.unshift({
-            id: Date.now(),
-            datetime: formattedDate,
-            action: 'Backup Created (motocare_backup_20261024.sql)',
-            type: 'backup',
-            user: `${systemUsers[currentRole]?.name || 'System Admin'} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
+function showRestoreError(msg) {
+    const errorBox = document.getElementById('restore-error-box');
+    const errorText = document.getElementById('restore-error-text');
+    const previewBox = document.getElementById('restore-preview-box');
+    const successBox = document.getElementById('restore-success-box');
+    if (previewBox) previewBox.classList.add('hidden');
+    if (successBox) successBox.classList.add('hidden');
+    if (errorText) errorText.textContent = msg || 'Invalid backup file.';
+    if (errorBox) errorBox.classList.remove('hidden');
+
+    const sErrorBox = document.getElementById('settings-restore-error-box');
+    const sErrorText = document.getElementById('settings-restore-error-text');
+    const sPreviewBox = document.getElementById('settings-restore-preview-box');
+    const sSuccessBox = document.getElementById('settings-restore-success-box');
+    if (sPreviewBox) sPreviewBox.classList.add('hidden');
+    if (sSuccessBox) sSuccessBox.classList.add('hidden');
+    if (sErrorText) sErrorText.textContent = msg || 'Invalid backup file.';
+    if (sErrorBox) sErrorBox.classList.remove('hidden');
+}
+
+window.handleRestoreFileSelect = function(input) {
+    if (typeof getScreenAccess === 'function' && getScreenAccess('backup') !== 'full') return;
+    
+    const file = input && input.files && input.files[0];
+    const fileNameEl = document.getElementById('restore-file-name');
+    const errorBox = document.getElementById('restore-error-box');
+    const previewBox = document.getElementById('restore-preview-box');
+    const successBox = document.getElementById('restore-success-box');
+
+    const sFileNameEl = document.getElementById('settings-restore-file-name');
+    const sErrorBox = document.getElementById('settings-restore-error-box');
+    const sPreviewBox = document.getElementById('settings-restore-preview-box');
+    const sSuccessBox = document.getElementById('settings-restore-success-box');
+    
+    [errorBox, previewBox, successBox, sErrorBox, sPreviewBox, sSuccessBox].forEach(el => {
+        if (el) el.classList.add('hidden');
+    });
+    pendingRestorePayload = null;
+    pendingRestoreFileName = '';
+
+    if (!file) {
+        if (fileNameEl) {
+            fileNameEl.textContent = 'Choose database file (.json)';
+            fileNameEl.classList.replace('text-blue-600', 'text-slate-700');
+        }
+        if (sFileNameEl) {
+            sFileNameEl.textContent = 'Choose database file (.json)';
+            sFileNameEl.classList.replace('text-blue-600', 'text-slate-700');
+        }
+        return;
+    }
+
+    if (fileNameEl) {
+        fileNameEl.textContent = file.name;
+        fileNameEl.classList.replace('text-slate-700', 'text-blue-600');
+    }
+    if (sFileNameEl) {
+        sFileNameEl.textContent = file.name;
+        sFileNameEl.classList.replace('text-slate-700', 'text-blue-600');
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const text = e.target.result;
+            const json = JSON.parse(text);
+
+            if (!json || typeof json !== 'object' || !json.header || typeof json.header !== 'object' || !json.header.date) {
+                showRestoreError('Invalid backup file. Missing required header metadata (appName, version, date).');
+                return;
+            }
+
+            pendingRestorePayload = json;
+            pendingRestoreFileName = file.name;
+            showRestorePreview(json, file.name);
+        } catch (err) {
+            showRestoreError('Unable to parse JSON file. Please ensure it is a valid MotoCare backup file.');
+        }
+    };
+    reader.onerror = function() {
+        showRestoreError('Error reading file from disk.');
+    };
+    reader.readAsText(file);
+};
+window.updateRestoreFileName = window.handleRestoreFileSelect;
+
+function showRestorePreview(json, fileName) {
+    const errorBox = document.getElementById('restore-error-box');
+    const previewBox = document.getElementById('restore-preview-box');
+    if (errorBox) errorBox.classList.add('hidden');
+
+    const sErrorBox = document.getElementById('settings-restore-error-box');
+    const sPreviewBox = document.getElementById('settings-restore-preview-box');
+    if (sErrorBox) sErrorBox.classList.add('hidden');
+
+    const header = json.header || {};
+    const payload = json.data || json;
+
+    const dateStr = header.date ? new Date(header.date).toLocaleString([], {
+        month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : 'Unknown date';
+
+    const counts = {
+        inventory: Array.isArray(payload.inventory) ? payload.inventory.length : 0,
+        movements: Array.isArray(payload.movements) ? payload.movements.length : 0,
+        repairs: Array.isArray(payload.repairs) ? payload.repairs.length : 0,
+        users: Array.isArray(payload.users) ? payload.users.length : 0,
+        customers: Array.isArray(payload.customers) ? payload.customers.length : 0,
+        transactions: Array.isArray(payload.transactions) ? payload.transactions.length : 0,
+        diagnosticRecords: Array.isArray(payload.diagnosticRecords) ? payload.diagnosticRecords.length : 0,
+        activityLog: Array.isArray(payload.activityLog) ? payload.activityLog.length : 0
+    };
+
+    const previewHeaderHtml = `${dateStr} (${header.appName || 'MotoCare OS'} v${header.version || '2.0'})`;
+    const previewCountsHtml = `
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Inventory:</span> <span class="font-bold text-slate-800">${counts.inventory} parts</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Movements:</span> <span class="font-bold text-slate-800">${counts.movements} logs</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Repairs:</span> <span class="font-bold text-slate-800">${counts.repairs} jobs</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Users:</span> <span class="font-bold text-slate-800">${counts.users} accounts</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Customers:</span> <span class="font-bold text-slate-800">${counts.customers} records</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Transactions:</span> <span class="font-bold text-slate-800">${counts.transactions} txns</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Diagnostics:</span> <span class="font-bold text-slate-800">${counts.diagnosticRecords} records</span></div>
+        <div class="bg-white p-2 rounded border border-slate-200 flex justify-between"><span class="text-slate-500">Activity Log:</span> <span class="font-bold text-slate-800">${counts.activityLog} entries</span></div>
+    `;
+
+    const dateEl = document.getElementById('restore-preview-date');
+    if (dateEl) dateEl.textContent = previewHeaderHtml;
+    const countsListEl = document.getElementById('restore-preview-counts');
+    if (countsListEl) countsListEl.innerHTML = previewCountsHtml;
+    if (previewBox) previewBox.classList.remove('hidden');
+
+    const sDateEl = document.getElementById('settings-restore-preview-date');
+    if (sDateEl) sDateEl.textContent = previewHeaderHtml;
+    const sCountsListEl = document.getElementById('settings-restore-preview-counts');
+    if (sCountsListEl) sCountsListEl.innerHTML = previewCountsHtml;
+    if (sPreviewBox) sPreviewBox.classList.remove('hidden');
+}
+
+window.executeInlineRestore = function(e) {
+    if (typeof getScreenAccess === 'function' && getScreenAccess('backup') !== 'full') return;
+    if (!pendingRestorePayload) {
+        showRestoreError('No valid backup file is currently loaded.');
+        return;
+    }
+
+    if (!confirm('Are you sure you want to restore the system? This will replace the active database with data from the backup file.')) {
+        return;
+    }
+
+    const payload = pendingRestorePayload.data || pendingRestorePayload;
+
+    // 1. Inventory
+    if (Array.isArray(payload.inventory) && typeof mockInventory !== 'undefined') {
+        mockInventory.length = 0;
+        payload.inventory.forEach(item => mockInventory.push(item));
+    }
+    // 2. Movements
+    if (Array.isArray(payload.movements) && typeof inventoryMovements !== 'undefined') {
+        inventoryMovements.length = 0;
+        payload.movements.forEach(m => inventoryMovements.push(m));
+    }
+    // 3. Repairs
+    if (Array.isArray(payload.repairs) && typeof mockRepairsData !== 'undefined') {
+        mockRepairsData.length = 0;
+        payload.repairs.forEach(r => mockRepairsData.push(r));
+    }
+    // 4. Users
+    if (Array.isArray(payload.users) && typeof mockUserData !== 'undefined') {
+        mockUserData.length = 0;
+        payload.users.forEach(u => mockUserData.push(u));
+    }
+    // 5. Customers
+    if (Array.isArray(payload.customers)) {
+        if (typeof mockCustomersData !== 'undefined' && Array.isArray(mockCustomersData)) {
+            mockCustomersData.length = 0;
+            payload.customers.forEach(c => mockCustomersData.push(c));
+        }
+        if (typeof mockCustomers !== 'undefined' && Array.isArray(mockCustomers)) {
+            mockCustomers.length = 0;
+            payload.customers.forEach(c => mockCustomers.push(c));
+        }
+    }
+    // 6. Transactions
+    if (Array.isArray(payload.transactions) && typeof mockTxnData !== 'undefined') {
+        mockTxnData.length = 0;
+        payload.transactions.forEach(t => mockTxnData.push(t));
+    }
+    // 7. Diagnostic Records
+    if (Array.isArray(payload.diagnosticRecords) && typeof diagnosticRecords !== 'undefined') {
+        diagnosticRecords.length = 0;
+        payload.diagnosticRecords.forEach(d => diagnosticRecords.push(d));
+    }
+    // 8. Activity Log
+    if (Array.isArray(payload.activityLog) && typeof activityLog !== 'undefined') {
+        activityLog.length = 0;
+        payload.activityLog.forEach(a => activityLog.push(a));
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('motocare_activity_log', JSON.stringify(activityLog));
+            }
+        } catch (err) {}
+    }
+    // 9. DTC rule overrides
+    if (payload.dtcRuleOverrides) {
+        window.dtcRuleOverrides = payload.dtcRuleOverrides;
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('dtc_rule_overrides', JSON.stringify(payload.dtcRuleOverrides));
+            }
+        } catch (err) {}
+    }
+    // 10. Temporary Grants
+    if (Array.isArray(payload.tempGrants)) {
+        if (typeof saveTempGrants === 'function') {
+            saveTempGrants(payload.tempGrants);
+        }
+    }
+
+    const restoredFileName = pendingRestoreFileName || 'Backup Archive';
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Backup',
+            action: 'System Restored',
+            recordRef: restoredFileName,
+            severity: 'critical'
         });
-        
-        renderBackupHistory();
-        alert('Backup file downloaded successfully!');
-    }, 1200);
+    }
+
+    const now = new Date();
+    const formattedDate = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + " - " + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    mockBackupHistory.unshift({
+        id: Date.now(),
+        datetime: formattedDate,
+        action: `System Restored from ${restoredFileName}`,
+        type: 'restore',
+        user: `${systemUsers[currentRole]?.name || 'System Admin'} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
+    });
+
+    const previewBox = document.getElementById('restore-preview-box');
+    if (previewBox) previewBox.classList.add('hidden');
+    const sPreviewBox = document.getElementById('settings-restore-preview-box');
+    if (sPreviewBox) sPreviewBox.classList.add('hidden');
+
+    const successBox = document.getElementById('restore-success-box');
+    if (successBox) {
+        successBox.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-600 text-base shrink-0"></i> <span>System data successfully restored from <strong>${restoredFileName}</strong>!</span>`;
+        successBox.classList.remove('hidden');
+        clearTimeout(window._restoreSuccessTimer);
+        window._restoreSuccessTimer = setTimeout(() => {
+            successBox.classList.add('hidden');
+        }, 5000);
+    }
+    const sSuccessBox = document.getElementById('settings-restore-success-box');
+    if (sSuccessBox) {
+        sSuccessBox.innerHTML = `<i class="ph-bold ph-check-circle text-emerald-600 text-base shrink-0"></i> <span>System data successfully restored from <strong>${restoredFileName}</strong>!</span>`;
+        sSuccessBox.classList.remove('hidden');
+        clearTimeout(window._settingsRestoreSuccessTimer);
+        window._settingsRestoreSuccessTimer = setTimeout(() => {
+            sSuccessBox.classList.add('hidden');
+        }, 5000);
+    }
+
+    const fileInput = document.getElementById('restore-file-input');
+    if (fileInput) fileInput.value = '';
+    const fileNameEl = document.getElementById('restore-file-name');
+    if (fileNameEl) {
+        fileNameEl.textContent = 'Choose database file (.json)';
+        fileNameEl.classList.replace('text-blue-600', 'text-slate-700');
+    }
+
+    const sFileInput = document.getElementById('settings-restore-file-input');
+    if (sFileInput) sFileInput.value = '';
+    const sFileNameEl = document.getElementById('settings-restore-file-name');
+    if (sFileNameEl) {
+        sFileNameEl.textContent = 'Choose database file (.json)';
+        sFileNameEl.classList.replace('text-blue-600', 'text-slate-700');
+    }
+
+    pendingRestorePayload = null;
+    pendingRestoreFileName = '';
+
+    renderBackupHistory();
+    if (typeof renderInventory === 'function') renderInventory();
+    if (typeof renderRepairs === 'function') renderRepairs();
+    if (typeof renderUsers === 'function') renderUsers();
+    if (typeof renderCustomers === 'function') renderCustomers();
+    if (typeof renderTransactions === 'function') renderTransactions();
+    if (typeof renderHistory === 'function') renderHistory();
+    if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+    updateBackupSyncUI();
+    if (typeof updateSettingsBackupTabUI === 'function') updateSettingsBackupTabUI();
+    if (typeof renderSettingsAuditTable === 'function') renderSettingsAuditTable();
+    if (typeof renderSettingsUsersTabUI === 'function') renderSettingsUsersTabUI();
 };
 
 window.openRestorePasswordModal = function() {
-    if (!rolePermissions[currentRole] || !rolePermissions[currentRole].includes('backup')) return;
     const fileInput = document.getElementById('restore-file-input');
-    if (!fileInput || fileInput.files.length === 0) {
-        alert("Please select a backup file to restore first.");
-        return;
-    }
-    toggleModal('modal-restore-password', 'restore-password-backdrop', 'restore-password-content', true);
+    if (fileInput) fileInput.click();
 };
 
-window.closeRestorePasswordModal = function() {
-    toggleModal('modal-restore-password', 'restore-password-backdrop', 'restore-password-content', false);
-};
+window.closeRestorePasswordModal = function() {};
 
 window.confirmSystemRestore = function(e) {
-    if (!rolePermissions[currentRole] || !rolePermissions[currentRole].includes('backup')) return;
-    const pass = document.getElementById('restore-admin-pass').value;
-    if (!pass) {
-        alert('Please enter your password to proceed.');
-        return;
-    }
-    const btn = e.currentTarget;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> Restoring Database...`;
-    btn.disabled = true;
-             
-    // Simulate backend delay, update history table dynamically
-    setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        document.getElementById('restore-admin-pass').value = '';
-        
-        const now = new Date();
-        const formattedDate = "Oct 24, 2026 - " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        
-        mockBackupHistory.unshift({
-            id: Date.now(),
-            datetime: formattedDate,
-            action: 'System Restored from Archive',
-            type: 'restore',
-            user: `${systemUsers[currentRole]?.name || 'System Admin'} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
-        });
-        
-        closeRestorePasswordModal();
-        
-        // Reset file input UI
-        const fileInput = document.getElementById('restore-file-input');
-        if(fileInput) fileInput.value = '';
-        updateRestoreFileName({ files: [] });
-
-        renderBackupHistory();
-        alert('System successfully restored from archive! Audit log updated.');
-    }, 1200);
+    executeInlineRestore(e);
 };
 // --- Interactive Login & Logout Logic ---
 
@@ -7532,6 +8966,108 @@ const mockRepairsData = [
     }
 ];
 
+function updateRepairCounters() {
+    if (typeof mockRepairsData === 'undefined' || !Array.isArray(mockRepairsData)) return;
+    const activeCount = mockRepairsData.filter(j => j.statusId !== 'paid').length;
+    const waitingCount = mockRepairsData.filter(j => j.statusId === 'waiting').length;
+
+    const mActiveEl = document.getElementById('m-stat-active');
+    if (mActiveEl) mActiveEl.textContent = activeCount;
+
+    const mWaitingEl = document.getElementById('m-stat-waiting');
+    if (mWaitingEl) mWaitingEl.textContent = waitingCount;
+}
+window.updateRepairCounters = updateRepairCounters;
+
+function syncMobileJobStatus(jobId, newStatus) {
+    if (typeof mockMobileJobs !== 'undefined' && Array.isArray(mockMobileJobs)) {
+        const mJob = mockMobileJobs.find(j => j.id === jobId);
+        if (mJob) {
+            if (newStatus === 'waiting') {
+                mJob.status = 'Waiting Parts';
+                mJob.tone = 'orange';
+            } else if (newStatus === 'progress') {
+                mJob.status = 'In Progress';
+                mJob.tone = 'blue';
+            } else if (newStatus === 'pending') {
+                mJob.status = 'Pending Post-Scan';
+                mJob.tone = 'purple';
+            } else if (newStatus === 'ready') {
+                mJob.status = 'Ready for Billing';
+                mJob.tone = 'emerald';
+            } else if (newStatus === 'paid') {
+                mJob.status = 'Completed';
+                mJob.tone = 'slate';
+            }
+        }
+    }
+}
+
+function findOrLinkJobTransaction(job) {
+    if (!job) return null;
+    if (typeof mockTxnData === 'undefined' || !Array.isArray(mockTxnData)) return null;
+
+    if (job.txnId) {
+        const found = mockTxnData.find(t => t.id === job.txnId);
+        if (found) return found;
+    }
+
+    const existing = mockTxnData.find(t => 
+        t.type === 'Repair Service' && 
+        (t.details.includes(job.plate) || (job.id && t.details.includes(job.id)))
+    );
+
+    if (existing) {
+        job.txnId = existing.id;
+        return existing;
+    }
+
+    let total = 0;
+    if (job.repairPlan) {
+        if (job.repairPlan.estimatedTotal) {
+            total = job.repairPlan.estimatedTotal;
+        } else {
+            if (job.repairPlan.parts) {
+                total += job.repairPlan.parts.reduce((sum, p) => sum + (p.part.price * p.qty), 0);
+            }
+            if (job.repairPlan.laborCost) total += job.repairPlan.laborCost;
+        }
+    }
+    if (!total) total = 1500;
+
+    const brand = getBrandLabel(job);
+    const vehicleLabel = (brand ? `${brand} ${job.model || ''}`.trim() : (job.model || 'Motorcycle')).trim();
+    const newTxnId = 'TXN-' + Math.floor(100 + Math.random() * 900);
+
+    const newTxn = {
+        id: newTxnId,
+        category: 'settle',
+        type: 'Repair Service',
+        typeClass: 'text-blue-600 bg-blue-50 border-blue-100',
+        typeIcon: 'ph-wrench',
+        customer: job.customer,
+        details: `${vehicleLabel} (${job.plate}) • ${job.id}`,
+        vehicle: `${vehicleLabel} (${job.plate})`,
+        services: job.diagnosis || 'Repair & Service',
+        amount: total,
+        amountSuffix: '<span class="text-[10px] font-normal text-slate-400 ml-1">(Final)</span>',
+        status: 'Pending Settlement',
+        statusClass: 'bg-purple-50 text-purple-700 border-purple-200',
+        statusDot: 'bg-purple-500',
+        btnText: 'Settle Balance',
+        btnClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md',
+        btnIcon: 'ph-check-circle',
+        btnAction: 'openRepairCheckout(true)',
+        date: new Date().toISOString()
+    };
+
+    mockTxnData.unshift(newTxn);
+    job.txnId = newTxnId;
+    if (typeof renderTransactions === 'function') renderTransactions();
+    return newTxn;
+}
+window.findOrLinkJobTransaction = findOrLinkJobTransaction;
+
 function checkJobPartsStatus(jobId) {
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job || !job.repairPlan || !job.repairPlan.parts) return;
@@ -7539,15 +9075,29 @@ function checkJobPartsStatus(jobId) {
     const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order' && p.partStatus !== 'Received');
     
     if (pendingParts.length === 0 && job.statusId === 'waiting') {
+        const oldStatus = job.statusName || 'Waiting for Parts';
         job.statusId = 'progress';
         job.statusName = 'In Progress';
         job.statusClass = 'bg-blue-50 text-blue-600 border-blue-200';
         job.dotClass = 'bg-blue-500 animate-pulse';
         job.startedAnyway = false;
         
+        syncMobileJobStatus(job.id, 'progress');
+        updateRepairCounters();
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Repairs',
+                action: 'Status Changed',
+                recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+                before: oldStatus,
+                after: 'In Progress',
+                severity: 'standard'
+            });
+        }
         showToast(`All parts ready. ${job.id} moved to In Progress.`);
         renderRepairs();
     } else {
+        updateRepairCounters();
         renderRepairs();
     }
 }
@@ -7565,45 +9115,162 @@ function showToast(msg) {
     }, 3000);
 }
 
-window.markPartStatus = function(jobId, partId, newStatus) {
+window.assignMechanic = function(jobId, mechValue) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('assignMechanic')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
-    const part = job.repairPlan.parts.find(p => p.id === partId);
+
+    const oldMech = job.assignedMechanic || 'Unassigned';
+    const baseName = mechValue.replace(/\s*\(.*?\)/, '').trim();
+    const hasChanged = (job.assignedMechanic !== mechValue && job.assignedMechanic !== baseName);
+
+    job.assignedMechanic = mechValue;
+
+    if (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData)) {
+        const mIdx = mockUserData.filter(u => u.roleValue === 'mechanic' && u.statusValue !== 'inactive').findIndex(u => u.name === baseName);
+        if (mIdx !== -1) job.selectedMechIndex = mIdx;
+    }
+
+    if (typeof mockMobileJobs !== 'undefined' && Array.isArray(mockMobileJobs)) {
+        const mJob = mockMobileJobs.find(j => j.id === jobId);
+        if (mJob) mJob.mechanic = baseName;
+    }
+
+    if (hasChanged && typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Mechanic Assigned',
+            recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+            before: oldMech,
+            after: baseName,
+            severity: 'standard'
+        });
+    }
+
+    showToast(`Assigned ${baseName} to ${job.id}`);
+};
+
+window.markPartStatus = function(jobId, partId, newStatus) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (newStatus === 'Ordered' && typeof hasFeature === 'function' && !hasFeature('markOrdered')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
+    if (newStatus === 'Received' && typeof hasFeature === 'function' && !hasFeature('markReceived')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+    const part = job.repairPlan?.parts?.find(p => p.id === partId);
     if (!part) return;
+    const oldPartStatus = part.partStatus || 'Waiting';
     part.partStatus = newStatus;
+    if (oldPartStatus !== newStatus && typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Part Status Changed',
+            recordRef: `${job.id} - ${part.part?.name || part.name || 'Part'}`,
+            before: oldPartStatus,
+            after: newStatus,
+            severity: 'standard'
+        });
+    }
+    showToast(`${part.part?.name || 'Part'} marked ${newStatus} for ${job.id}`);
     checkJobPartsStatus(jobId);
 };
 
 window.checkStockForJob = function(jobId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('checkStock')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
-    
+
+    job.stockChecked = true;
+
+    // Check live stock against inventory
+    const invSource = (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData)) ? fullInventoryData : (typeof mockInventory !== 'undefined' ? mockInventory : []);
+    let inStockPartsCount = 0;
+    let totalOrderParts = 0;
+
     if (job.repairPlan && job.repairPlan.parts) {
         job.repairPlan.parts.forEach(p => {
             if (p.handling === 'order') {
-                p.partStatus = 'Received';
+                totalOrderParts++;
+                const invItem = invSource.find(inv => 
+                    inv.name.toLowerCase() === p.part.name.toLowerCase() || 
+                    p.part.name.toLowerCase().includes(inv.name.toLowerCase()) || 
+                    inv.name.toLowerCase().includes(p.part.name.toLowerCase())
+                );
+                if (invItem && invItem.stock >= p.qty) {
+                    inStockPartsCount++;
+                }
             }
         });
     }
-    checkJobPartsStatus(jobId);
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Stock Checked',
+            recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+            before: '(unverified)',
+            after: 'Stock verified',
+            severity: 'standard'
+        });
+    }
+
+    showToast(`Live stock checked for ${job.id}. Badges updated inline.`);
+    renderRepairs();
 };
 
 window.startRepairAnyway = function(jobId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('markRepairDone')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
     
+    const oldStatus = job.statusName || 'Waiting for Parts';
     job.statusId = 'progress';
     job.statusName = 'In Progress';
     job.statusClass = 'bg-blue-50 text-blue-600 border-blue-200';
     job.dotClass = 'bg-blue-500 animate-pulse';
     job.startedAnyway = true;
+    syncMobileJobStatus(job.id, 'progress');
+    updateRepairCounters();
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Status Changed',
+            recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+            before: oldStatus,
+            after: 'In Progress',
+            severity: 'standard'
+        });
+    }
     renderRepairs();
 };
 
 window.markRepairDone = function(jobId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('markRepairDone')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
     
+    const oldStatus = job.statusName || 'In Progress';
     // Check if ecu was used (for mock demo, if it has 'sensor' in diagnosis or randomly)
     const ecuUsed = job.diagnosis.toLowerCase().includes('sensor') || job.diagnosis.toLowerCase().includes('ecu');
     
@@ -7612,25 +9279,100 @@ window.markRepairDone = function(jobId) {
         job.statusName = 'Pending Post-Scan / Calibration';
         job.statusClass = 'bg-purple-50 text-purple-600 border-purple-200';
         job.dotClass = 'bg-purple-500';
+        syncMobileJobStatus(job.id, 'pending');
     } else {
         job.statusId = 'ready';
         job.statusName = 'Ready for Billing';
         job.statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
         job.dotClass = 'bg-emerald-500';
+        syncMobileJobStatus(job.id, 'ready');
+        if (typeof hasFeature === 'function' && hasFeature('moveToBilling')) {
+            findOrLinkJobTransaction(job);
+        }
     }
     job.startedAnyway = false;
+    updateRepairCounters();
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Status Changed',
+            recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+            before: oldStatus,
+            after: job.statusName,
+            severity: 'standard'
+        });
+    }
     renderRepairs();
 };
 
 window.completePostScan = function(jobId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('completePostScan')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
     
+    const oldStatus = job.statusName || 'Pending Post-Scan / Calibration';
     job.statusId = 'ready';
     job.statusName = 'Ready for Billing';
     job.statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
     job.dotClass = 'bg-emerald-500';
+    syncMobileJobStatus(job.id, 'ready');
+    if (typeof hasFeature === 'function' && hasFeature('moveToBilling')) {
+        findOrLinkJobTransaction(job);
+    }
+    updateRepairCounters();
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Status Changed',
+            recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+            before: oldStatus,
+            after: 'Ready for Billing',
+            severity: 'standard'
+        });
+    }
     renderRepairs();
+};
+
+window.moveToBilling = function(jobId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
+    if (typeof hasFeature === 'function' && !hasFeature('moveToBilling')) {
+        showToast("You don't have permission to do this.");
+        return;
+    }
+    const job = mockRepairsData.find(j => j.id === jobId);
+    if (!job) return;
+
+    const oldStatus = job.statusName || '';
+    const statusChanged = (job.statusId !== 'ready');
+
+    job.statusId = 'ready';
+    job.statusName = 'Ready for Billing';
+    job.statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
+    job.dotClass = 'bg-emerald-500';
+    job.startedAnyway = false;
+
+    syncMobileJobStatus(job.id, 'ready');
+    const txn = findOrLinkJobTransaction(job);
+    updateRepairCounters();
+    renderRepairs();
+    if (statusChanged && typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Status Changed',
+            recordRef: `${job.id} (${job.plate || job.bike || ''})`,
+            before: oldStatus || 'In Progress',
+            after: 'Ready for Billing',
+            severity: 'standard'
+        });
+    }
+    showToast(`${job.id} marked Ready for Billing. Transaction ${txn.id} linked.`);
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        proceedToPayment(jobId);
+    }
 };
 
 // Payment logic state
@@ -7638,6 +9380,11 @@ let currentPaymentJob = null;
 let currentPayMethod = 'Cash';
 
 window.proceedToPayment = function(jobId) {
+    if (typeof isViewOnly === 'function' && (isViewOnly('repairs') || isViewOnly('transactions'))) return;
+    if (currentRole === 'mechanic' && !hasFeature('recordPayment') && !hasFeature('walkInSale')) {
+        if (typeof showToast === 'function') showToast("Temporary payment access required.");
+        return;
+    }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
     
@@ -7721,8 +9468,14 @@ window.closePaymentScreen = function() {
 };
 
 window.completePayment = function() {
+    if (typeof isViewOnly === 'function' && (isViewOnly('repairs') || isViewOnly('transactions'))) return;
+    if (currentRole === 'mechanic' && !hasFeature('recordPayment') && !hasFeature('walkInSale')) {
+        if (typeof showToast === 'function') showToast("Temporary payment access required.");
+        return;
+    }
     if (!currentPaymentJob) return;
     
+    const oldStatus = currentPaymentJob.statusName || 'Ready for Billing';
     // status paid
     currentPaymentJob.statusId = 'paid';
     currentPaymentJob.statusName = 'Paid / Completed';
@@ -7745,6 +9498,30 @@ window.completePayment = function() {
     document.getElementById('payment-success-state').classList.remove('hidden');
     
     document.getElementById('payment-success-summary').textContent = `${currentPaymentJob.id} for ${currentPaymentJob.plate} has been successfully paid via ${currentPayMethod}.`;
+
+    if (currentPaymentJob.txnId && typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+        const txn = mockTxnData.find(t => t.id === currentPaymentJob.txnId);
+        if (txn) {
+            txn.category = 'completed';
+            txn.status = 'Fully Paid';
+            txn.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            txn.statusDot = 'bg-emerald-500';
+            txn.btnText = 'View Receipt';
+            txn.btnIcon = 'ph-receipt';
+        }
+    }
+    syncMobileJobStatus(currentPaymentJob.id, 'paid');
+    updateRepairCounters();
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Repairs',
+            action: 'Status Changed',
+            recordRef: `${currentPaymentJob.id} (${currentPaymentJob.plate || currentPaymentJob.bike || ''})`,
+            before: oldStatus,
+            after: 'Paid / Completed',
+            severity: 'standard'
+        });
+    }
 };
 
 // Add event listeners for payment method chips and amount
@@ -7833,6 +9610,24 @@ function renderRepairs() {
     const grid = document.getElementById('repairs-grid');
     if (!grid) return;
     
+    if (typeof updateRepairCounters === 'function') updateRepairCounters();
+    
+    const isVO = typeof isViewOnly === 'function' ? isViewOnly('repairs') : false;
+    const repairPill = document.querySelector('#view-repairs .screen-view-only-pill');
+    if (repairPill) {
+        repairPill.classList.toggle('hidden', !isVO);
+        repairPill.textContent = 'View-only (Monitoring Mode)';
+    }
+
+    const canAssign = typeof hasFeature === 'function' && hasFeature('assignMechanic') && !isVO;
+    const canCheckStock = typeof hasFeature === 'function' && hasFeature('checkStock') && !isVO;
+    const canMarkOrd = typeof hasFeature === 'function' && hasFeature('markOrdered') && !isVO;
+    const canMarkRec = typeof hasFeature === 'function' && hasFeature('markReceived') && !isVO;
+    const canMoveBilling = typeof hasFeature === 'function' && hasFeature('moveToBilling') && !isVO;
+    const canMarkDone = typeof hasFeature === 'function' && hasFeature('markRepairDone') && !isVO;
+    const canPostScan = typeof hasFeature === 'function' && hasFeature('completePostScan') && !isVO;
+    const canReceivePayment = typeof hasFeature === 'function' && hasFeature('receivePayment') && !isVO;
+    
     const isMobile = document.body.classList.contains('mobile-app');
     
     const searchInput = document.getElementById('repair-search');
@@ -7910,10 +9705,28 @@ function renderRepairs() {
         const opacityClass = (job.statusId !== 'progress' && job.statusId !== 'waiting') ? 'opacity-80' : '';
         const vehicleLabel = (getBrandLabel(job) ? `${getBrandLabel(job)} ${job.model || ''}`.trim() : (job.model || '')).trim();
         
-        // Build mechanic select options
-        const mechOptions = job.mechanicOptions.map((mech, idx) => 
-            `<option ${idx === job.selectedMechIndex ? 'selected' : ''}>${mech}</option>`
-        ).join('');
+        // Build mechanic select options from users with mechanic role
+        const mechUsers = (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData))
+            ? mockUserData.filter(u => u.roleValue === 'mechanic' && u.statusValue !== 'inactive')
+            : [];
+
+        const currentMechName = job.assignedMechanic 
+            ? job.assignedMechanic.replace(/\s*\(.*?\)/, '').trim() 
+            : ((job.mechanicOptions && job.mechanicOptions[job.selectedMechIndex || 0]) || (mechUsers[job.selectedMechIndex || 0]?.name) || 'Unassigned').replace(/\s*\(.*?\)/, '').trim();
+        const assignedMechName = currentMechName || 'Unassigned';
+
+        let mechOptions = '';
+        if (mechUsers.length > 0) {
+            mechOptions = mechUsers.map((u, idx) => {
+                const isSel = (job.assignedMechanic && (job.assignedMechanic === u.name || currentMechName === u.name)) ||
+                              (!job.assignedMechanic && (currentMechName === u.name || idx === (job.selectedMechIndex || 0)));
+                return `<option value="${u.name}" ${isSel ? 'selected' : ''}>${u.name} (${ROLES_CONFIG.mechanic?.label || 'Mechanic'})</option>`;
+            }).join('');
+        } else if (job.mechanicOptions) {
+            mechOptions = job.mechanicOptions.map((mech, idx) => 
+                `<option value="${mech}" ${idx === job.selectedMechIndex ? 'selected' : ''}>${mech}</option>`
+            ).join('');
+        }
 
         let partsHTML = '';
         const showPartsList = job.statusId === 'waiting' || (job.statusId === 'progress' && job.startedAnyway);
@@ -7924,36 +9737,67 @@ function renderRepairs() {
             hasPending = pendingParts.some(p => p.partStatus !== 'Received');
             
             if (showPartsList && pendingParts.length > 0) {
+                const invSource = (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData)) ? fullInventoryData : (typeof mockInventory !== 'undefined' ? mockInventory : []);
+
                 let partsRows = pendingParts.map(p => {
                     let actionsHTML = '';
                     if (p.partStatus !== 'Received') {
                         if (p.partStatus === 'Waiting' || !p.partStatus) {
-                            actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Ordered')" class="text-[10px] text-blue-600 hover:underline">Mark ordered</button>`;
+                            if (canMarkOrd) {
+                                actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Ordered')" class="text-[10px] font-semibold text-blue-600 hover:text-blue-800 hover:underline">Mark ordered</button>`;
+                            }
                         }
-                        actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Received')" class="text-[10px] text-emerald-600 hover:underline ml-2">Mark received</button>`;
+                        if (canMarkRec) {
+                            actionsHTML += `<button onclick="markPartStatus('${job.id}', '${p.id}', 'Received')" class="text-[10px] font-semibold text-emerald-600 hover:text-emerald-800 hover:underline ${canMarkOrd && (p.partStatus === 'Waiting' || !p.partStatus) ? 'ml-2' : ''}">Mark received</button>`;
+                        }
                     } else {
                         actionsHTML = `<span class="text-[10px] text-emerald-600 font-bold"><i class="ph-bold ph-check"></i> Ready</span>`;
                     }
                     
                     let statusColor = (!p.partStatus || p.partStatus === 'Waiting') ? 'text-amber-600' : (p.partStatus === 'Ordered' ? 'text-blue-600' : 'text-emerald-600');
 
+                    // Compute live stock badge inline
+                    const pName = (p.part?.name || '').toLowerCase();
+                    const invItem = invSource.find(inv => {
+                        const iName = (inv.name || '').toLowerCase();
+                        return iName === pName || iName.includes(pName) || pName.includes(iName) ||
+                               (pName.includes('coolant') && iName.includes('coolant')) ||
+                               (pName.includes('brake') && iName.includes('brake'));
+                    });
+
+                    let stockBadge = '';
+                    if (invItem) {
+                        if (invItem.stock >= p.qty) {
+                            stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title="In stock in inventory"><i class="ph-bold ph-check"></i> Stock: ${invItem.stock}</span>`;
+                        } else if (invItem.stock > 0) {
+                            stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200" title="Low stock in inventory"><i class="ph-bold ph-warning"></i> Stock: ${invItem.stock}</span>`;
+                        } else {
+                            stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200" title="Out of stock in inventory"><i class="ph-bold ph-x"></i> Stock: 0</span>`;
+                        }
+                    } else {
+                        stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-600 border border-slate-200" title="Item not found in inventory">Stock: 0</span>`;
+                    }
+
                     return `
                         <div class="flex flex-col py-1.5 border-b border-slate-100 last:border-0">
                             <div class="flex justify-between items-start mb-0.5">
                                 <span class="text-xs font-semibold text-slate-700">${p.part.name} (x${p.qty})</span>
-                                <span class="text-[10px] font-bold ${statusColor}">${p.partStatus || 'Waiting'}</span>
+                                <div class="flex items-center gap-1.5">
+                                    ${stockBadge}
+                                    <span class="text-[10px] font-bold ${statusColor}">${p.partStatus || 'Waiting'}</span>
+                                </div>
                             </div>
                             <div class="flex justify-between items-center">
                                 <span class="text-[10px] text-slate-500 truncate pr-2">For: ${p.target}</span>
                                 <span class="text-[10px] text-slate-400 whitespace-nowrap">ETA: ${p.expectedArrival || 'N/A'}</span>
                             </div>
-                            <div class="flex justify-end mt-1">${actionsHTML}</div>
+                            ${actionsHTML ? `<div class="flex justify-end mt-1">${actionsHTML}</div>` : ''}
                         </div>
                     `;
                 }).join('');
 
                 let anywayBtn = '';
-                if (job.statusId === 'waiting') {
+                if (job.statusId === 'waiting' && canMarkDone) {
                     anywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="text-[10px] font-semibold text-amber-600 hover:text-amber-700 hover:underline mt-2 inline-flex items-center gap-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
                 }
 
@@ -7965,7 +9809,10 @@ function renderRepairs() {
                 partsHTML = `
                     <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-2.5 relative">
                         ${pendingTag}
-                        <span class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Parts Needed</span>
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Parts Needed</span>
+                            ${job.stockChecked ? '<span class="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1"><i class="ph-bold ph-check"></i> Stock verified</span>' : ''}
+                        </div>
                         ${partsRows}
                         ${anywayBtn}
                     </div>
@@ -7995,9 +9842,15 @@ function renderRepairs() {
             btnText = '<i class="ph-bold ph-check-square"></i> Complete Post-Scan';
             btnAction = `completePostScan('${job.id}')`;
         } else if (job.statusId === 'ready') {
-            btnText = 'Proceed to Payment <i class="ph-bold ph-arrow-right"></i>';
-            btnAction = `proceedToPayment('${job.id}')`;
-            btnClass = 'bg-blue-600 hover:bg-blue-700 text-white';
+            const canPay = currentRole !== 'mechanic' || (typeof hasFeature === 'function' && (hasFeature('recordPayment') || hasFeature('walkInSale')));
+            if (canPay) {
+                btnText = 'Proceed to Payment <i class="ph-bold ph-arrow-right"></i>';
+                btnAction = `proceedToPayment('${job.id}')`;
+                btnClass = 'bg-blue-600 hover:bg-blue-700 text-white';
+            } else {
+                btnText = '';
+                btnAction = '';
+            }
         } else if (job.statusId === 'paid') {
             btnText = '<i class="ph-bold ph-receipt"></i> View Receipt';
             btnAction = ''; // dummy action
@@ -8109,9 +9962,9 @@ function renderRepairs() {
                         ${mobilePartsHTML}
                         
                         <div class="mt-2 pt-4 border-t border-slate-100 flex flex-col gap-1.5">
-                            <button onclick="${btnAction}" class="w-full py-3 rounded-lg text-sm font-bold shadow-sm flex items-center justify-center gap-2 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
+                            ${btnText ? `<button onclick="${btnAction}" class="w-full py-3 rounded-lg text-sm font-bold shadow-sm flex items-center justify-center gap-2 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
                                 ${btnText}
-                            </button>
+                            </button>` : ''}
                             ${mobileHintHTML}
                             ${mobileAnywayBtn}
                         </div>
@@ -8120,6 +9973,217 @@ function renderRepairs() {
             </div>
             `;
         } else {
+            // Find linked transaction if any
+            let txn = null;
+            if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+                if (job.txnId) {
+                    txn = mockTxnData.find(t => t.id === job.txnId);
+                }
+                if (!txn) {
+                    txn = mockTxnData.find(t => t.type === 'Repair Service' && ((job.plate && t.details && t.details.includes(job.plate)) || (job.id && t.details && t.details.includes(job.id))));
+                    if (txn) {
+                        job.txnId = txn.id;
+                    }
+                }
+            }
+
+            let billingHTML = '';
+            if (canReceivePayment) {
+                if (txn) {
+                    let advancePaid = 0;
+                    if (txn.status && txn.status.includes('Adv Paid')) {
+                        const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+                        if (match) advancePaid = parseFloat(match[2].replace(/,/g, ''));
+                    } else if (job.advancePaid) {
+                        advancePaid = Number(job.advancePaid) || 0;
+                    }
+
+                    const totalAmount = Number(txn.amount) || (job.repairPlan?.estimatedTotal || 1500);
+                    const isPaid = (txn.status === 'Fully Paid' || txn.category === 'completed' || job.statusId === 'paid');
+                    const balanceDue = isPaid ? 0 : Math.max(0, totalAmount - advancePaid);
+
+                    let statusBadge = '';
+                    if (isPaid) {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="ph-bold ph-check"></i> Fully Paid</span>`;
+                    } else if (advancePaid > 0) {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200"><span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> ${txn.status || 'Partial / Advance Paid'}</span>`;
+                    } else if (txn.status === 'Pending Settlement') {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span> Pending Settlement</span>`;
+                    } else {
+                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Unpaid</span>`;
+                    }
+
+                    const isInlineOpen = (typeof window !== 'undefined' && window.activeInlinePaymentJobId === job.id);
+                    const safeId = job.id.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+                    let inlineSuccessBanner = '';
+                    if (typeof window !== 'undefined' && window.inlinePaymentSuccessMsg && window.inlinePaymentSuccessMsg.jobId === job.id) {
+                        inlineSuccessBanner = `<div class="p-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded flex items-center gap-1.5"><i class="ph-bold ph-check-circle"></i> ${window.inlinePaymentSuccessMsg.text}</div>`;
+                    }
+
+                    let billingActionArea = '';
+                    if (isInlineOpen) {
+                        const payType = window.activeInlinePaymentType || 'settle';
+                        const defaultAmt = balanceDue > 0 ? balanceDue : totalAmount;
+                        billingActionArea = `
+                            <div class="mt-2.5 p-3 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col gap-2.5">
+                                <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+                                    <span>${payType === 'advance' ? 'Receive Advance Payment' : (advancePaid > 0 ? 'Settle Balance' : 'Receive Payment')}</span>
+                                    <span class="text-[10px] font-mono text-slate-500">Balance: \u20B1${balanceDue.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Amount (\u20B1)</label>
+                                        <input type="number" id="inline-pay-amount-${safeId}" value="${defaultAmt}" min="1" max="${balanceDue}" step="any" class="w-full text-xs font-semibold px-2.5 py-1.5 border border-slate-300 rounded bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Method</label>
+                                        <select id="inline-pay-method-${safeId}" class="w-full text-xs font-semibold px-2.5 py-1.5 border border-slate-300 rounded bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer">
+                                            <option value="Cash" selected>Cash</option>
+                                            <option value="GCash">GCash</option>
+                                            <option value="Card">Card</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="inline-pay-error-${safeId}" class="text-[11px] font-semibold text-rose-600 hidden"></div>
+                                <div id="inline-pay-success-${safeId}" class="text-[11px] font-semibold text-emerald-600 hidden"></div>
+                                <div class="flex justify-end items-center gap-2 pt-1">
+                                    <button type="button" onclick="closeInlinePaymentForm('${job.id}')" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded border border-slate-200 transition-colors">Cancel</button>
+                                    <button type="button" onclick="confirmInlinePayment('${job.id}', '${payType}')" class="px-3 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-sm flex items-center gap-1 transition-colors">
+                                        <i class="ph-bold ph-check"></i> Confirm
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        if (isPaid) {
+                            billingActionArea = `
+                                <div class="mt-2.5 flex justify-end">
+                                    <button type="button" onclick="openReceiptModal()" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700">
+                                        <i class="ph-bold ph-receipt"></i> View Receipt
+                                    </button>
+                                </div>
+                            `;
+                        } else if (balanceDue > 0) {
+                            let btns = '';
+                            if (advancePaid === 0) {
+                                btns += `
+                                    <button type="button" onclick="openInlinePaymentForm('${job.id}', 'advance')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200">
+                                        <i class="ph-bold ph-hand-coins"></i> Receive Advance
+                                    </button>
+                                `;
+                                if (job.statusId === 'ready' || txn.category === 'settle') {
+                                    btns += `
+                                        <button type="button" onclick="openInlinePaymentForm('${job.id}', 'settle')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+                                            <i class="ph-bold ph-wallet"></i> Receive Payment
+                                        </button>
+                                    `;
+                                }
+                            } else {
+                                btns += `
+                                    <button type="button" onclick="openInlinePaymentForm('${job.id}', 'settle')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
+                                        <i class="ph-bold ph-check-circle"></i> Settle Balance
+                                    </button>
+                                `;
+                            }
+                            billingActionArea = `<div class="mt-2.5 flex flex-wrap justify-end gap-2">${btns}</div>`;
+                        }
+                    }
+
+                    billingHTML = `
+                        <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-3 flex flex-col gap-2">
+                            <div class="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing</span>
+                                    <span class="text-[10px] font-mono font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">${txn.id}</span>
+                                </div>
+                                ${statusBadge}
+                            </div>
+                            ${inlineSuccessBanner}
+                            <div class="grid grid-cols-3 gap-2 text-center pt-0.5">
+                                <div class="flex flex-col bg-white p-1.5 rounded border border-slate-100">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Total</span>
+                                    <span class="text-xs font-bold text-slate-800 font-mono">\u20B1${totalAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                </div>
+                                <div class="flex flex-col bg-white p-1.5 rounded border border-slate-100">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Advance</span>
+                                    <span class="text-xs font-bold text-amber-700 font-mono">\u20B1${advancePaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                </div>
+                                <div class="flex flex-col bg-white p-1.5 rounded border border-slate-100">
+                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Balance Due</span>
+                                    <span class="text-xs font-bold ${balanceDue > 0 ? 'text-blue-700' : 'text-emerald-700'} font-mono">\u20B1${balanceDue.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                </div>
+                            </div>
+                            ${billingActionArea}
+                        </div>
+                    `;
+                } else {
+                    if (job.statusId === 'ready') {
+                        billingHTML = `
+                            <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-3 flex flex-col gap-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing</span>
+                                    <span class="text-[10px] font-semibold text-slate-400">Ready for billing</span>
+                                </div>
+                                <div class="flex items-center justify-between pt-1">
+                                    <span class="text-xs text-slate-500">Repair complete</span>
+                                    <button type="button" onclick="moveToBilling('${job.id}')" class="text-xs font-bold px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center gap-1.5 transition-colors">
+                                        <i class="ph-bold ph-receipt"></i> Move to billing
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        billingHTML = `
+                            <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-2.5">
+                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Billing</span>
+                                <p class="text-xs text-slate-400 italic">Payment can be received once the repair is moved to billing</p>
+                            </div>
+                        `;
+                    }
+                }
+            }
+
+            // Build Desktop Action Buttons
+            let desktopActionsHTML = '';
+            let desktopHintHTML = '';
+
+            if (isVO) {
+                if (job.statusId === 'paid') {
+                    desktopActionsHTML = `<button class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700"><i class="ph-bold ph-receipt"></i> View Receipt</button>`;
+                } else {
+                    desktopActionsHTML = `<span class="text-xs font-medium px-2.5 py-1 rounded bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed select-none">Monitoring mode</span>`;
+                }
+            } else {
+                if (job.statusId === 'waiting') {
+                    if (canCheckStock) {
+                        desktopActionsHTML = `<button onclick="checkStockForJob('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white"><i class="ph-bold ph-arrows-clockwise"></i> Check stock</button>`;
+                    }
+                } else if (job.statusId === 'progress') {
+                    if (canMarkDone) {
+                        if (hasPending) {
+                            desktopActionsHTML = `<button disabled class="text-xs font-semibold px-3.5 py-1.5 rounded bg-slate-200 text-slate-400 cursor-not-allowed flex items-center gap-1.5 shadow-sm"><i class="ph-bold ph-check-circle"></i> Mark Repair Done</button>`;
+                            desktopHintHTML = `<div class="text-[10px] text-amber-600 font-medium text-right mt-1 w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>`;
+                        } else {
+                            desktopActionsHTML = `<button onclick="markRepairDone('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white"><i class="ph-bold ph-check-circle"></i> Mark Repair Done</button>`;
+                        }
+                    }
+                } else if (job.statusId === 'pending') {
+                    const completeBtn = canPostScan ? `<button onclick="completePostScan('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white"><i class="ph-bold ph-check-square"></i> Complete Post-Scan</button>` : '';
+                    const billingBtn = (canMoveBilling && (!job.txnId || !canReceivePayment)) ? `<button onclick="moveToBilling('${job.id}')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"><i class="ph-bold ph-receipt"></i> Move to billing</button>` : '';
+                    const actionBtns = [completeBtn, billingBtn].filter(Boolean).join('');
+                    desktopActionsHTML = actionBtns ? `<div class="flex items-center gap-2">${actionBtns}</div>` : '';
+                } else if (job.statusId === 'ready') {
+                    if (canMoveBilling && (!job.txnId || !canReceivePayment)) {
+                        desktopActionsHTML = `<button onclick="moveToBilling('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"><i class="ph-bold ph-receipt"></i> Move to billing <i class="ph-bold ph-arrow-right"></i></button>`;
+                    }
+                } else if (job.statusId === 'paid') {
+                    if (!canReceivePayment) {
+                        desktopActionsHTML = `<button class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700"><i class="ph-bold ph-receipt"></i> View Receipt</button>`;
+                    }
+                }
+            }
+
             return `
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden hover:shadow-md transition-shadow relative ${opacityClass}">
                 <div class="bg-slate-50 border-b border-slate-200 p-3.5 flex justify-between items-center">
@@ -8136,9 +10200,13 @@ function renderRepairs() {
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-xs font-bold text-slate-400 uppercase">Mechanic</span>
-                        <select class="text-xs font-medium text-slate-700 border border-slate-200 rounded p-1 bg-slate-50 outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
-                            ${mechOptions}
-                        </select>
+                        ${canAssign ? `
+                            <select onchange="assignMechanic('${job.id}', this.value)" class="text-xs font-medium text-slate-700 border border-slate-200 rounded p-1 bg-slate-50 cursor-pointer focus:ring-1 focus:ring-blue-500 outline-none">
+                                ${mechOptions}
+                            </select>
+                        ` : `
+                            <span class="text-xs font-semibold text-slate-700">${assignedMechName}</span>
+                        `}
                     </div>
                     <div class="mt-1">
                         <span class="text-[10px] font-bold text-slate-400 uppercase block mb-1.5">Initial Diagnosis</span>
@@ -8147,17 +10215,16 @@ function renderRepairs() {
                         </p>
                         ${partsHTML}
                     </div>
+                    ${billingHTML}
                 </div>
                 <div class="p-3.5 border-t border-slate-100 bg-slate-50/50 flex flex-col items-end">
                     <div class="flex items-center justify-between w-full">
                         <span class="px-2.5 py-1 rounded text-[10px] font-bold border flex items-center gap-1.5 ${job.statusClass}">
                             ${job.dotClass ? `<span class="w-1.5 h-1.5 rounded-full ${job.dotClass}"></span>` : ''} ${job.statusName}
                         </span>
-                        <button onclick="${btnAction}" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
-                            ${btnText}
-                        </button>
+                        ${desktopActionsHTML}
                     </div>
-                    ${hintHTML}
+                    ${desktopHintHTML}
                 </div>
             </div>
         `;
@@ -8272,6 +10339,19 @@ function renderCustomers() {
     const mobileContainer = document.getElementById('customers-mobile-cards');
     if (!tbody && !mobileContainer) return;
 
+    const isCustVO = typeof isViewOnly === 'function' && isViewOnly('customers');
+
+    // Rebalance toolbar on desktop when view-only
+    const toolbarActions = document.querySelector('#view-customers .cust-toolbar-actions');
+    if (toolbarActions) {
+        toolbarActions.classList.toggle('hidden', isCustVO);
+    }
+    const searchWrap = document.querySelector('#view-customers .cust-search-wrap');
+    if (searchWrap) {
+        searchWrap.classList.toggle('sm:max-w-md', !isCustVO);
+        searchWrap.classList.toggle('sm:flex-1', isCustVO);
+    }
+
     const query = (document.getElementById('cust-search')?.value || '').toLowerCase().trim();
     const statusFilter = document.getElementById('cust-filter-status')?.value || 'all';
 
@@ -8333,9 +10413,10 @@ function renderCustomers() {
                             <i class="ph-bold ph-eye"></i> View History
                         </button>
                         <!-- NEW: Create Ticket Button Action -->
+                        ${(!isCustVO && typeof hasFeature === 'function' && hasFeature('diagnosticsForm')) ? `
                         <button onclick="createRepairTicket('${vLabel}', '${vehicle.plate}')" class="text-white bg-blue-600 hover:bg-blue-700 font-bold text-xs px-3 py-1.5 rounded-md transition-colors flex items-center gap-1.5 shadow-sm">
                             <i class="ph-bold ph-wrench"></i> Create Ticket
-                        </button>
+                        </button>` : ''}
                     </div>
                 </div>
             `;
@@ -8358,8 +10439,9 @@ function renderCustomers() {
                     </td>
                     <td class="p-4 text-center text-slate-600 font-mono">${customer.phone}</td>
                     <td class="p-4 text-right">
-                        <!-- NEW: Edit Profile Button Action -->
-                        <button class="text-blue-600 hover:bg-blue-50 font-medium text-xs border border-blue-200 bg-white px-3 py-1.5 rounded-md transition-colors" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)">Edit Profile</button>
+                        ${!isCustVO ? `
+                            <button class="text-blue-600 hover:bg-blue-50 font-medium text-xs border border-blue-200 bg-white px-3 py-1.5 rounded-md transition-colors" onclick="editCustomerProfile('${customer.name}', '${customer.phone}', event)">Edit Profile</button>
+                        ` : `<span class="text-slate-400 font-mono text-xs select-none">—</span>`}
                     </td>
                 </tr>
                 <tr id="cust-row-${customer.id}" class="hidden bg-slate-50/50 border-b border-slate-200">
@@ -8473,6 +10555,7 @@ function renderCustomers() {
 
 // 1. Edit Profile Logic (Pre-fills existing modal)
 window.editCustomerProfile = function(name, phone, event) {
+    if (typeof isViewOnly === 'function' && isViewOnly('customers')) return;
     event.stopPropagation(); // Prevents the row from expanding/collapsing when clicking the button
     
     // Open existing modal
@@ -8512,6 +10595,7 @@ window.viewVehicleHistory = function(plate) {
 
 // 3. Create Ticket Logic (Auto-navigates to Diagnostics)
 window.createRepairTicket = function(make, plate) {
+    if (typeof hasFeature === 'function' && !hasFeature('diagnosticsForm')) return;
     if(confirm(`Do you want to create a new active repair ticket and run a diagnostic scan for:\n\n${make} (${plate})?`)) {
         const diagLink = document.querySelector('.nav-link[data-target="diagnostics"]');
         if (diagLink) {
@@ -9637,6 +11721,7 @@ window.toggleInvPartCard = function(id) {
 
 // AUTO-ASSIGN LINKS SCREEN LOGIC
 window.openAutoAssignLinks = function() {
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (!hasFeature('autoAssign')) {
         showToast("You don't have permission to do this.");
         return;
@@ -9722,6 +11807,7 @@ window.performAutoAssignSearch = function(itemId, query) {
 };
 
 window.addAutoAssignLink = function(itemId, partId, qtyStr) {
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (!hasFeature('autoAssign')) {
         showToast("You don't have permission to do this.");
         return;
@@ -9746,6 +11832,7 @@ window.addAutoAssignLink = function(itemId, partId, qtyStr) {
 };
 
 window.removeAutoAssignLink = function(itemId, partId) {
+    if (typeof isViewOnly === 'function' && isViewOnly('inventory')) return;
     if (!hasFeature('autoAssign')) {
         showToast("You don't have permission to do this.");
         return;
@@ -10047,49 +12134,375 @@ const DTC_REFERENCE = {
 };
 window.DTC_REFERENCE = DTC_REFERENCE;
 
-function findDtcEntry(codeOrErrorNumber) {
-  if (!codeOrErrorNumber) return null;
-  const query = String(codeOrErrorNumber).trim().toUpperCase();
-  if (!query) return null;
+// --- DTC Rule Overrides Store & Configuration Helpers ---
+const DTC_RULE_OVERRIDES_STORAGE_KEY = 'dtc_rule_overrides';
 
-  const ref = DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper;
-  if (!ref || !Array.isArray(ref.entries)) return null;
-
-  const normalizedQuery = query.replace(/^ERROR(\d+)$/i, 'ERROR $1');
-
-  for (const entry of ref.entries) {
-    if (entry.codes && entry.codes.some(c => c.toUpperCase() === query)) {
-      return entry;
+function getDtcRuleOverrides() {
+    if (window.dtcRuleOverrides && typeof window.dtcRuleOverrides === 'object') {
+        if (!window.dtcRuleOverrides.edited) window.dtcRuleOverrides.edited = {};
+        if (!Array.isArray(window.dtcRuleOverrides.custom)) window.dtcRuleOverrides.custom = [];
+        if (!Array.isArray(window.dtcRuleOverrides.disabled)) window.dtcRuleOverrides.disabled = [];
+        return window.dtcRuleOverrides;
     }
-    if (entry.errorNumbers && entry.errorNumbers.some(e => {
-      const eUpper = e.toUpperCase();
-      return eUpper === query || eUpper === normalizedQuery;
-    })) {
-      return entry;
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem(DTC_RULE_OVERRIDES_STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed && typeof parsed === 'object') {
+                    window.dtcRuleOverrides = {
+                        edited: (parsed.edited && typeof parsed.edited === 'object' && !Array.isArray(parsed.edited)) ? parsed.edited : {},
+                        custom: Array.isArray(parsed.custom) ? parsed.custom : [],
+                        disabled: Array.isArray(parsed.disabled) ? parsed.disabled : []
+                    };
+                    return window.dtcRuleOverrides;
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error loading DTC overrides:', e);
     }
-  }
-  return null;
+    window.dtcRuleOverrides = { edited: {}, custom: [], disabled: [] };
+    return window.dtcRuleOverrides;
+}
+
+let dtcRuleOverrides = getDtcRuleOverrides();
+window.dtcRuleOverrides = dtcRuleOverrides;
+
+function saveDtcRuleOverridesToStorage() {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(DTC_RULE_OVERRIDES_STORAGE_KEY, JSON.stringify(getDtcRuleOverrides()));
+        }
+    } catch (e) {
+        console.error('Error saving DTC overrides:', e);
+    }
+}
+window.saveDtcRuleOverridesToStorage = saveDtcRuleOverridesToStorage;
+
+function getEffectiveDtcEntries(options = {}) {
+    const overrides = getDtcRuleOverrides();
+    const pdfRef = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+    const baselineEntries = (pdfRef && Array.isArray(pdfRef.entries)) ? pdfRef.entries : [];
+
+    // 1. Merge baseline PDF entries (all 12 PDF entries start as validated, validatedBy "Yamaha Sniper 150 V2 reference")
+    const mergedEntries = baselineEntries.map(pdfEntry => {
+        const id = pdfEntry.id;
+        const base = {
+            ...pdfEntry,
+            source: 'PDF',
+            validation: 'validated',
+            validatedBy: 'Yamaha Sniper 150 V2 reference',
+            disabled: false
+        };
+
+        if (overrides.edited && overrides.edited[id]) {
+            const edit = overrides.edited[id];
+            Object.assign(base, edit, {
+                id: id,
+                source: 'PDF'
+            });
+        }
+
+        base.disabled = Array.isArray(overrides.disabled) && overrides.disabled.includes(id);
+        return base;
+    });
+
+    // 2. Append custom entries
+    if (Array.isArray(overrides.custom)) {
+        overrides.custom.forEach(customEntry => {
+            if (!customEntry || !customEntry.id) return;
+            const custom = {
+                ...customEntry,
+                source: 'Custom',
+                validation: customEntry.validation || 'draft',
+                validatedBy: customEntry.validatedBy || '',
+                disabled: Array.isArray(overrides.disabled) && overrides.disabled.includes(customEntry.id)
+            };
+            mergedEntries.push(custom);
+        });
+    }
+
+    // 3. Filtering
+    let includeDrafts = true;
+    let includeDisabled = true;
+
+    if (typeof options === 'boolean') {
+        includeDrafts = !options;
+        includeDisabled = !options;
+    } else if (typeof options === 'object' && options !== null) {
+        if (options.scanOnly || options.onlyActive) {
+            includeDrafts = false;
+            includeDisabled = false;
+        } else {
+            if (options.includeDrafts !== undefined) includeDrafts = !!options.includeDrafts;
+            if (options.includeDisabled !== undefined) includeDisabled = !!options.includeDisabled;
+        }
+    }
+
+    return mergedEntries.filter(entry => {
+        if (!includeDrafts && entry.validation === 'draft') return false;
+        if (!includeDisabled && entry.disabled) return false;
+        return true;
+    });
+}
+window.getEffectiveDtcEntries = getEffectiveDtcEntries;
+
+function findDtcEntry(codeOrErrorNumber, options = {}) {
+    if (!codeOrErrorNumber) return null;
+    const query = String(codeOrErrorNumber).trim().toUpperCase();
+    if (!query) return null;
+
+    const entries = getEffectiveDtcEntries(options);
+    if (!Array.isArray(entries)) return null;
+
+    const normalizedQuery = query.replace(/^ERROR(\d+)$/i, 'ERROR $1');
+
+    for (const entry of entries) {
+        if (entry.codes && entry.codes.some(c => String(c).trim().toUpperCase() === query)) {
+            return entry;
+        }
+        if (entry.errorNumbers && entry.errorNumbers.some(e => {
+            const eUpper = String(e).trim().toUpperCase();
+            return eUpper === query || eUpper === normalizedQuery;
+        })) {
+            return entry;
+        }
+    }
+    return null;
 }
 window.findDtcEntry = findDtcEntry;
 
-function getDtcReference(vehicle) {
-  const v = vehicle || (typeof inspectionState !== 'undefined' ? inspectionState.vehicle : null);
-  if (!v || v.mode === 'walk-in') {
+function getDtcEntryById(id, options = {}) {
+    if (!id) return null;
+    const entries = getEffectiveDtcEntries(options);
+    return entries.find(e => e.id === id) || null;
+}
+window.getDtcEntryById = getDtcEntryById;
+
+function getDtcReference(vehicle, options = {}) {
+    const v = vehicle || (typeof inspectionState !== 'undefined' ? inspectionState.vehicle : null);
+    if (!v || v.mode === 'walk-in') {
+        return null;
+    }
+
+    const brand = (v.brandId || (typeof getBrandLabel === 'function' ? getBrandLabel(v) : '') || v.brand || '').toLowerCase();
+    const isYamaha = brand === 'yamaha';
+    const model = String(v.model || '').toLowerCase();
+    const isSniper = model.includes('sniper');
+
+    if (isYamaha && isSniper) {
+        const base = (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : {};
+        return {
+            ...base,
+            entries: getEffectiveDtcEntries(options)
+        };
+    }
+
     return null;
-  }
-
-  const brand = (v.brandId || (typeof getBrandLabel === 'function' ? getBrandLabel(v) : '') || v.brand || '').toLowerCase();
-  const isYamaha = brand === 'yamaha';
-  const model = String(v.model || '').toLowerCase();
-  const isSniper = model.includes('sniper');
-
-  if (isYamaha && isSniper) {
-    return (DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
-  }
-
-  return null;
 }
 window.getDtcReference = getDtcReference;
+
+function saveDtcEntry(entry) {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) {
+        console.warn('saveDtcEntry blocked: dtcManage permission required.');
+        return false;
+    }
+    if (!entry || typeof entry !== 'object') {
+        return false;
+    }
+
+    const overrides = getDtcRuleOverrides();
+    const pdfRef = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+    const isPdf = !!(pdfRef && Array.isArray(pdfRef.entries) && pdfRef.entries.some(e => e.id === entry.id));
+
+    const beforeEntry = getDtcEntryById(entry.id);
+    const isNew = !beforeEntry;
+
+    let saved = null;
+    if (isPdf) {
+        saved = {
+            ...entry,
+            id: entry.id,
+            source: 'PDF',
+            validation: entry.validation || 'validated',
+            validatedBy: entry.validatedBy || (beforeEntry && beforeEntry.validatedBy) || 'Yamaha Sniper 150 V2 reference'
+        };
+        overrides.edited[entry.id] = saved;
+    } else {
+        const entryId = entry.id || ('custom_' + String(entry.codes && entry.codes[0] ? entry.codes[0] : Date.now()).toLowerCase().replace(/[^a-z0-9_]/g, '_'));
+        const authorName = (typeof systemUsers !== 'undefined' && systemUsers[currentRole]?.name)
+            ? `${systemUsers[currentRole].name} (${ROLES_CONFIG[currentRole]?.label || 'Super Admin'})`
+            : 'Super Admin';
+        saved = {
+            ...entry,
+            id: entryId,
+            source: 'Custom',
+            validation: entry.validation === 'validated' ? 'validated' : 'draft',
+            validatedBy: entry.validatedBy || (entry.validation === 'validated' ? authorName : '')
+        };
+        const idx = overrides.custom.findIndex(e => e.id === entryId);
+        if (idx >= 0) {
+            overrides.custom[idx] = saved;
+        } else {
+            overrides.custom.push(saved);
+        }
+    }
+
+    saveDtcRuleOverridesToStorage();
+
+    const recordRef = (saved.codes && saved.codes.length > 0) ? saved.codes.join(', ') : (saved.component || saved.id);
+    const beforeStr = beforeEntry
+        ? `${beforeEntry.component || beforeEntry.id} [${(beforeEntry.codes || []).join(', ')}] (${beforeEntry.validation || 'validated'})`
+        : '(none)';
+    const afterStr = `${saved.component || saved.id} [${(saved.codes || []).join(', ')}] (${saved.validation || 'draft'})`;
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Settings',
+            action: isNew ? 'DTC Rule Created' : 'DTC Rule Updated',
+            recordRef: recordRef,
+            before: beforeStr,
+            after: afterStr,
+            severity: 'modification'
+        });
+    }
+
+    if (typeof renderDtcKbTable === 'function') renderDtcKbTable();
+    return saved;
+}
+window.saveDtcEntry = saveDtcEntry;
+
+function toggleDtcDisabled(id) {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) {
+        console.warn('toggleDtcDisabled blocked: dtcManage permission required.');
+        return false;
+    }
+    if (!id) return false;
+
+    const overrides = getDtcRuleOverrides();
+    const wasDisabled = Array.isArray(overrides.disabled) && overrides.disabled.includes(id);
+    const nowDisabled = !wasDisabled;
+
+    if (nowDisabled) {
+        if (!overrides.disabled.includes(id)) overrides.disabled.push(id);
+    } else {
+        overrides.disabled = overrides.disabled.filter(dId => dId !== id);
+    }
+
+    saveDtcRuleOverridesToStorage();
+
+    const target = getDtcEntryById(id);
+    const recordRef = target ? ((target.codes && target.codes.length > 0) ? target.codes.join(', ') : (target.component || id)) : id;
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Settings',
+            action: nowDisabled ? 'DTC Rule Disabled' : 'DTC Rule Enabled',
+            recordRef: recordRef,
+            before: wasDisabled ? 'Disabled' : 'Enabled',
+            after: nowDisabled ? 'Disabled' : 'Enabled',
+            severity: 'modification'
+        });
+    }
+
+    if (typeof renderDtcKbTable === 'function') renderDtcKbTable();
+    return nowDisabled;
+}
+window.toggleDtcDisabled = toggleDtcDisabled;
+
+function resetDtcEntry(id) {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) {
+        console.warn('resetDtcEntry blocked: dtcManage permission required.');
+        return false;
+    }
+    if (!id) return false;
+
+    const pdfRef = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+    const isPdf = !!(pdfRef && Array.isArray(pdfRef.entries) && pdfRef.entries.some(e => e.id === id));
+    if (!isPdf) {
+        console.warn('resetDtcEntry: Only PDF baseline entries can be reset.');
+        return false;
+    }
+
+    const overrides = getDtcRuleOverrides();
+    const beforeEntry = getDtcEntryById(id);
+    const pdfBaseline = pdfRef.entries.find(e => e.id === id);
+
+    const hadEdit = !!overrides.edited[id];
+    const hadDisabled = overrides.disabled.includes(id);
+
+    delete overrides.edited[id];
+    overrides.disabled = overrides.disabled.filter(dId => dId !== id);
+
+    saveDtcRuleOverridesToStorage();
+
+    const recordRef = (pdfBaseline.codes && pdfBaseline.codes.length > 0) ? pdfBaseline.codes.join(', ') : (pdfBaseline.component || id);
+    const beforeStr = hadEdit
+        ? `${beforeEntry?.component || id} (Customized)`
+        : (hadDisabled ? 'Disabled' : 'PDF baseline');
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Settings',
+            action: 'DTC Rule Reset to Baseline',
+            recordRef: recordRef,
+            before: beforeStr,
+            after: 'PDF baseline (Yamaha Sniper 150 V2 reference)',
+            severity: 'modification'
+        });
+    }
+
+    if (typeof renderDtcKbTable === 'function') renderDtcKbTable();
+    return true;
+}
+window.resetDtcEntry = resetDtcEntry;
+
+function deleteCustomDtcEntry(id) {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) {
+        console.warn('deleteCustomDtcEntry blocked: dtcManage permission required.');
+        return false;
+    }
+    if (!id) return false;
+
+    const pdfRef = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
+    const isPdf = !!(pdfRef && Array.isArray(pdfRef.entries) && pdfRef.entries.some(e => e.id === id));
+    if (isPdf) {
+        console.warn('deleteCustomDtcEntry: Cannot delete PDF baseline entries.');
+        return false;
+    }
+
+    const overrides = getDtcRuleOverrides();
+    const idx = overrides.custom.findIndex(e => e.id === id);
+    if (idx === -1) {
+        console.warn('deleteCustomDtcEntry: Custom DTC rule not found.');
+        return false;
+    }
+
+    const deleted = overrides.custom[idx];
+    overrides.custom.splice(idx, 1);
+    overrides.disabled = overrides.disabled.filter(dId => dId !== id);
+
+    saveDtcRuleOverridesToStorage();
+
+    const recordRef = (deleted.codes && deleted.codes.length > 0) ? deleted.codes.join(', ') : (deleted.component || id);
+    const beforeStr = `${deleted.component || id} [${(deleted.codes || []).join(', ')}]`;
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Settings',
+            action: 'Custom DTC Rule Deleted',
+            recordRef: recordRef,
+            before: beforeStr,
+            after: '(deleted)',
+            severity: 'modification'
+        });
+    }
+
+    if (typeof renderDtcKbTable === 'function') renderDtcKbTable();
+    return true;
+}
+window.deleteCustomDtcEntry = deleteCustomDtcEntry;
 
 const demoScanCodes = ['P0118', 'P0562', 'P0120'];
 
@@ -10129,9 +12542,12 @@ function buildDtcCardHtml(entry, scannedCode) {
     `;
 
     // 3. Related parts
-    const relatedParts = (entry.parts || []).map(partName => {
-        const partId = partMap[partName];
-        return partId ? mockInventory.find(p => p.id === partId) : null;
+    const rawParts = (Array.isArray(entry.partIds) && entry.partIds.length > 0)
+        ? entry.partIds
+        : (Array.isArray(entry.parts) ? entry.parts : []);
+    const relatedParts = rawParts.map(item => {
+        const partId = (partMap && partMap[item]) ? partMap[item] : item;
+        return mockInventory.find(p => p && (p.id === partId || p.id === item || p.name === item));
     }).filter(Boolean);
 
     let partsHtml = '';
@@ -10205,11 +12621,6 @@ window.buildDtcCardHtml = buildDtcCardHtml;
 const dtcScanState = { scanned: [], addedParts: [] };
 window.dtcScanState = dtcScanState;
 
-function getDtcEntryById(id) {
-    const ref = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
-    return (ref && Array.isArray(ref.entries)) ? (ref.entries.find(e => e.id === id) || null) : null;
-}
-
 // items: array of entries / codes to replace the results with; omit to re-render the current state
 function renderDtcResults(items) {
     const container = document.getElementById('dtc-results-list');
@@ -10222,10 +12633,12 @@ function renderDtcResults(items) {
             let entry = null;
             let code = '';
             if (item && typeof item === 'object' && item.component) {
-                entry = item;
+                if (item.validation === 'validated' && !item.disabled) {
+                    entry = item;
+                }
             } else if (typeof item === 'string') {
-                entry = getDtcEntryById(item) || (typeof findDtcEntry === 'function' ? findDtcEntry(item) : null);
-                if (entry && (entry.codes || []).includes(item.toUpperCase())) code = item.toUpperCase();
+                entry = getDtcEntryById(item, { scanOnly: true }) || (typeof findDtcEntry === 'function' ? findDtcEntry(item, { scanOnly: true }) : null);
+                if (entry && (entry.codes || []).map(c => c.toUpperCase()).includes(item.toUpperCase())) code = item.toUpperCase();
             }
             if (entry && !dtcScanState.scanned.some(s => s.id === entry.id)) {
                 dtcScanState.scanned.push({ id: entry.id, code: code || ((entry.codes && entry.codes[0]) || '') });
@@ -10235,7 +12648,10 @@ function renderDtcResults(items) {
     }
 
     container.innerHTML = dtcScanState.scanned
-        .map(s => buildDtcCardHtml(getDtcEntryById(s.id), s.code))
+        .map(s => {
+            const entry = getDtcEntryById(s.id, { scanOnly: true });
+            return entry ? buildDtcCardHtml(entry, s.code) : '';
+        })
         .join('');
 
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
@@ -10454,7 +12870,7 @@ function executeDtcLookup() {
         return;
     }
 
-    const entry = typeof findDtcEntry === 'function' ? findDtcEntry(query) : null;
+    const entry = typeof findDtcEntry === 'function' ? findDtcEntry(query, { scanOnly: true }) : null;
     if (!entry) {
         if (msgEl) {
             msgEl.textContent = 'Code not found in the Yamaha Sniper 150 V2 reference.';
@@ -10576,11 +12992,14 @@ window.renderInspectionOverview = renderInspectionOverview;
 function partsForDtc(code) {
     const c = String(code || '').toUpperCase().trim();
     const out = [];
-    const entry = typeof findDtcEntry === 'function' ? findDtcEntry(c) : null;
+    const entry = typeof findDtcEntry === 'function' ? findDtcEntry(c, { scanOnly: true }) : null;
     const ref = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE.yamaha_sniper) ? DTC_REFERENCE.yamaha_sniper : null;
-    if (entry && Array.isArray(entry.parts) && ref && ref.partMap) {
-        entry.parts.forEach(partName => {
-            const partId = ref.partMap[partName];
+    if (entry) {
+        const rawParts = (Array.isArray(entry.partIds) && entry.partIds.length > 0)
+            ? entry.partIds
+            : (Array.isArray(entry.parts) ? entry.parts : []);
+        rawParts.forEach(item => {
+            const partId = (ref && ref.partMap && ref.partMap[item]) ? ref.partMap[item] : item;
             if (partId) {
                 out.push({ id: partId, qty: 1 });
             }
@@ -10964,6 +13383,1973 @@ function renderStep3Summary() {
     setText('step3-grand-total', fmtPeso(partsTotal + labor));
 }
 
+// --- Diagnostic Records Architecture ---
+function calcDiagRecordDate(daysAgo, hour = 10, min = 0) {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(hour, min, 0, 0);
+    return d.toISOString();
+}
+
+const diagnosticRecords = [
+    {
+        id: 'DIAG-1008',
+        completedAt: calcDiagRecordDate(1, 14, 20),
+        plate: 'ABC-1234',
+        vehicle: { brandId: 'yamaha', brandText: 'Yamaha', model: 'Sniper' },
+        mechanicName: 'Larpus',
+        mechanicRole: 'Mechanic',
+        complaints: ['Engine overheating', 'High coolant temperature light on'],
+        inspectionFlags: [
+            { item: 'Cooling System & Radiator', status: 'fix' },
+            { item: 'Engine Oil Level & Quality', status: 'watch' }
+        ],
+        dtcs: [
+            {
+                codes: ['P0115', 'P0117', 'P0118'],
+                errorNumbers: ['Error 21'],
+                component: 'Coolant Temperature Sensor'
+            }
+        ],
+        findings: 'Defective coolant temperature sensor causing false overheating reading. Radiator level adequate.',
+        parts: [
+            { name: 'Engine Coolant Temperature (ECT) Sensor', qty: 1, price: 850, stockStatus: 'Out of Stock' }
+        ],
+        estimatedTotal: 1350,
+        status: 'Waiting for Parts',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1007',
+        completedAt: calcDiagRecordDate(3, 10, 15),
+        plate: 'XYZ-9876',
+        vehicle: { brandId: 'yamaha', brandText: 'Yamaha', model: 'Sniper' },
+        mechanicName: 'Hiyo',
+        mechanicRole: 'Mechanic',
+        complaints: ['Erratic idle', 'Engine hesitation during acceleration'],
+        inspectionFlags: [
+            { item: 'Throttle & Cable Play', status: 'fix' }
+        ],
+        dtcs: [
+            {
+                codes: ['P0120', 'P0122', 'P0123'],
+                errorNumbers: ['Error 15'],
+                component: 'Throttle Position Sensor (TPS)'
+            }
+        ],
+        findings: 'Dirty TPS sensor harness contacts and excessive carbon buildup in throttle body. Cleaned and recalibrated.',
+        parts: [
+            { name: 'Throttle Position Sensor (TPS)', qty: 1, price: 950, stockStatus: 'In Stock' }
+        ],
+        estimatedTotal: 1450,
+        status: 'Pending Post-Scan',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1006',
+        completedAt: calcDiagRecordDate(5, 16, 45),
+        plate: 'HON-5555',
+        vehicle: { brandId: 'honda', brandText: 'Honda', model: 'Click 125i' },
+        mechanicName: 'Mike',
+        mechanicRole: 'Mechanic',
+        complaints: ['Squeaking front brake', 'Brake lever feels spongy'],
+        inspectionFlags: [
+            { item: 'Front Brake Pads & Rotor', status: 'fix' },
+            { item: 'Brake Fluid Level & Moisture', status: 'watch' }
+        ],
+        dtcs: [],
+        findings: 'Front brake pads worn below 1.5mm service limit. Rotor surface intact, flushed brake fluid.',
+        parts: [
+            { name: 'Front Brake Pads', qty: 1, price: 450, stockStatus: 'In Stock' }
+        ],
+        estimatedTotal: 750,
+        status: 'Completed',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1005',
+        completedAt: calcDiagRecordDate(8, 11, 30),
+        plate: 'DEF-5678',
+        vehicle: { brandId: 'rusi', brandText: 'Rusi', model: 'Classic 250' },
+        mechanicName: 'Leo',
+        mechanicRole: 'Mechanic',
+        complaints: ['Slack drive chain', 'Clanking noise on deceleration'],
+        inspectionFlags: [
+            { item: 'Drive Chain Tension & Sprockets', status: 'fix' }
+        ],
+        dtcs: [],
+        findings: 'Drive chain stretched beyond adjustment limit and rear sprocket teeth hooked. Recommended full chain and sprocket replacement.',
+        parts: [
+            { name: 'Chain (Global 428h/120l)', qty: 1, price: 400, stockStatus: 'In Stock' },
+            { name: 'Sprocket (TRQ 38t)', qty: 1, price: 350, stockStatus: 'In Stock' }
+        ],
+        estimatedTotal: 1250,
+        status: 'Completed',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1004',
+        completedAt: calcDiagRecordDate(11, 9, 10),
+        plate: 'KAW-6666',
+        vehicle: { brandId: 'kawasaki', brandText: 'Kawasaki', model: 'Barako II' },
+        mechanicName: 'Larpus',
+        mechanicRole: 'Mechanic',
+        complaints: ['Engine dying intermittently', 'Battery discharging overnight'],
+        inspectionFlags: [
+            { item: 'Battery Voltage & Terminals', status: 'fix' },
+            { item: 'Charging System Output', status: 'fix' }
+        ],
+        dtcs: [
+            {
+                codes: ['P0560', 'P0562', 'P0563'],
+                errorNumbers: ['Error 46'],
+                component: 'Power Supply / Charging System'
+            }
+        ],
+        findings: 'Regulator rectifier diode failed open, preventing battery charging above 12.1V while running. New regulator required.',
+        parts: [
+            { name: 'Yamaha Regulator Rectifier', qty: 1, price: 1200, stockStatus: 'Out of Stock' }
+        ],
+        estimatedTotal: 1700,
+        status: 'Waiting for Parts',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1003',
+        completedAt: calcDiagRecordDate(14, 15, 0),
+        plate: 'QRS-4455',
+        vehicle: { brandId: 'other', brandText: 'Other', model: 'Custom Scrambler' },
+        mechanicName: 'Hiyo',
+        mechanicRole: 'Mechanic',
+        complaints: ['Hard starting when cold', 'Black smoke from exhaust'],
+        inspectionFlags: [
+            { item: 'Air Filter Element', status: 'fix' },
+            { item: 'Spark Plug Condition', status: 'watch' }
+        ],
+        dtcs: [
+            {
+                codes: ['P0105', 'P0107', 'P0108'],
+                errorNumbers: ['Error 13', 'Error 14'],
+                component: 'Intake Air Pressure Sensor (MAP)'
+            }
+        ],
+        findings: 'Cracked MAP sensor vacuum hose causing erratic fuel trim and rich combustion. Vacuum line replaced, sensor verified OK.',
+        parts: [
+            { name: 'Manifold Absolute Pressure (MAP) Sensor', qty: 1, price: 780, stockStatus: 'In Stock' }
+        ],
+        estimatedTotal: 1280,
+        status: 'Pending Post-Scan',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1002',
+        completedAt: calcDiagRecordDate(17, 13, 40),
+        plate: 'SUZ-7788',
+        vehicle: { brandId: 'suzuki', brandText: 'Suzuki', model: 'Raider R150' },
+        mechanicName: 'Mike',
+        mechanicRole: 'Mechanic',
+        complaints: ['Periodic maintenance inspection', 'Minor oil seepage around drain plug'],
+        inspectionFlags: [
+            { item: 'Engine Oil Drain Plug & Crush Washer', status: 'watch' }
+        ],
+        dtcs: [],
+        findings: 'General 5,000km inspection completed. Drain bolt crush washer replaced, torque checked to 24 Nm. No other issues found.',
+        parts: [],
+        estimatedTotal: 350,
+        status: 'Completed',
+        source: 'mobile'
+    },
+    {
+        id: 'DIAG-1001',
+        completedAt: calcDiagRecordDate(20, 10, 50),
+        plate: 'YAM-3321',
+        vehicle: { brandId: 'yamaha', brandText: 'Yamaha', model: 'Mio Aerox 155' },
+        mechanicName: 'Leo',
+        mechanicRole: 'Mechanic',
+        complaints: ['Engine cutting out during cornering or over bumps'],
+        inspectionFlags: [
+            { item: 'Wiring Harness & Plugs', status: 'fix' }
+        ],
+        dtcs: [
+            {
+                codes: ['P1500', 'P1999'],
+                errorNumbers: ['Error 30', 'Error 41'],
+                component: 'Lean Angle Sensor'
+            }
+        ],
+        findings: 'Lean angle sensor bracket was loose and rattled upside down over bumps, triggering safety engine shutoff. Secured mounting bracket.',
+        parts: [],
+        estimatedTotal: 400,
+        status: 'Completed',
+        source: 'mobile'
+    }
+];
+window.diagnosticRecords = diagnosticRecords;
+
+function saveDiagnosticRecord() {
+    try {
+        if (typeof window !== 'undefined' && window._currentDiagSaved) return null;
+
+        const v = (typeof inspectionState !== 'undefined' && inspectionState && inspectionState.vehicle) ? inspectionState.vehicle : {};
+        const intake = (typeof inspectionState !== 'undefined' && inspectionState && inspectionState.intake) ? inspectionState.intake : {};
+
+        // 1. ID
+        const records = (typeof diagnosticRecords !== 'undefined' && Array.isArray(diagnosticRecords)) ? diagnosticRecords : [];
+        let maxNum = 1000;
+        records.forEach(r => {
+            const m = String(r && r.id || '').match(/(\d+)/);
+            if (m) {
+                const n = parseInt(m[1], 10);
+                if (!isNaN(n) && n > maxNum) maxNum = n;
+            }
+        });
+        const id = 'DIAG-' + (maxNum + 1);
+
+        // 2. completedAt
+        const completedAt = new Date().toISOString();
+
+        // 3. Plate
+        const plate = (v.plate && String(v.plate).trim()) || 'Not provided';
+
+        // 4. Vehicle: { brandId, brandText, model }
+        const brandId = v.brandId || 'other';
+        let brandText = v.brandText || '';
+        if (!brandText && typeof getBrandLabel === 'function') {
+            brandText = getBrandLabel(v);
+        }
+        if (!brandText) {
+            brandText = v.brand || 'Not provided';
+        }
+        const model = (v.model && String(v.model).trim()) || 'Not provided';
+        const vehicle = {
+            brandId: brandId,
+            brandText: brandText,
+            model: model
+        };
+
+        // 5. Mechanic name and role
+        const sessionRole = (typeof sessionStorage !== 'undefined' && sessionStorage && sessionStorage.getItem('currentUserRole')) || 'mechanic';
+        const activeRoleId = (typeof currentRole !== 'undefined' && currentRole) ? currentRole : sessionRole;
+        const userObj = (typeof systemUsers !== 'undefined' && systemUsers && systemUsers[activeRoleId]) ? systemUsers[activeRoleId] : null;
+        const roleConfig = (typeof ROLES_CONFIG !== 'undefined' && ROLES_CONFIG && ROLES_CONFIG[activeRoleId]) ? ROLES_CONFIG[activeRoleId] : null;
+        const mechanicName = (userObj && userObj.name) ? userObj.name : 'Larpus';
+        const mechanicRole = (roleConfig && roleConfig.label) || (userObj && userObj.role) || 'Mechanic';
+
+        // 6. Complaints
+        let complaints = [];
+        if (Array.isArray(intake.complaints)) {
+            complaints = intake.complaints.map(comp => String(comp).trim()).filter(Boolean);
+        }
+
+        // 7. Inspection flags ({ item, status } for Fix and Watch only)
+        const inspectionFlags = [];
+        if (typeof inspectionItems !== 'undefined' && Array.isArray(inspectionItems)) {
+            inspectionItems.forEach(i => {
+                const st = (typeof getInspItem === 'function') ? getInspItem(i.id) : null;
+                const status = st ? st.status : null;
+                if (status === 'fix' || status === 'watch') {
+                    inspectionFlags.push({
+                        item: i.label || i.id || 'Not provided',
+                        status: status
+                    });
+                }
+            });
+        }
+
+        // 8. DTCs ({ codes, errorNumbers, component })
+        const dtcs = [];
+        if (typeof dtcScanState !== 'undefined' && Array.isArray(dtcScanState.scanned)) {
+            dtcScanState.scanned.forEach(s => {
+                const entry = (typeof getDtcEntryById === 'function') ? getDtcEntryById(s.id) : null;
+                if (entry) {
+                    dtcs.push({
+                        codes: Array.isArray(entry.codes) ? entry.codes : (s.code ? [s.code] : []),
+                        errorNumbers: Array.isArray(entry.errorNumbers) ? entry.errorNumbers : [],
+                        component: entry.component || 'Not provided'
+                    });
+                } else if (s.id || s.code) {
+                    dtcs.push({
+                        codes: s.code ? [s.code] : (s.id ? [s.id] : []),
+                        errorNumbers: [],
+                        component: s.id || 'Not provided'
+                    });
+                }
+            });
+        }
+
+        // 9. Findings
+        const findingsEl = document.getElementById('final-findings');
+        const rawFindings = findingsEl ? findingsEl.value : '';
+        const findings = (rawFindings && rawFindings.trim()) ? rawFindings.trim() : 'Not provided';
+
+        // 10. Parts ({ name, qty, price, stockStatus })
+        let anyOutOfStock = false;
+        let partsTotal = 0;
+        const parts = [];
+        if (typeof repairPlanParts !== 'undefined' && Array.isArray(repairPlanParts)) {
+            repairPlanParts.filter(p => !p.obsolete).forEach(p => {
+                const partObj = p.part || (typeof mockInventory !== 'undefined' ? mockInventory.find(m => m.id === p.id) : null) || {};
+                const name = partObj.name || p.name || p.id || 'Not provided';
+                const price = Number(partObj.price !== undefined ? partObj.price : (p.price || 0));
+                const qty = Number(p.qty || 1);
+                const currentStock = (partObj.stock !== undefined) ? partObj.stock : (p.stock !== undefined ? p.stock : 0);
+                const isOut = (currentStock === 0 || currentStock < qty);
+                if (isOut) anyOutOfStock = true;
+                partsTotal += price * qty;
+                parts.push({
+                    name: name,
+                    qty: qty,
+                    price: price,
+                    stockStatus: isOut ? 'Out of Stock' : 'In Stock'
+                });
+            });
+        }
+
+        // 11. Estimated total
+        const laborEl = (typeof document !== 'undefined' && document) ? document.getElementById('labor-cost-input') : null;
+        const labor = laborEl ? (parseFloat(laborEl.value) || 0) : 0;
+        const estimatedTotal = partsTotal + labor;
+
+        // 12. Status ("Waiting for Parts" if any part is out of stock, otherwise "Completed")
+        const status = anyOutOfStock ? 'Waiting for Parts' : 'Completed';
+
+        // 13. Source
+        const source = 'mobile';
+
+        const record = {
+            id: id,
+            completedAt: completedAt,
+            plate: plate,
+            vehicle: vehicle,
+            mechanicName: mechanicName,
+            mechanicRole: mechanicRole,
+            complaints: complaints,
+            inspectionFlags: inspectionFlags,
+            dtcs: dtcs,
+            findings: findings,
+            parts: parts,
+            estimatedTotal: estimatedTotal,
+            status: status,
+            source: source
+        };
+
+        if (typeof window !== 'undefined') window._currentDiagSaved = true;
+
+        if (typeof diagnosticRecords !== 'undefined' && Array.isArray(diagnosticRecords)) {
+            diagnosticRecords.unshift(record);
+        }
+
+        if (typeof renderDiagnosticRecordsTable === 'function') {
+            const recordsView = document.getElementById('view-diagnostic-records') || document.getElementById('view-diagnostics-admin');
+            if (recordsView) {
+                renderDiagnosticRecordsTable();
+            }
+        }
+
+        return record;
+    } catch (err) {
+        console.error('Failed to save diagnostic record:', err);
+        return null;
+    }
+}
+window.saveDiagnosticRecord = saveDiagnosticRecord;
+
+// --- Diagnostic Records Controller (Desktop Read-only View) ---
+function updateDashboardQuickActions() {
+    const isVO = typeof isViewOnly === 'function' ? isViewOnly('dashboard') : (currentRole === 'super_admin');
+    const container = document.getElementById('dashboard-quick-actions');
+    const ticketBtn = document.getElementById('quick-action-new-ticket');
+    const scanBtn = document.getElementById('quick-action-run-scan');
+    const walkInBtn = document.getElementById('quick-action-walk-in');
+
+    if (isVO) {
+        if (container) container.classList.add('hidden');
+        if (ticketBtn) ticketBtn.style.display = 'none';
+        if (scanBtn) scanBtn.style.display = 'none';
+        if (walkInBtn) walkInBtn.style.display = 'none';
+        return;
+    }
+
+    if (container) container.classList.remove('hidden');
+    const canForm = typeof hasFeature === 'function' ? hasFeature('diagnosticsForm') : false;
+    if (ticketBtn) ticketBtn.style.display = canForm ? '' : 'none';
+    if (scanBtn) scanBtn.style.display = canForm ? '' : 'none';
+    if (walkInBtn) walkInBtn.style.display = '';
+}
+window.updateDashboardQuickActions = updateDashboardQuickActions;
+
+let activeDiagTab = 'audit';
+
+function setDiagTab(tabId) {
+    activeDiagTab = tabId || 'audit';
+    const isAudit = activeDiagTab === 'audit';
+
+    const tabAudit = document.getElementById('tab-diag-audit');
+    const tabKb = document.getElementById('tab-diag-kb');
+    const panelAudit = document.getElementById('panel-diag-audit');
+    const panelKb = document.getElementById('panel-diag-kb');
+
+    if (tabAudit) {
+        tabAudit.setAttribute('aria-selected', isAudit ? 'true' : 'false');
+        tabAudit.className = isAudit
+            ? 'pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors inline-flex items-center gap-2'
+            : 'pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors inline-flex items-center gap-2';
+    }
+
+    if (tabKb) {
+        tabKb.setAttribute('aria-selected', !isAudit ? 'true' : 'false');
+        tabKb.className = !isAudit
+            ? 'pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors inline-flex items-center gap-2'
+            : 'pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors inline-flex items-center gap-2';
+    }
+
+    if (panelAudit) {
+        panelAudit.classList.toggle('hidden', !isAudit);
+    }
+    if (panelKb) {
+        panelKb.classList.toggle('hidden', isAudit);
+    }
+
+    if (isAudit) {
+        renderDiagnosticRecordsTable();
+    } else {
+        if (typeof renderDtcKbView === 'function') renderDtcKbView();
+    }
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.setDiagTab = setDiagTab;
+
+function renderDiagnosticRecordsView() {
+    const isAudit = typeof hasFeature === 'function' && hasFeature('diagnosticsAudit');
+    if (isAudit) {
+        setDiagTab(activeDiagTab || 'audit');
+    }
+
+    const sInput = document.getElementById('diag-rec-search');
+    const sFilter = document.getElementById('diag-rec-filter-status');
+    const dFilter = document.getElementById('diag-rec-filter-date');
+
+    if (sInput && !sInput._hasDiagListener) {
+        sInput.addEventListener('input', () => renderDiagnosticRecordsTable());
+        sInput._hasDiagListener = true;
+    }
+    if (sFilter && !sFilter._hasDiagListener) {
+        sFilter.addEventListener('change', () => renderDiagnosticRecordsTable());
+        sFilter._hasDiagListener = true;
+    }
+    if (dFilter && !dFilter._hasDiagListener) {
+        dFilter.addEventListener('change', () => renderDiagnosticRecordsTable());
+        dFilter._hasDiagListener = true;
+    }
+
+    renderDiagnosticRecordsTable();
+}
+window.renderDiagnosticRecordsView = renderDiagnosticRecordsView;
+
+function renderDiagnosticRecordsTable() {
+    const tbody = document.getElementById('diag-records-tbody');
+    const countEl = document.getElementById('diag-rec-count');
+    if (!tbody) return;
+
+    const isAudit = typeof hasFeature === 'function' && hasFeature('diagnosticsAudit');
+
+    const query = (document.getElementById('diag-rec-search')?.value || '').trim().toLowerCase();
+    const statusFilter = document.getElementById('diag-rec-filter-status')?.value || 'all';
+    const dateFilter = document.getElementById('diag-rec-filter-date')?.value || 'all';
+
+    const records = (typeof diagnosticRecords !== 'undefined' && Array.isArray(diagnosticRecords))
+        ? [...diagnosticRecords]
+        : [];
+
+    // Sort newest first
+    records.sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const filtered = records.filter(record => {
+        if (!record) return false;
+
+        // Status filter
+        if (statusFilter !== 'all' && record.status !== statusFilter) {
+            return false;
+        }
+
+        // Date filter
+        if (dateFilter !== 'all' && record.completedAt) {
+            const rDate = new Date(record.completedAt);
+            if (dateFilter === 'today') {
+                if (rDate < startOfToday) return false;
+            } else if (dateFilter === '7days') {
+                const past7 = new Date(startOfToday);
+                past7.setDate(past7.getDate() - 7);
+                if (rDate < past7) return false;
+            } else if (dateFilter === '30days') {
+                const past30 = new Date(startOfToday);
+                past30.setDate(past30.getDate() - 30);
+                if (rDate < past30) return false;
+            }
+        }
+
+        // Search query
+        if (query) {
+            const plate = String(record.plate || '').toLowerCase();
+            const brand = (typeof getBrandLabel === 'function' ? getBrandLabel(record.vehicle) : (record.vehicle && record.vehicle.brandText)) || '';
+            const model = (record.vehicle && record.vehicle.model && record.vehicle.model !== 'Not provided') ? record.vehicle.model : '';
+            const moto = `${brand} ${model}`.trim().toLowerCase();
+            const mechName = String(record.mechanicName || '').toLowerCase();
+            const mechRole = String(record.mechanicRole || '').toLowerCase();
+            const findings = String(record.findings || '').toLowerCase();
+            const recId = String(record.id || '').toLowerCase();
+
+            const plateMatch = plate.includes(query);
+            const motoMatch = moto.includes(query);
+            const mechMatch = mechName.includes(query) || mechRole.includes(query);
+            const findingsMatch = findings.includes(query);
+            const idMatch = recId.includes(query);
+
+            const dtcMatch = Array.isArray(record.dtcs) && record.dtcs.some(d => {
+                const codeMatch = Array.isArray(d.codes) && d.codes.some(c => String(c).toLowerCase().includes(query));
+                const errMatch = Array.isArray(d.errorNumbers) && d.errorNumbers.some(e => String(e).toLowerCase().includes(query));
+                const compMatch = String(d.component || '').toLowerCase().includes(query);
+                return codeMatch || errMatch || compMatch;
+            });
+
+            if (!plateMatch && !motoMatch && !mechMatch && !findingsMatch && !dtcMatch && !idMatch) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    if (typeof window !== 'undefined') {
+        window._lastFilteredDiagRecords = filtered;
+    }
+
+    if (countEl) {
+        countEl.textContent = `${filtered.length} record${filtered.length === 1 ? '' : 's'}`;
+    }
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${isAudit ? 9 : 8}" class="p-8 text-center text-slate-500">
+                    <i class="ph-bold ph-magnifying-glass text-3xl text-slate-300 block mb-2"></i>
+                    <p class="font-bold text-sm text-slate-700">No diagnostic records found.</p>
+                    <button type="button" onclick="clearDiagRecordsFilters()" class="mt-3 px-3.5 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors inline-flex items-center gap-1.5">
+                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Clear filters
+                    </button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(record => {
+        // Date & Time (local)
+        const dt = new Date(record.completedAt);
+        const dateStr = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        // Record ID (monospace, for audit view)
+        const recordIdCell = isAudit
+            ? `<td class="p-4 whitespace-nowrap font-mono font-bold text-xs text-slate-700">${escHTML(record.id || 'N/A')}</td>`
+            : '';
+
+        // Plate
+        const plateStr = record.plate || 'Not provided';
+
+        // Motorcycle (use getBrandLabel)
+        const brand = (typeof getBrandLabel === 'function' ? getBrandLabel(record.vehicle) : (record.vehicle && record.vehicle.brandText)) || 'Unknown';
+        const model = (record.vehicle && record.vehicle.model && record.vehicle.model !== 'Not provided') ? record.vehicle.model : '';
+        const motoStr = model ? `${brand} ${model}` : brand;
+
+        // Mechanic
+        const mechName = record.mechanicName || 'Larpus';
+        const mechRole = record.mechanicRole || 'Mechanic';
+
+        // Retrieved DTCs
+        const allCodes = [];
+        if (Array.isArray(record.dtcs)) {
+            record.dtcs.forEach(d => {
+                if (Array.isArray(d.codes)) {
+                    d.codes.forEach(c => {
+                        if (c && !allCodes.includes(c)) allCodes.push(c);
+                    });
+                }
+            });
+        }
+        let dtcHtml = '<span class="text-xs text-slate-400 italic">None</span>';
+        if (allCodes.length > 0) {
+            const visible = allCodes.slice(0, 3);
+            const extra = allCodes.length - 3;
+            dtcHtml = visible.map(c => 
+                `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-red-50 text-red-600 border border-red-200">${escHTML(c)}</span>`
+            ).join(' ');
+            if (extra > 0) {
+                dtcHtml += ` <span class="text-[10px] font-bold text-slate-500 font-mono">+${extra} more</span>`;
+            }
+        }
+
+        // Verified Findings (cut to one line with an ellipsis, or "No notes provided")
+        const rawFindings = (record.findings && record.findings !== 'Not provided') ? record.findings.trim() : '';
+        const findingsHtml = rawFindings
+            ? `<div class="max-w-[240px] truncate text-xs text-slate-600" title="${escHTML(rawFindings)}">${escHTML(rawFindings)}</div>`
+            : `<span class="text-xs text-slate-400 italic">No notes provided</span>`;
+
+        // Status badge (existing status colors)
+        let statusBadge = '';
+        if (record.status === 'Waiting for Parts') {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Waiting for Parts</span>`;
+        } else if (record.status === 'Pending Post-Scan') {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border border-purple-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>Pending Post-Scan</span>`;
+        } else {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>`;
+        }
+
+        return `
+            <tr class="hover:bg-slate-50 transition-colors">
+                <td class="p-4 whitespace-nowrap">
+                    <div class="font-bold text-slate-800">${escHTML(dateStr)}</div>
+                    <div class="text-xs text-slate-400 font-medium">${escHTML(timeStr)}</div>
+                </td>
+                ${recordIdCell}
+                <td class="p-4 whitespace-nowrap font-mono font-bold text-slate-800">${escHTML(plateStr)}</td>
+                <td class="p-4 whitespace-nowrap font-semibold text-slate-800">${escHTML(motoStr)}</td>
+                <td class="p-4 whitespace-nowrap">
+                    <div class="font-bold text-slate-800">${escHTML(mechName)}</div>
+                    <div class="text-xs text-slate-400 font-medium">${escHTML(mechRole)}</div>
+                </td>
+                <td class="p-4">${dtcHtml}</td>
+                <td class="p-4">${findingsHtml}</td>
+                <td class="p-4 whitespace-nowrap">${statusBadge}</td>
+                <td class="p-4 text-right whitespace-nowrap">
+                    <button type="button" onclick="viewDiagnosticSummary('${escHTML(record.id)}')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition-colors inline-flex items-center gap-1.5 shadow-sm whitespace-nowrap">
+                        <i class="ph-bold ph-eye"></i> View Summary
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderDiagnosticRecordsTable = renderDiagnosticRecordsTable;
+
+function exportDiagnosticAuditCSV() {
+    const records = (typeof window !== 'undefined' && Array.isArray(window._lastFilteredDiagRecords))
+        ? window._lastFilteredDiagRecords
+        : ((typeof diagnosticRecords !== 'undefined' && Array.isArray(diagnosticRecords)) ? diagnosticRecords : []);
+
+    const headers = ['Date', 'Record ID', 'Plate', 'Motorcycle', 'Mechanic', 'DTC codes', 'Findings', 'Status'];
+
+    function csvEscape(val) {
+        if (val === null || val === undefined) return '""';
+        const s = String(val);
+        return `"${s.replace(/"/g, '""')}"`;
+    }
+
+    const rows = records.map(record => {
+        let dateVal = '';
+        if (record.completedAt) {
+            const dt = new Date(record.completedAt);
+            const dateStr = dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+            dateVal = `${dateStr} ${timeStr}`;
+        }
+
+        const idVal = record.id || '';
+        const plateVal = record.plate || 'Not provided';
+
+        const brand = (typeof getBrandLabel === 'function' ? getBrandLabel(record.vehicle) : (record.vehicle && record.vehicle.brandText)) || 'Unknown';
+        const model = (record.vehicle && record.vehicle.model && record.vehicle.model !== 'Not provided') ? record.vehicle.model : '';
+        const motoVal = model ? `${brand} ${model}` : brand;
+
+        const mechName = record.mechanicName || 'Larpus';
+        const mechRole = record.mechanicRole || 'Mechanic';
+        const mechVal = `${mechName} (${mechRole})`;
+
+        const allCodes = [];
+        if (Array.isArray(record.dtcs)) {
+            record.dtcs.forEach(d => {
+                if (Array.isArray(d.codes)) {
+                    d.codes.forEach(c => {
+                        if (c && !allCodes.includes(c)) allCodes.push(c);
+                    });
+                }
+            });
+        }
+        const dtcsVal = allCodes.length > 0 ? allCodes.join(', ') : 'None';
+
+        const findingsVal = (record.findings && record.findings !== 'Not provided')
+            ? String(record.findings).replace(/[\r\n]+/g, ' ').trim()
+            : 'No notes provided';
+
+        const statusVal = record.status || 'Completed';
+
+        return [
+            csvEscape(dateVal),
+            csvEscape(idVal),
+            csvEscape(plateVal),
+            csvEscape(motoVal),
+            csvEscape(mechVal),
+            csvEscape(dtcsVal),
+            csvEscape(findingsVal),
+            csvEscape(statusVal)
+        ].join(',');
+    });
+
+    const csvContent = [headers.map(csvEscape).join(','), ...rows].join('\r\n');
+
+    const statusFilter = document.getElementById('diag-rec-filter-status')?.value || 'all';
+    const dateFilter = document.getElementById('diag-rec-filter-date')?.value || 'all';
+    const query = (document.getElementById('diag-rec-search')?.value || '').trim();
+
+    const statusSlug = statusFilter.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const dateSlug = dateFilter.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const searchSlug = query ? `_q-${query.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 15)}` : '';
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const filename = `diagnostic-audit_status-${statusSlug}_date-${dateSlug}${searchSlug}_${dateStamp}.csv`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+window.exportDiagnosticAuditCSV = exportDiagnosticAuditCSV;
+
+function clearDiagRecordsFilters() {
+    const sInput = document.getElementById('diag-rec-search');
+    const sFilter = document.getElementById('diag-rec-filter-status');
+    const dFilter = document.getElementById('diag-rec-filter-date');
+    if (sInput) sInput.value = '';
+    if (sFilter) sFilter.value = 'all';
+    if (dFilter) dFilter.value = 'all';
+    renderDiagnosticRecordsTable();
+}
+window.clearDiagRecordsFilters = clearDiagRecordsFilters;
+
+// --- DTC Knowledge Base Controller ---
+let activeDtcReferenceKey = 'yamaha_sniper';
+
+function renderDtcKbReferenceHeader() {
+    const container = document.getElementById('dtc-kb-ref-container');
+    if (!container) return;
+
+    const refKeys = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE) ? Object.keys(DTC_REFERENCE) : [];
+    if (refKeys.length <= 1) {
+        const refKey = refKeys[0] || 'yamaha_sniper';
+        const ref = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE) ? DTC_REFERENCE[refKey] : null;
+        const label = (ref && ref.label) ? ref.label : 'Yamaha Sniper 150 V2';
+        container.innerHTML = `<span>Reference: <span class="font-bold text-slate-700">${escHTML(label)} (Appendix E)</span></span>`;
+    } else {
+        container.innerHTML = `
+            <div class="flex items-center gap-2">
+                <label for="dtc-kb-ref-select" class="text-slate-500 font-medium whitespace-nowrap">Reference:</label>
+                <select id="dtc-kb-ref-select" onchange="changeDtcKbReference(this.value)" class="py-1 px-2.5 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm font-semibold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20">
+                    ${refKeys.map(k => {
+                        const r = DTC_REFERENCE[k];
+                        const lbl = (r && r.label) ? r.label : k;
+                        return `<option value="${k}" ${k === activeDtcReferenceKey ? 'selected' : ''}>${escHTML(lbl)} (Appendix E)</option>`;
+                    }).join('')}
+                </select>
+            </div>
+        `;
+    }
+}
+window.renderDtcKbReferenceHeader = renderDtcKbReferenceHeader;
+
+function changeDtcKbReference(key) {
+    activeDtcReferenceKey = key;
+    renderDtcKbTable();
+}
+window.changeDtcKbReference = changeDtcKbReference;
+
+function renderDtcKbView() {
+    renderDtcKbReferenceHeader();
+
+    const sInput = document.getElementById('dtc-kb-search');
+    const gFilter = document.getElementById('dtc-kb-filter-group');
+
+    if (sInput && !sInput._hasDtcKbListener) {
+        sInput.addEventListener('input', () => renderDtcKbTable());
+        sInput._hasDtcKbListener = true;
+    }
+    if (gFilter && !gFilter._hasDtcKbListener) {
+        gFilter.addEventListener('change', () => renderDtcKbTable());
+        gFilter._hasDtcKbListener = true;
+    }
+
+    renderDtcKbTable();
+}
+window.renderDtcKbView = renderDtcKbView;
+
+let currentEditingDtcId = null;
+let dtcModalCodes = [];
+let dtcModalSteps = [''];
+let dtcModalSelectedPartIds = [];
+let pendingDeleteDtcId = null;
+window.currentEditingDtcId = currentEditingDtcId;
+window.dtcModalCodes = dtcModalCodes;
+window.dtcModalSteps = dtcModalSteps;
+window.dtcModalSelectedPartIds = dtcModalSelectedPartIds;
+window.pendingDeleteDtcId = pendingDeleteDtcId;
+
+function renderDtcKbTable() {
+    const tbody = document.getElementById('dtc-kb-tbody');
+    const countEl = document.getElementById('dtc-kb-count');
+    if (!tbody) return;
+
+    renderDtcKbReferenceHeader();
+
+    const canManage = typeof hasFeature === 'function' && hasFeature('dtcManage');
+
+    const table = document.getElementById('dtc-kb-table');
+    if (table) {
+        if (canManage) {
+            table.classList.remove('min-w-[900px]');
+            table.classList.add('min-w-[1100px]');
+        } else {
+            table.classList.remove('min-w-[1100px]');
+            table.classList.add('min-w-[900px]');
+        }
+    }
+
+    document.querySelectorAll('.dtc-manage-th').forEach(el => {
+        el.classList.toggle('hidden', !canManage);
+    });
+
+    const btnAdd = document.getElementById('btn-dtc-add-rule');
+    if (btnAdd) {
+        btnAdd.classList.toggle('hidden', !canManage);
+    }
+
+    const activeRef = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE)
+        ? (DTC_REFERENCE[activeDtcReferenceKey] || DTC_REFERENCE.yamaha_sniper)
+        : null;
+
+    const rawEntries = typeof getEffectiveDtcEntries === 'function'
+        ? getEffectiveDtcEntries({ includeDrafts: true, includeDisabled: true })
+        : ((activeRef && Array.isArray(activeRef.entries)) ? [...activeRef.entries] : []);
+
+    // Common entries first, preserving the baseline/PDF order
+    const allEntries = rawEntries.sort((a, b) => {
+        const aCommon = a.group === 'common' ? 0 : 1;
+        const bCommon = b.group === 'common' ? 0 : 1;
+        return aCommon - bCommon;
+    });
+
+    const query = (document.getElementById('dtc-kb-search')?.value || '').trim().toLowerCase();
+    const groupFilter = document.getElementById('dtc-kb-filter-group')?.value || 'all';
+
+    const partMap = (activeRef && activeRef.partMap) ? activeRef.partMap : {};
+    const inventoryList = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory : [];
+
+    const filtered = allEntries.filter(entry => {
+        if (!entry) return false;
+
+        // Group filter (All, Common, Less common)
+        if (groupFilter !== 'all') {
+            if (groupFilter === 'common' && entry.group !== 'common') return false;
+            if (groupFilter === 'least' && entry.group !== 'least' && entry.group !== 'less_common') return false;
+        }
+
+        // Search query
+        if (query) {
+            const codeMatch = Array.isArray(entry.codes) && entry.codes.some(c => String(c).toLowerCase().includes(query));
+            const errorMatch = Array.isArray(entry.errorNumbers) && entry.errorNumbers.some(e => {
+                const eLower = String(e).toLowerCase();
+                return eLower.includes(query) || eLower.replace(/\s+/g, '').includes(query.replace(/\s+/g, ''));
+            });
+            const compMatch = String(entry.component || '').toLowerCase().includes(query);
+            const descMatch = String(entry.description || '').toLowerCase().includes(query);
+            const verifMatch = Array.isArray(entry.verification) && entry.verification.some(v => String(v).toLowerCase().includes(query));
+            const partMatch = (Array.isArray(entry.parts) && entry.parts.some(p => String(p).toLowerCase().includes(query))) ||
+                (Array.isArray(entry.partIds) && entry.partIds.some(pid => {
+                    const inv = inventoryList.find(p => p && p.id === pid);
+                    return inv && (String(inv.name || '').toLowerCase().includes(query) || String(inv.sku || '').toLowerCase().includes(query));
+                }));
+
+            let findDtcMatch = false;
+            if (typeof findDtcEntry === 'function') {
+                const matchedEntry = findDtcEntry(query, { includeDrafts: true, includeDisabled: true });
+                if (matchedEntry && matchedEntry.id === entry.id) {
+                    findDtcMatch = true;
+                }
+            }
+
+            if (!codeMatch && !errorMatch && !compMatch && !descMatch && !verifMatch && !partMatch && !findDtcMatch) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+
+    if (countEl) {
+        countEl.textContent = `${filtered.length} rule${filtered.length === 1 ? '' : 's'}`;
+    }
+
+    if (filtered.length === 0) {
+        const colspan = canManage ? 10 : 7;
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="${colspan}" class="p-8 text-center text-slate-500">
+                    <i class="ph-bold ph-magnifying-glass text-3xl text-slate-300 block mb-2"></i>
+                    <p class="font-bold text-sm text-slate-700">No DTC rules found.</p>
+                    <button type="button" onclick="clearDtcKbFilters()" class="mt-3 px-3.5 py-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors inline-flex items-center gap-1.5">
+                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Clear filters
+                    </button>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = filtered.map(entry => {
+        const isDisabled = !!entry.disabled;
+        const rowClass = isDisabled
+            ? 'opacity-60 bg-slate-100/60 hover:bg-slate-100 transition-colors align-top'
+            : 'hover:bg-slate-50 transition-colors align-top';
+
+        const disabledTag = isDisabled
+            ? `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-200 text-slate-700 border border-slate-300">Disabled</span>`
+            : '';
+
+        // DTC Codes (every code as a small red badge)
+        const codes = Array.isArray(entry.codes) ? entry.codes : [];
+        const codeBadges = codes.length > 0
+            ? codes.map(c => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-red-50 text-red-600 border border-red-200">${escHTML(c)}</span>`).join(' ')
+            : '<span class="text-xs text-slate-400 italic">None</span>';
+
+        // Error No. (grey badges)
+        const errorNumbers = Array.isArray(entry.errorNumbers) ? entry.errorNumbers : [];
+        const errorBadges = errorNumbers.length > 0
+            ? errorNumbers.map(e => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">${escHTML(e)}</span>`).join(' ')
+            : '<span class="text-xs text-slate-400 italic">None</span>';
+
+        // Component
+        const compStr = entry.component || 'N/A';
+
+        // Description
+        const descStr = entry.description || 'None recorded.';
+
+        // Verification Steps
+        let verifHtml = '<span class="text-xs text-slate-400 italic">None recorded</span>';
+        if (Array.isArray(entry.verification) && entry.verification.length > 0) {
+            verifHtml = `<ul class="list-disc pl-4 space-y-1 text-xs text-slate-600 leading-relaxed">${entry.verification.map(v => `<li>${escHTML(v)}</li>`).join('')}</ul>`;
+        }
+
+        // Related Parts
+        const partsList = (Array.isArray(entry.partIds) && entry.partIds.length > 0)
+            ? entry.partIds
+            : (Array.isArray(entry.parts) ? entry.parts : []);
+        let partsHtml = '<span class="text-xs text-slate-400 italic">None recorded</span>';
+        if (partsList.length > 0) {
+            partsHtml = `<div class="space-y-1.5">` + partsList.map(partNameOrId => {
+                const partId = (partMap && partMap[partNameOrId]) ? partMap[partNameOrId] : partNameOrId;
+                const invPart = inventoryList.find(p => p && (p.id === partId || p.id === partNameOrId || p.name === partNameOrId));
+
+                if (invPart) {
+                    const price = Number(invPart.price) || 0;
+                    const priceFormatted = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const stock = typeof invPart.stock === 'number' ? invPart.stock : 0;
+                    const minStock = typeof invPart.minStock === 'number' ? invPart.minStock : 5;
+
+                    let stockBadge = '';
+                    if (stock === 0) {
+                        stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>${stock} in stock</span>`;
+                    } else if (stock <= minStock) {
+                        stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>${stock} in stock</span>`;
+                    } else {
+                        stockBadge = `<span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>${stock} in stock</span>`;
+                    }
+
+                    return `
+                        <div class="py-1 border-b border-slate-100 last:border-b-0 space-y-0.5">
+                            <div class="font-semibold text-slate-800 text-xs">${escHTML(invPart.name || partNameOrId)}</div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-bold text-blue-600 font-mono text-[11px]">&#8369;${priceFormatted}</span>
+                                ${stockBadge}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="py-1 border-b border-slate-100 last:border-b-0 space-y-0.5">
+                            <div class="font-semibold text-slate-800 text-xs">${escHTML(partNameOrId)}</div>
+                            <div>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 whitespace-nowrap">Not in inventory</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            }).join('') + `</div>`;
+        }
+
+        // Group (small tag)
+        const groupBadge = entry.group === 'common'
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">Common</span>`
+            : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200">Less common</span>`;
+
+        // Validation badge: green "Validated", yellow "Draft"
+        const valBadge = entry.validation === 'validated'
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200" title="${escHTML(entry.validatedBy ? 'Validated by: ' + entry.validatedBy : 'Validated')}">Validated</span>`
+            : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">Draft</span>`;
+
+        // Source badge: PDF or Custom
+        const srcBadge = entry.source === 'PDF'
+            ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">PDF</span>`
+            : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">Custom</span>`;
+
+        // Actions: Edit, Disable/Enable, Reset to PDF / Delete with inline confirmation
+        let actionsHtml = '';
+        if (canManage) {
+            const editBtn = `
+                <button type="button" onclick="openEditDtcModal('${entry.id}')" class="px-2 py-1 text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded border border-blue-200 transition-colors inline-flex items-center gap-1" title="Edit Rule">
+                    <i class="ph-bold ph-pencil-simple"></i> Edit
+                </button>
+            `;
+
+            const disableBtn = isDisabled
+                ? `<button type="button" onclick="handleToggleDtcDisabled('${entry.id}')" class="px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded border border-emerald-300 transition-colors inline-flex items-center gap-1" title="Enable rule">
+                       <i class="ph-bold ph-check-circle"></i> Enable
+                   </button>`
+                : `<button type="button" onclick="handleToggleDtcDisabled('${entry.id}')" class="px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded border border-slate-200 transition-colors inline-flex items-center gap-1" title="Disable rule">
+                       <i class="ph-bold ph-prohibit"></i> Disable
+                   </button>`;
+
+            let thirdBtn = '';
+            if (entry.source === 'PDF') {
+                thirdBtn = `
+                    <button type="button" onclick="handleResetDtcEntry('${entry.id}')" class="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded border border-slate-200 transition-colors inline-flex items-center gap-1" title="Reset back to baseline PDF version">
+                        <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset to PDF
+                    </button>
+                `;
+            } else {
+                if (pendingDeleteDtcId === entry.id) {
+                    thirdBtn = `
+                        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-rose-50 border border-rose-200 text-rose-700 whitespace-nowrap">
+                            <span class="font-bold">Delete?</span>
+                            <button type="button" onclick="confirmDeleteCustomDtc('${entry.id}')" class="font-bold text-rose-700 hover:underline">Yes</button>
+                            <button type="button" onclick="cancelDeleteCustomDtc()" class="text-slate-500 hover:underline">Cancel</button>
+                        </span>
+                    `;
+                } else {
+                    thirdBtn = `
+                        <button type="button" onclick="promptDeleteCustomDtc('${entry.id}')" class="px-2 py-1 text-xs font-semibold text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded border border-rose-200 transition-colors inline-flex items-center gap-1" title="Delete custom rule">
+                            <i class="ph-bold ph-trash"></i> Delete
+                        </button>
+                    `;
+                }
+            }
+
+            actionsHtml = `
+                <div class="flex items-center justify-end gap-1.5 flex-wrap">
+                    ${editBtn}
+                    ${disableBtn}
+                    ${thirdBtn}
+                </div>
+            `;
+        }
+
+        const extraCells = canManage ? `
+            <td class="p-3.5 text-center whitespace-nowrap">
+                ${valBadge}
+            </td>
+            <td class="p-3.5 text-center whitespace-nowrap">
+                ${srcBadge}
+            </td>
+            <td class="p-3.5 text-right whitespace-nowrap">
+                ${actionsHtml}
+            </td>
+        ` : '';
+
+        return `
+            <tr class="${rowClass}">
+                <td class="p-3.5">
+                    <div class="flex flex-wrap gap-1">
+                        ${codeBadges}
+                    </div>
+                </td>
+                <td class="p-3.5">
+                    <div class="flex flex-wrap gap-1">
+                        ${errorBadges}
+                    </div>
+                </td>
+                <td class="p-3.5 font-bold text-slate-800 text-xs sm:text-sm break-words">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span>${escHTML(compStr)}</span>
+                        ${disabledTag}
+                    </div>
+                </td>
+                <td class="p-3.5 text-xs text-slate-600 leading-relaxed break-words">
+                    ${escHTML(descStr)}
+                </td>
+                <td class="p-3.5 text-xs text-slate-600 break-words">
+                    ${verifHtml}
+                </td>
+                <td class="p-3.5 text-xs break-words">
+                    ${partsHtml}
+                </td>
+                <td class="p-3.5 text-center whitespace-nowrap">
+                    ${groupBadge}
+                </td>
+                ${extraCells}
+            </tr>
+        `;
+    }).join('');
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderDtcKbTable = renderDtcKbTable;
+
+function promptDeleteCustomDtc(id) {
+    pendingDeleteDtcId = id;
+    renderDtcKbTable();
+}
+window.promptDeleteCustomDtc = promptDeleteCustomDtc;
+
+function cancelDeleteCustomDtc() {
+    pendingDeleteDtcId = null;
+    renderDtcKbTable();
+}
+window.cancelDeleteCustomDtc = cancelDeleteCustomDtc;
+
+function confirmDeleteCustomDtc(id) {
+    pendingDeleteDtcId = null;
+    if (typeof deleteCustomDtcEntry === 'function') {
+        deleteCustomDtcEntry(id);
+    }
+}
+window.confirmDeleteCustomDtc = confirmDeleteCustomDtc;
+
+function handleResetDtcEntry(id) {
+    if (typeof resetDtcEntry === 'function') {
+        resetDtcEntry(id);
+    }
+}
+window.handleResetDtcEntry = handleResetDtcEntry;
+
+function handleToggleDtcDisabled(id) {
+    if (typeof toggleDtcDisabled === 'function') {
+        toggleDtcDisabled(id);
+    }
+}
+window.handleToggleDtcDisabled = handleToggleDtcDisabled;
+
+function initDtcModalEvents() {
+    const input = document.getElementById('dtc-modal-codes-input');
+    if (input && !input._hasDtcListener) {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addDtcModalCodeFromInput();
+            } else if (e.key === 'Backspace' && input.value === '' && dtcModalCodes.length > 0) {
+                dtcModalCodes.pop();
+                renderDtcModalCodes();
+            }
+        });
+        input.addEventListener('blur', () => {
+            addDtcModalCodeFromInput();
+        });
+        input._hasDtcListener = true;
+    }
+}
+
+function openAddDtcModal() {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) return;
+    currentEditingDtcId = null;
+
+    const titleEl = document.getElementById('dtc-modal-title');
+    if (titleEl) titleEl.textContent = 'Add DTC Rule';
+
+    dtcModalCodes = [];
+    renderDtcModalCodes();
+
+    const errInp = document.getElementById('dtc-modal-error-numbers');
+    if (errInp) errInp.value = '';
+
+    const compInp = document.getElementById('dtc-modal-component');
+    if (compInp) compInp.value = '';
+
+    const descInp = document.getElementById('dtc-modal-description');
+    if (descInp) descInp.value = '';
+
+    dtcModalSteps = [''];
+    renderDtcModalSteps();
+
+    dtcModalSelectedPartIds = [];
+    renderDtcModalSelectedParts();
+
+    const groupSelect = document.getElementById('dtc-modal-group');
+    if (groupSelect) groupSelect.value = 'common';
+
+    const valSelect = document.getElementById('dtc-modal-validation');
+    if (valSelect) valSelect.value = 'draft';
+
+    const valByInp = document.getElementById('dtc-modal-validated-by');
+    if (valByInp) valByInp.value = '';
+
+    onDtcModalValidationChange();
+    clearDtcModalErrors();
+    initDtcModalEvents();
+
+    toggleModal('modal-dtc-rule', 'dtc-rule-backdrop', 'dtc-rule-content', true);
+}
+window.openAddDtcModal = openAddDtcModal;
+
+function openEditDtcModal(id) {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) return;
+    if (!id) return;
+
+    const entry = (typeof getDtcEntryById === 'function')
+        ? getDtcEntryById(id, { includeDrafts: true, includeDisabled: true })
+        : null;
+    if (!entry) return;
+
+    currentEditingDtcId = id;
+
+    const titleEl = document.getElementById('dtc-modal-title');
+    const displayRef = (entry.codes && entry.codes.length > 0) ? entry.codes.join(', ') : (entry.component || id);
+    if (titleEl) titleEl.textContent = `Edit DTC Rule — ${displayRef}`;
+
+    dtcModalCodes = Array.isArray(entry.codes) ? [...entry.codes] : [];
+    renderDtcModalCodes();
+
+    const errInp = document.getElementById('dtc-modal-error-numbers');
+    if (errInp) errInp.value = Array.isArray(entry.errorNumbers) ? entry.errorNumbers.join(', ') : '';
+
+    const compInp = document.getElementById('dtc-modal-component');
+    if (compInp) compInp.value = entry.component || '';
+
+    const descInp = document.getElementById('dtc-modal-description');
+    if (descInp) descInp.value = entry.description || '';
+
+    dtcModalSteps = (Array.isArray(entry.verification) && entry.verification.length > 0)
+        ? [...entry.verification]
+        : [''];
+    renderDtcModalSteps();
+
+    const activeRef = (typeof DTC_REFERENCE !== 'undefined' && DTC_REFERENCE)
+        ? (DTC_REFERENCE[activeDtcReferenceKey] || DTC_REFERENCE.yamaha_sniper)
+        : null;
+    const partMap = (activeRef && activeRef.partMap) ? activeRef.partMap : {};
+
+    const rawParts = (Array.isArray(entry.partIds) && entry.partIds.length > 0)
+        ? entry.partIds
+        : (Array.isArray(entry.parts) ? entry.parts : []);
+
+    const inventoryList = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory : [];
+
+    dtcModalSelectedPartIds = rawParts.map(item => {
+        return (partMap && partMap[item]) ? partMap[item] : item;
+    }).filter(partId => {
+        return inventoryList.some(p => p && p.id === partId);
+    });
+    renderDtcModalSelectedParts();
+
+    const groupSelect = document.getElementById('dtc-modal-group');
+    if (groupSelect) groupSelect.value = (entry.group === 'least' || entry.group === 'less_common') ? 'least' : 'common';
+
+    const valSelect = document.getElementById('dtc-modal-validation');
+    if (valSelect) valSelect.value = entry.validation === 'validated' ? 'validated' : 'draft';
+
+    const valByInp = document.getElementById('dtc-modal-validated-by');
+    if (valByInp) valByInp.value = entry.validatedBy || '';
+
+    onDtcModalValidationChange();
+    clearDtcModalErrors();
+    initDtcModalEvents();
+
+    toggleModal('modal-dtc-rule', 'dtc-rule-backdrop', 'dtc-rule-content', true);
+}
+window.openEditDtcModal = openEditDtcModal;
+
+function closeDtcRuleModal() {
+    toggleModal('modal-dtc-rule', 'dtc-rule-backdrop', 'dtc-rule-content', false);
+    currentEditingDtcId = null;
+    clearDtcModalErrors();
+}
+window.closeDtcRuleModal = closeDtcRuleModal;
+
+function renderDtcModalCodes() {
+    const container = document.getElementById('dtc-modal-codes-tags');
+    if (!container) return;
+
+    container.innerHTML = dtcModalCodes.map(code => `
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-bold font-mono bg-red-50 text-red-700 border border-red-200">
+            ${escHTML(code)}
+            <button type="button" onclick="removeDtcModalCode('${code}')" class="text-red-400 hover:text-red-700 font-bold ml-0.5 text-xs focus:outline-none">&times;</button>
+        </span>
+    `).join('');
+
+    const input = document.getElementById('dtc-modal-codes-input');
+    if (input) {
+        input.placeholder = dtcModalCodes.length === 0 ? 'e.g. P0120 (press Enter or comma)' : 'Add code...';
+    }
+}
+window.renderDtcModalCodes = renderDtcModalCodes;
+
+function removeDtcModalCode(code) {
+    dtcModalCodes = dtcModalCodes.filter(c => c !== code);
+    renderDtcModalCodes();
+}
+window.removeDtcModalCode = removeDtcModalCode;
+
+function addDtcModalCodeFromInput() {
+    const input = document.getElementById('dtc-modal-codes-input');
+    if (!input) return;
+    const val = input.value.trim().toUpperCase().replace(/,/g, '');
+    if (val && !dtcModalCodes.includes(val)) {
+        dtcModalCodes.push(val);
+        input.value = '';
+        renderDtcModalCodes();
+        const err = document.getElementById('dtc-modal-codes-error');
+        if (err) err.classList.add('hidden');
+    } else {
+        input.value = '';
+    }
+}
+window.addDtcModalCodeFromInput = addDtcModalCodeFromInput;
+
+function focusDtcCodesInput() {
+    document.getElementById('dtc-modal-codes-input')?.focus();
+}
+window.focusDtcCodesInput = focusDtcCodesInput;
+
+function renderDtcModalSteps() {
+    const container = document.getElementById('dtc-modal-steps-list');
+    if (!container) return;
+
+    if (dtcModalSteps.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400 italic">No verification steps added.</span>';
+        return;
+    }
+
+    container.innerHTML = dtcModalSteps.map((step, idx) => `
+        <div class="flex items-center gap-2">
+            <span class="w-5 text-center text-xs font-bold text-slate-400 shrink-0">${idx + 1}.</span>
+            <input type="text" value="${escHTML(step)}" oninput="updateDtcModalStep(${idx}, this.value)" class="dtc-modal-step-input flex-1 px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm" placeholder="e.g. Inspect the wiring plug for loose pins or corrosion">
+            <button type="button" onclick="removeDtcModalStep(${idx})" class="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors shrink-0" title="Remove step">
+                <i class="ph ph-trash text-base"></i>
+            </button>
+        </div>
+    `).join('');
+}
+window.renderDtcModalSteps = renderDtcModalSteps;
+
+function updateDtcModalStep(index, value) {
+    if (dtcModalSteps[index] !== undefined) {
+        dtcModalSteps[index] = value;
+    }
+}
+window.updateDtcModalStep = updateDtcModalStep;
+
+function addDtcModalStep() {
+    syncDtcModalStepInputs();
+    dtcModalSteps.push('');
+    renderDtcModalSteps();
+    const inputs = document.querySelectorAll('.dtc-modal-step-input');
+    if (inputs.length > 0) {
+        inputs[inputs.length - 1].focus();
+    }
+}
+window.addDtcModalStep = addDtcModalStep;
+
+function removeDtcModalStep(index) {
+    syncDtcModalStepInputs();
+    dtcModalSteps.splice(index, 1);
+    if (dtcModalSteps.length === 0) {
+        dtcModalSteps = [''];
+    }
+    renderDtcModalSteps();
+}
+window.removeDtcModalStep = removeDtcModalStep;
+
+function syncDtcModalStepInputs() {
+    const inputs = document.querySelectorAll('.dtc-modal-step-input');
+    inputs.forEach((inp, i) => {
+        if (i < dtcModalSteps.length) {
+            dtcModalSteps[i] = inp.value;
+        }
+    });
+}
+
+function renderDtcModalSelectedParts() {
+    const container = document.getElementById('dtc-modal-selected-parts');
+    if (!container) return;
+
+    if (dtcModalSelectedPartIds.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400 italic">No related parts selected.</span>';
+        return;
+    }
+
+    const inventoryList = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory : [];
+
+    container.innerHTML = dtcModalSelectedPartIds.map(id => {
+        const part = inventoryList.find(p => p && p.id === id);
+        if (!part) {
+            return `
+                <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-xs">
+                    <span class="font-semibold text-slate-700">${escHTML(id)}</span>
+                    <button type="button" onclick="removeDtcModalPart('${id}')" class="text-slate-400 hover:text-rose-600 font-bold ml-1">&times;</button>
+                </div>
+            `;
+        }
+
+        const price = Number(part.price) || 0;
+        const priceStr = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const stock = typeof part.stock === 'number' ? part.stock : 0;
+        const stockBadge = stock === 0
+            ? '<span class="text-[10px] font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded">0 stock</span>'
+            : (stock <= 5
+                ? `<span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded">${stock} in stock</span>`
+                : `<span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded">${stock} in stock</span>`);
+
+        return `
+            <div class="inline-flex items-center gap-2 p-1.5 px-2.5 rounded-lg border border-slate-200 bg-white shadow-sm text-xs">
+                <span class="font-bold text-slate-800">${escHTML(part.name)}</span>
+                <span class="font-mono text-blue-600 font-semibold">&#8369;${priceStr}</span>
+                ${stockBadge}
+                <button type="button" onclick="removeDtcModalPart('${id}')" class="text-slate-400 hover:text-rose-600 font-bold ml-1 text-sm leading-none focus:outline-none" title="Remove part">&times;</button>
+            </div>
+        `;
+    }).join('');
+}
+window.renderDtcModalSelectedParts = renderDtcModalSelectedParts;
+
+function handleDtcPartSearch(event) {
+    const dropdown = document.getElementById('dtc-modal-part-dropdown');
+    if (!dropdown) return;
+
+    const q = (event.target.value || '').trim().toLowerCase();
+    const inventoryList = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory : [];
+
+    const matches = inventoryList.filter(p => {
+        if (!p) return false;
+        if (dtcModalSelectedPartIds.includes(p.id)) return false;
+        if (!q) return true;
+        const nameMatch = String(p.name || '').toLowerCase().includes(q);
+        const skuMatch = String(p.sku || '').toLowerCase().includes(q);
+        const catMatch = String(p.category || '').toLowerCase().includes(q);
+        return nameMatch || skuMatch || catMatch;
+    }).slice(0, 8);
+
+    if (matches.length === 0) {
+        dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 text-center italic">No matching inventory parts</div>`;
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    dropdown.innerHTML = matches.map(part => {
+        const price = Number(part.price) || 0;
+        const priceStr = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const stock = typeof part.stock === 'number' ? part.stock : 0;
+        return `
+            <button type="button" onclick="selectDtcModalPart('${part.id}')" class="w-full p-2.5 text-left hover:bg-slate-50 flex items-center justify-between text-xs transition-colors group">
+                <div class="flex flex-col">
+                    <span class="font-bold text-slate-800 group-hover:text-blue-600">${escHTML(part.name)}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">${escHTML(part.sku || part.id)}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-blue-600">&#8369;${priceStr}</span>
+                    <span class="text-[10px] font-semibold text-slate-500">${stock} in stock</span>
+                </div>
+            </button>
+        `;
+    }).join('');
+    dropdown.classList.remove('hidden');
+}
+window.handleDtcPartSearch = handleDtcPartSearch;
+
+function selectDtcModalPart(partId) {
+    if (partId && !dtcModalSelectedPartIds.includes(partId)) {
+        dtcModalSelectedPartIds.push(partId);
+        renderDtcModalSelectedParts();
+    }
+    const searchInp = document.getElementById('dtc-modal-part-search');
+    if (searchInp) searchInp.value = '';
+    const dropdown = document.getElementById('dtc-modal-part-dropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+}
+window.selectDtcModalPart = selectDtcModalPart;
+
+function removeDtcModalPart(partId) {
+    dtcModalSelectedPartIds = dtcModalSelectedPartIds.filter(id => id !== partId);
+    renderDtcModalSelectedParts();
+}
+window.removeDtcModalPart = removeDtcModalPart;
+
+if (typeof window !== 'undefined' && typeof window._dtcPartDropdownListenerAttached === 'undefined') {
+    document.addEventListener('click', (e) => {
+        const dropdown = document.getElementById('dtc-modal-part-dropdown');
+        const searchInp = document.getElementById('dtc-modal-part-search');
+        if (dropdown && !dropdown.classList.contains('hidden')) {
+            if (!dropdown.contains(e.target) && e.target !== searchInp) {
+                dropdown.classList.add('hidden');
+            }
+        }
+    });
+    window._dtcPartDropdownListenerAttached = true;
+}
+
+function onDtcModalValidationChange() {
+    const val = document.getElementById('dtc-modal-validation')?.value;
+    const wrap = document.getElementById('dtc-modal-validated-by-wrap');
+    const err = document.getElementById('dtc-modal-validated-by-error');
+    if (err) err.classList.add('hidden');
+    if (wrap) {
+        if (val === 'validated') {
+            wrap.classList.remove('hidden');
+        } else {
+            wrap.classList.add('hidden');
+        }
+    }
+}
+window.onDtcModalValidationChange = onDtcModalValidationChange;
+
+function clearDtcModalErrors() {
+    document.getElementById('dtc-modal-codes-error')?.classList.add('hidden');
+    document.getElementById('dtc-modal-component-error')?.classList.add('hidden');
+    document.getElementById('dtc-modal-validated-by-error')?.classList.add('hidden');
+}
+window.clearDtcModalErrors = clearDtcModalErrors;
+
+function saveDtcModalRule() {
+    if (typeof hasFeature === 'function' && !hasFeature('dtcManage')) {
+        console.warn('saveDtcModalRule blocked: dtcManage permission required.');
+        return;
+    }
+
+    if (Array.isArray(window.dtcModalCodes)) dtcModalCodes = window.dtcModalCodes;
+    if (Array.isArray(window.dtcModalSteps)) dtcModalSteps = window.dtcModalSteps;
+    if (Array.isArray(window.dtcModalSelectedPartIds)) dtcModalSelectedPartIds = window.dtcModalSelectedPartIds;
+
+    addDtcModalCodeFromInput();
+    clearDtcModalErrors();
+    let hasError = false;
+
+    // Required: Codes
+    if (dtcModalCodes.length === 0) {
+        document.getElementById('dtc-modal-codes-error')?.classList.remove('hidden');
+        hasError = true;
+    }
+
+    // Required: Component
+    const compVal = document.getElementById('dtc-modal-component')?.value.trim();
+    if (!compVal) {
+        document.getElementById('dtc-modal-component-error')?.classList.remove('hidden');
+        hasError = true;
+    }
+
+    // Validation & Validated by
+    const validationVal = document.getElementById('dtc-modal-validation')?.value || 'draft';
+    const valByVal = document.getElementById('dtc-modal-validated-by')?.value.trim() || '';
+    if (validationVal === 'validated' && !valByVal) {
+        document.getElementById('dtc-modal-validated-by-error')?.classList.remove('hidden');
+        hasError = true;
+    }
+
+    if (hasError) return;
+
+    // Error Numbers
+    const errRaw = document.getElementById('dtc-modal-error-numbers')?.value || '';
+    const errorNumbers = errRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+    // Description
+    const descVal = document.getElementById('dtc-modal-description')?.value.trim() || '';
+
+    // Verification steps
+    syncDtcModalStepInputs();
+    const verification = dtcModalSteps.map(s => s.trim()).filter(Boolean);
+
+    // Related parts (stored by part id)
+    const partIds = [...dtcModalSelectedPartIds];
+    const inventoryList = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory : [];
+    const parts = partIds.map(pid => {
+        const inv = inventoryList.find(p => p && p.id === pid);
+        return inv ? inv.name : pid;
+    });
+
+    // Group
+    const groupVal = document.getElementById('dtc-modal-group')?.value || 'common';
+
+    const ruleEntry = {
+        id: currentEditingDtcId || undefined,
+        codes: dtcModalCodes,
+        errorNumbers: errorNumbers,
+        component: compVal,
+        description: descVal,
+        verification: verification,
+        partIds: partIds,
+        parts: parts,
+        group: groupVal,
+        validation: validationVal,
+        validatedBy: validationVal === 'validated' ? valByVal : ''
+    };
+
+    const saved = saveDtcEntry(ruleEntry);
+    if (saved) {
+        closeDtcRuleModal();
+    }
+}
+window.saveDtcModalRule = saveDtcModalRule;
+window.renderDtcKbTable = renderDtcKbTable;
+
+function clearDtcKbFilters() {
+    const sInput = document.getElementById('dtc-kb-search');
+    const gFilter = document.getElementById('dtc-kb-filter-group');
+    if (sInput) sInput.value = '';
+    if (gFilter) gFilter.value = 'all';
+    renderDtcKbTable();
+}
+window.clearDtcKbFilters = clearDtcKbFilters;
+
+function openDiagnosticSummaryModal() {
+    toggleModal('modal-diag-summary', 'diag-summary-backdrop', 'diag-summary-content', true);
+}
+window.openDiagnosticSummaryModal = openDiagnosticSummaryModal;
+
+function closeDiagnosticSummaryModal() {
+    toggleModal('modal-diag-summary', 'diag-summary-backdrop', 'diag-summary-content', false);
+}
+window.closeDiagnosticSummaryModal = closeDiagnosticSummaryModal;
+
+function viewDiagnosticSummary(recordId) {
+    const record = (typeof diagnosticRecords !== 'undefined' && Array.isArray(diagnosticRecords))
+        ? diagnosticRecords.find(r => r && r.id === recordId)
+        : null;
+    if (!record) return;
+
+    const modal = document.getElementById('modal-diag-summary');
+    const plateEl = document.getElementById('diag-summary-plate');
+    const statusEl = document.getElementById('diag-summary-status');
+    const bodyEl = document.getElementById('diag-summary-body');
+
+    if (!modal || !bodyEl) return;
+
+    // Reset previous contents so reopening clears previous record
+    bodyEl.innerHTML = '';
+    if (plateEl) plateEl.textContent = '';
+    if (statusEl) statusEl.innerHTML = '';
+
+    // 1. Header: Plate number and Status badge
+    const plateText = (record.plate && String(record.plate).trim()) ? String(record.plate).trim() : 'No Plate';
+    if (plateEl) plateEl.textContent = plateText;
+
+    if (statusEl) {
+        let statusBadge = '';
+        if (record.status === 'Waiting for Parts') {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-600 border border-orange-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span>Waiting for Parts</span>`;
+        } else if (record.status === 'Pending Post-Scan') {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 border border-purple-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>Pending Post-Scan</span>`;
+        } else {
+            statusBadge = `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Completed</span>`;
+        }
+        statusEl.innerHTML = statusBadge;
+    }
+
+    // 2. Section: Motorcycle, Completed Date & Time, Assigned Mechanic
+    const v = record.vehicle || {};
+    let brandName = (v.brandText && String(v.brandText).trim()) || '';
+    if (!brandName && typeof getBrandLabel === 'function') {
+        brandName = getBrandLabel(v);
+    }
+    if (!brandName && v.brandId) {
+        brandName = String(v.brandId).charAt(0).toUpperCase() + String(v.brandId).slice(1);
+    }
+    if (!brandName) brandName = 'Other';
+    const modelName = (v.model && String(v.model).trim()) ? String(v.model).trim() : 'Unknown Model';
+    const motoDesc = `${brandName} ${modelName}`;
+
+    let completedDateStr = 'Not recorded';
+    if (record.completedAt) {
+        try {
+            const d = new Date(record.completedAt);
+            if (!isNaN(d.getTime())) {
+                completedDateStr = d.toLocaleString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+            }
+        } catch (e) {
+            completedDateStr = String(record.completedAt);
+        }
+    }
+
+    const mechName = (record.mechanicName && String(record.mechanicName).trim()) ? String(record.mechanicName).trim() : 'Unknown Mechanic';
+    const mechRole = (record.mechanicRole && String(record.mechanicRole).trim()) ? String(record.mechanicRole).trim() : 'Mechanic';
+    const mechDesc = `${mechName} (${mechRole})`;
+
+    const overviewSection = `
+        <section class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <i class="ph-bold ph-motorcycle text-slate-600"></i> Motorcycle &amp; Service Info
+            </h3>
+            <div class="space-y-1">
+                <div class="m-row flex items-center justify-between gap-3 py-1.5 border-b border-slate-200/60 text-xs sm:text-sm">
+                    <span class="m-row-label text-slate-500 font-medium">Motorcycle</span>
+                    <span class="m-row-value font-semibold text-slate-800 text-right">${escHTML(motoDesc)}</span>
+                </div>
+                <div class="m-row flex items-center justify-between gap-3 py-1.5 border-b border-slate-200/60 text-xs sm:text-sm">
+                    <span class="m-row-label text-slate-500 font-medium">Plate Number</span>
+                    <span class="m-row-value font-mono font-bold text-slate-800 text-right">${escHTML(plateText)}</span>
+                </div>
+                <div class="m-row flex items-center justify-between gap-3 py-1.5 border-b border-slate-200/60 text-xs sm:text-sm">
+                    <span class="m-row-label text-slate-500 font-medium">Completed Date &amp; Time</span>
+                    <span class="m-row-value font-semibold text-slate-800 text-right">${escHTML(completedDateStr)}</span>
+                </div>
+                <div class="m-row flex items-center justify-between gap-3 py-1.5 text-xs sm:text-sm">
+                    <span class="m-row-label text-slate-500 font-medium">Assigned Mechanic</span>
+                    <span class="m-row-value font-semibold text-slate-800 text-right">${escHTML(mechDesc)}</span>
+                </div>
+            </div>
+        </section>
+    `;
+
+    // 3. Section: Customer Complaints (chips, or "None recorded")
+    const rawComplaints = Array.isArray(record.complaints) ? record.complaints : [];
+    const validComplaints = rawComplaints.map(c => (c != null ? String(c).trim() : '')).filter(Boolean);
+    let complaintsContent = '';
+    if (validComplaints.length > 0) {
+        complaintsContent = `
+            <div class="flex flex-wrap gap-2">
+                ${validComplaints.map(c => `
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <i class="ph-bold ph-chat-circle-dots text-blue-500"></i> ${escHTML(c)}
+                    </span>
+                `).join('')}
+            </div>
+        `;
+    } else {
+        complaintsContent = `<p class="text-xs text-slate-400 italic">None recorded</p>`;
+    }
+
+    const complaintsSection = `
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <i class="ph-bold ph-chats text-slate-600"></i> Customer Complaints
+            </h3>
+            ${complaintsContent}
+        </section>
+    `;
+
+    // 4. Section: Inspection Findings (Fix and Watch items with status badges, or "No issues flagged")
+    const flags = Array.isArray(record.inspectionFlags) ? record.inspectionFlags : [];
+    let flagsContent = '';
+    if (flags.length > 0) {
+        flagsContent = `
+            <div class="space-y-1">
+                ${flags.map(f => {
+                    const itemName = (f && f.item && String(f.item).trim()) ? String(f.item).trim() : 'Inspected Item';
+                    const st = (f && f.status) ? String(f.status).toLowerCase().trim() : '';
+                    let badge = '';
+                    if (st === 'fix') {
+                        badge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200">Fix</span>`;
+                    } else if (st === 'watch') {
+                        badge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 border border-amber-200">Watch</span>`;
+                    } else {
+                        badge = `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">${escHTML(st || 'Flagged')}</span>`;
+                    }
+                    return `
+                        <div class="m-row flex items-center justify-between gap-3 py-1.5 border-b border-slate-100 last:border-b-0 text-xs sm:text-sm">
+                            <span class="m-row-label text-slate-700 font-medium">${escHTML(itemName)}</span>
+                            <span class="m-row-value">${badge}</span>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } else {
+        flagsContent = `<p class="text-xs text-slate-400 italic">No issues flagged</p>`;
+    }
+
+    const flagsSection = `
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <i class="ph-bold ph-check-square-offset text-slate-600"></i> Inspection Findings
+            </h3>
+            ${flagsContent}
+        </section>
+    `;
+
+    // 5. Section: ECU/OBD Results (each entry with code badges, error number, component, and PDF description via findDtcEntry, or "No DTCs retrieved")
+    const rawDtcs = Array.isArray(record.dtcs) ? record.dtcs : [];
+    let dtcsContent = '';
+    if (rawDtcs.length > 0) {
+        dtcsContent = `
+            <div class="space-y-3">
+                ${rawDtcs.map(item => {
+                    const codes = Array.isArray(item.codes) ? item.codes : (item.codes ? [item.codes] : []);
+                    const errorNumbers = Array.isArray(item.errorNumbers) ? item.errorNumbers : (item.errorNumbers ? [item.errorNumbers] : []);
+
+                    let dtcRef = null;
+                    if (typeof findDtcEntry === 'function') {
+                        for (const c of codes) {
+                            dtcRef = findDtcEntry(c);
+                            if (dtcRef) break;
+                        }
+                        if (!dtcRef) {
+                            for (const e of errorNumbers) {
+                                dtcRef = findDtcEntry(e);
+                                if (dtcRef) break;
+                            }
+                        }
+                    }
+
+                    const compName = (item.component && String(item.component).trim()) 
+                        || (dtcRef && dtcRef.component) 
+                        || 'Component not specified';
+
+                    const pdfDesc = (dtcRef && dtcRef.description) 
+                        ? dtcRef.description 
+                        : 'No description available.';
+
+                    const codeBadges = codes.length > 0 
+                        ? codes.map(c => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-red-50 text-red-600 border border-red-200">${escHTML(c)}</span>`).join(' ')
+                        : '';
+
+                    const errBadges = errorNumbers.length > 0
+                        ? errorNumbers.map(e => `<span class="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">${escHTML(e)}</span>`).join(' ')
+                        : '';
+
+                    return `
+                        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                            <div class="flex items-start justify-between gap-2 flex-wrap">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    ${codeBadges}
+                                    ${errBadges}
+                                </div>
+                                <span class="text-xs font-bold text-slate-800">${escHTML(compName)}</span>
+                            </div>
+                            <div class="text-xs text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200/60 leading-relaxed">
+                                <span class="font-semibold text-slate-700">Reference:</span> ${escHTML(pdfDesc)}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } else {
+        dtcsContent = `<p class="text-xs text-slate-400 italic">No DTCs retrieved</p>`;
+    }
+
+    const dtcsSection = `
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <i class="ph-bold ph-cpu text-slate-600"></i> ECU / OBD Results
+            </h3>
+            ${dtcsContent}
+        </section>
+    `;
+
+    // 6. Section: Verified Findings (full text, or "No notes provided")
+    const verifiedText = (record.findings && String(record.findings).trim() && record.findings !== 'Not provided')
+        ? String(record.findings).trim()
+        : 'No notes provided';
+
+    const findingsSection = `
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <i class="ph-bold ph-file-text text-slate-600"></i> Verified Findings
+            </h3>
+            <div class="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200 leading-relaxed whitespace-pre-wrap ${verifiedText === 'No notes provided' ? 'italic text-slate-400' : ''}">
+                ${escHTML(verifiedText)}
+            </div>
+        </section>
+    `;
+
+    // 7. Section: Parts (name, qty, price in ₱, stock badge) and Estimated Total
+    const partsList = Array.isArray(record.parts) ? record.parts : [];
+    let partsHtml = '';
+    if (partsList.length > 0) {
+        partsHtml = `
+            <div class="space-y-1">
+                ${partsList.map(p => {
+                    const partName = (p && p.name && String(p.name).trim()) ? String(p.name).trim() : 'Unnamed Part';
+                    const qty = Number(p && p.qty) || 1;
+                    const price = Number(p && p.price) || 0;
+                    const subtotal = qty * price;
+                    const st = (p && p.stockStatus) ? String(p.stockStatus).trim() : 'In Stock';
+                    const isOutOfStock = st.toLowerCase().includes('out');
+                    const stockBadge = isOutOfStock
+                        ? `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-700 border border-rose-200 whitespace-nowrap">Out of Stock</span>`
+                        : `<span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">In Stock</span>`;
+
+                    const priceFormatted = price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const subtotalFormatted = subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+                    return `
+                        <div class="m-row flex items-center justify-between gap-3 py-2 border-b border-slate-100 last:border-b-0 text-xs sm:text-sm">
+                            <div class="flex flex-col min-w-0 pr-2">
+                                <span class="m-row-label font-semibold text-slate-800 truncate">${escHTML(partName)}</span>
+                                <span class="text-[11px] text-slate-400 font-normal">Qty: ${qty} &times; &#8369;${priceFormatted}</span>
+                            </div>
+                            <div class="m-row-value flex items-center gap-2.5 shrink-0">
+                                ${stockBadge}
+                                <span class="font-bold text-slate-800 font-mono">&#8369;${subtotalFormatted}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } else {
+        partsHtml = `<p class="text-xs text-slate-400 italic py-1">No parts required</p>`;
+    }
+
+    const estTotal = Number(record.estimatedTotal) || 0;
+    const estTotalFormatted = estTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const partsSection = `
+        <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <i class="ph-bold ph-package text-slate-600"></i> Parts Plan &amp; Cost
+            </h3>
+            ${partsHtml}
+            <div class="m-row flex items-center justify-between gap-3 pt-3 mt-3 border-t-2 border-slate-200 text-xs sm:text-sm">
+                <span class="m-row-label font-bold text-slate-700 uppercase tracking-wide">Estimated Total</span>
+                <span class="m-row-value text-base sm:text-lg font-extrabold text-blue-600 font-mono">&#8369;${estTotalFormatted}</span>
+            </div>
+        </section>
+    `;
+
+    bodyEl.innerHTML = `
+        ${overviewSection}
+        ${complaintsSection}
+        ${flagsSection}
+        ${dtcsSection}
+        ${findingsSection}
+        ${partsSection}
+    `;
+
+    openDiagnosticSummaryModal();
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.viewDiagnosticSummary = viewDiagnosticSummary;
+
 function confirmStep3Push() {
     const btn = document.getElementById('btn-confirm-push');
     const originalHTML = btn.innerHTML;
@@ -10974,6 +15360,8 @@ function confirmStep3Push() {
     setTimeout(() => {
         btn.innerHTML = originalHTML;
         btn.disabled = false;
+        
+        saveDiagnosticRecord();
         
         // Hide review grid and actions, show success state
         const reviewGrid = document.querySelector('#step-3-register .grid');
@@ -11150,7 +15538,8 @@ const SETTINGS_CARDS_CONFIG = [
     { id: 'settings-card-session',          roles: ['super_admin', 'admin', 'cashier', 'mechanic'] },
     { id: 'settings-card-shop',             roles: ['super_admin', 'admin'] },
     { id: 'settings-card-password',         roles: ['super_admin', 'admin', 'cashier', 'mechanic'] },
-    { id: 'settings-card-system',           roles: ['super_admin'] },
+    { id: 'settings-card-temp-access',      roles: ['admin'], feature: 'manageTempAccess' },
+    { id: 'settings-card-system',           roles: [] },
     { id: 'settings-card-session-controls', roles: ['super_admin', 'admin', 'mechanic'] }
 ];
 window.SETTINGS_CARDS_CONFIG = SETTINGS_CARDS_CONFIG;
@@ -11200,7 +15589,10 @@ function updateSettingsCardsVisibility(roleId) {
     SETTINGS_CARDS_CONFIG.forEach(card => {
         const el = document.getElementById(card.id);
         if (el) {
-            const isAllowed = card.roles.includes(activeRole);
+            let isAllowed = card.roles.includes(activeRole);
+            if (card.feature) {
+                isAllowed = isAllowed && (typeof hasFeature === 'function' ? hasFeature(card.feature) : true);
+            }
             el.classList.toggle('hidden', !isAllowed);
         }
     });
@@ -11244,6 +15636,15 @@ window.saveShopDetails = function() {
     }
     
     applyShopDetails();
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Settings',
+            action: 'Shop Details Saved',
+            recordRef: details.name || 'Shop Information',
+            severity: 'modification'
+        });
+    }
     
     const savedMsg = document.getElementById('setting-shop-saved-msg');
     if (savedMsg) {
@@ -11270,11 +15671,323 @@ window.triggerSyncNow = function() {
             if (msg) {
                 msg.textContent = 'Last synced: just now';
             }
+            if (typeof logActivity === 'function') {
+                logActivity({
+                    module: 'Sync',
+                    action: 'Manual Sync',
+                    recordRef: 'Cloud Sync Engine',
+                    severity: 'standard'
+                });
+            }
         }, 600);
     } else if (msg) {
         msg.textContent = 'Last synced: just now';
     }
 };
+
+let activeSettingsTab = 'account';
+
+function setSettingsTab(tabId) {
+    activeSettingsTab = tabId || 'account';
+    const tabs = ['account', 'audit', 'backup', 'users'];
+    tabs.forEach(t => {
+        const btn = document.getElementById(`settings-tab-${t}`);
+        const panel = document.getElementById(`settings-tab-panel-${t}`);
+        const isActive = (t === activeSettingsTab);
+        if (btn) {
+            btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            if (isActive) {
+                btn.className = 'settings-tab-btn active px-4 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]';
+            } else {
+                btn.className = 'settings-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]';
+            }
+        }
+        if (panel) {
+            panel.classList.toggle('hidden', !isActive);
+        }
+    });
+
+    if (activeSettingsTab === 'audit') {
+        renderSettingsAuditTable();
+    } else if (activeSettingsTab === 'backup') {
+        updateSettingsBackupTabUI();
+    } else if (activeSettingsTab === 'users') {
+        renderSettingsUsersTabUI();
+    }
+}
+window.setSettingsTab = setSettingsTab;
+
+function formatAuditDateTime(isoStr) {
+    if (!isoStr) return '-';
+    try {
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        }) + ', ' + d.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return isoStr;
+    }
+}
+
+function getSeverityBadge(severity) {
+    const sev = (severity || 'standard').toLowerCase();
+    if (sev === 'critical') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200 uppercase tracking-wider">Critical</span>`;
+    }
+    if (sev === 'modification') {
+        return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">Modification</span>`;
+    }
+    return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wider">Standard</span>`;
+}
+
+function escapeAuditHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function isTimestampInDateRange(timestamp, range) {
+    if (!range || range === 'all') return true;
+    if (!timestamp) return false;
+    const time = new Date(timestamp).getTime();
+    if (isNaN(time)) return false;
+
+    const now = new Date();
+    if (range === 'today') {
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        return time >= startOfToday;
+    }
+    if (range === '7days') {
+        const sevenDaysAgo = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+        return time >= sevenDaysAgo;
+    }
+    if (range === '30days') {
+        const thirtyDaysAgo = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+        return time >= thirtyDaysAgo;
+    }
+    return true;
+}
+
+function getFilteredActivityLogs() {
+    if (typeof activityLog === 'undefined' || !Array.isArray(activityLog)) return [];
+    
+    const searchVal = (document.getElementById('settings-audit-search')?.value || '').trim().toLowerCase();
+    const moduleVal = (document.getElementById('settings-audit-filter-module')?.value || '').trim();
+    const severityVal = (document.getElementById('settings-audit-filter-severity')?.value || '').trim();
+    const dateRangeVal = (document.getElementById('settings-audit-filter-date')?.value || 'all').trim();
+
+    return activityLog.filter(item => {
+        if (moduleVal && item.module !== moduleVal) {
+            return false;
+        }
+
+        if (severityVal && item.severity !== severityVal) {
+            return false;
+        }
+
+        if (dateRangeVal !== 'all' && !isTimestampInDateRange(item.timestamp, dateRangeVal)) {
+            return false;
+        }
+
+        if (searchVal) {
+            const roleLabel = (ROLES_CONFIG && ROLES_CONFIG[item.roleId]?.label) || item.roleId || '';
+            const textToSearch = [
+                item.action || '',
+                item.recordRef || '',
+                item.userName || '',
+                roleLabel,
+                item.module || '',
+                item.before || '',
+                item.after || '',
+                item.severity || ''
+            ].join(' ').toLowerCase();
+
+            if (!textToSearch.includes(searchVal)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
+}
+
+window.toggleAuditRowExpand = function(id, event) {
+    if (event) event.stopPropagation();
+    const diffRow = document.getElementById(`audit-diff-${id}`);
+    const caret = document.getElementById(`audit-caret-${id}`);
+    if (diffRow) {
+        const isHidden = diffRow.classList.contains('hidden');
+        diffRow.classList.toggle('hidden', !isHidden);
+        if (caret) {
+            caret.style.transform = isHidden ? 'rotate(180deg)' : '';
+        }
+    }
+};
+
+window.clearSettingsAuditFilters = function() {
+    const s = document.getElementById('settings-audit-search');
+    const m = document.getElementById('settings-audit-filter-module');
+    const sev = document.getElementById('settings-audit-filter-severity');
+    const d = document.getElementById('settings-audit-filter-date');
+    if (s) s.value = '';
+    if (m) m.value = '';
+    if (sev) sev.value = '';
+    if (d) d.value = 'all';
+    renderSettingsAuditTable();
+};
+
+window.exportSettingsAuditCSV = function() {
+    const logs = getFilteredActivityLogs();
+    if (!logs || logs.length === 0) {
+        return;
+    }
+    const headers = ['Date & Time', 'User', 'Role', 'Module', 'Action', 'Record', 'Before', 'After', 'Severity'];
+    const rows = logs.map(item => {
+        const roleLabel = (ROLES_CONFIG && ROLES_CONFIG[item.roleId]?.label) || item.roleId || '';
+        const dt = formatAuditDateTime(item.timestamp);
+        return [
+            dt,
+            item.userName || '',
+            roleLabel,
+            item.module || '',
+            item.action || '',
+            item.recordRef || '',
+            item.before || '',
+            item.after || '',
+            item.severity || ''
+        ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `motocare-audit-log-${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+window.renderSettingsAuditTable = function() {
+    const tbody = document.getElementById('settings-audit-tbody');
+    if (!tbody) return;
+
+    const logs = getFilteredActivityLogs();
+    if (logs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="py-12 text-center text-slate-500">
+                    <div class="flex flex-col items-center justify-center gap-2">
+                        <i class="ph-bold ph-clipboard-text text-3xl text-slate-300"></i>
+                        <p class="font-semibold text-sm text-slate-700">No activity found.</p>
+                        <button type="button" onclick="clearSettingsAuditFilters()" class="text-xs text-blue-600 hover:text-blue-800 font-bold hover:underline mt-1">Clear filters</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = logs.map(item => {
+        const roleLabel = (ROLES_CONFIG && ROLES_CONFIG[item.roleId]?.label) || item.roleId || '';
+        const dtStr = formatAuditDateTime(item.timestamp);
+        const hasDiff = (item.before !== undefined && item.before !== null && item.before !== '') ||
+                        (item.after !== undefined && item.after !== null && item.after !== '');
+        
+        const diffCell = hasDiff ? `
+            <button type="button" onclick="toggleAuditRowExpand('${item.id}', event)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer">
+                <i class="ph-bold ph-caret-down text-[10px] transition-transform duration-150" id="audit-caret-${item.id}"></i> View diff
+            </button>
+        ` : `<span class="text-slate-300">-</span>`;
+
+        const subRow = hasDiff ? `
+            <tr id="audit-diff-${item.id}" class="hidden bg-slate-50/80 border-b border-slate-100">
+                <td colspan="7" class="p-3 pl-8">
+                    <div class="flex flex-wrap items-center gap-4 bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
+                        <span class="font-bold text-slate-600 flex items-center gap-1.5"><i class="ph-bold ph-git-diff text-blue-500"></i> Diff Details:</span>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded">Before</span>
+                            <span class="font-mono text-xs bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-800">${escapeAuditHtml(item.before || '(empty)')}</span>
+                        </div>
+                        <i class="ph-bold ph-arrow-right text-slate-400 text-xs"></i>
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">After</span>
+                            <span class="font-mono text-xs bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-800">${escapeAuditHtml(item.after || '(empty)')}</span>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        ` : '';
+
+        return `
+            <tr class="hover:bg-slate-50/70 transition-colors border-b border-slate-100">
+                <td class="p-3.5 whitespace-nowrap text-slate-600 font-mono text-[11px]">${dtStr}</td>
+                <td class="p-3.5 whitespace-nowrap font-medium text-slate-800">
+                    <span>${escapeAuditHtml(item.userName || 'System')}</span>
+                    <span class="text-[11px] text-slate-400 ml-1">(${escapeAuditHtml(roleLabel)})</span>
+                </td>
+                <td class="p-3.5 whitespace-nowrap">
+                    <span class="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">${escapeAuditHtml(item.module || '-')}</span>
+                </td>
+                <td class="p-3.5 whitespace-nowrap font-semibold text-slate-700">${escapeAuditHtml(item.action || '-')}</td>
+                <td class="p-3.5 text-slate-600 max-w-[200px] truncate" title="${escapeAuditHtml(item.recordRef || '')}">${escapeAuditHtml(item.recordRef || '-')}</td>
+                <td class="p-3.5 whitespace-nowrap">${diffCell}</td>
+                <td class="p-3.5 whitespace-nowrap text-center">${getSeverityBadge(item.severity)}</td>
+            </tr>
+            ${subRow}
+        `;
+    }).join('');
+};
+
+function updateSettingsBackupTabUI() {
+    if (typeof updateBackupSyncUI === 'function') {
+        updateBackupSyncUI();
+    }
+}
+window.updateSettingsBackupTabUI = updateSettingsBackupTabUI;
+
+function renderSettingsUsersTabUI() {
+    if (typeof mockUserData === 'undefined' || !Array.isArray(mockUserData)) return;
+    const counts = {
+        super_admin: 0,
+        admin: 0,
+        cashier: 0,
+        mechanic: 0,
+        total: mockUserData.length
+    };
+    mockUserData.forEach(u => {
+        if (counts[u.roleValue] !== undefined) {
+            counts[u.roleValue]++;
+        }
+    });
+
+    const elSuperAdmin = document.getElementById('settings-count-super_admin');
+    const elAdmin = document.getElementById('settings-count-admin');
+    const elCashier = document.getElementById('settings-count-cashier');
+    const elMechanic = document.getElementById('settings-count-mechanic');
+    const elTotal = document.getElementById('settings-count-total');
+
+    if (elSuperAdmin) elSuperAdmin.textContent = counts.super_admin;
+    if (elAdmin) elAdmin.textContent = counts.admin;
+    if (elCashier) elCashier.textContent = counts.cashier;
+    if (elMechanic) elMechanic.textContent = counts.mechanic;
+    if (elTotal) elTotal.textContent = counts.total;
+}
+window.renderSettingsUsersTabUI = renderSettingsUsersTabUI;
 
 window.initSettingsView = function() {
     const rawRole = currentRole || sessionStorage.getItem('currentUserRole');
@@ -11304,6 +16017,26 @@ window.initSettingsView = function() {
     
     updateSettingsCardsVisibility(roleId);
     loadShopDetailsIntoForm();
+    if (roleId === 'admin' && typeof renderTempAccessCard === 'function') {
+        renderTempAccessCard();
+    }
+
+    const isSuperAdmin = (roleId === 'super_admin');
+    const tabsBar = document.getElementById('settings-tabs-bar');
+    if (tabsBar) {
+        if (isSuperAdmin) {
+            tabsBar.classList.remove('hidden');
+            tabsBar.classList.add('flex');
+            setSettingsTab(activeSettingsTab || 'account');
+        } else {
+            tabsBar.classList.add('hidden');
+            tabsBar.classList.remove('flex');
+            activeSettingsTab = 'account';
+            const panels = document.querySelectorAll('.settings-tab-panel');
+            panels.forEach(p => p.classList.add('hidden'));
+            document.getElementById('settings-tab-panel-account')?.classList.remove('hidden');
+        }
+    }
 };
 
 window.changePassword = function() {
@@ -11340,6 +16073,15 @@ window.changePassword = function() {
     const savedPwds = JSON.parse(sessionStorage.getItem('mockUserPasswords') || '{}');
     savedPwds[roleId] = newPwd;
     sessionStorage.setItem('mockUserPasswords', JSON.stringify(savedPwds));
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Users',
+            action: 'Password Reset',
+            recordRef: user.name,
+            severity: 'critical'
+        });
+    }
     
     msg.textContent = 'Password updated successfully.';
     msg.classList.add('bg-emerald-50', 'text-emerald-600', 'border-emerald-200');
@@ -11348,6 +16090,252 @@ window.changePassword = function() {
     document.getElementById('acc-pwd-new').value = '';
     document.getElementById('acc-pwd-confirm').value = '';
 };
+
+// --- Temporary Access UI Management & Real-time Synchronization ---
+
+function formatTimeRemaining(ms) {
+    if (ms <= 0) return 'expired';
+    const totalMinutes = Math.floor(ms / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    if (hours > 0) {
+        return `${hours}h ${mins}m left`;
+    }
+    return `${Math.max(1, mins)}m left`;
+}
+window.formatTimeRemaining = formatTimeRemaining;
+
+function renderTempAccessCard() {
+    const card = document.getElementById('settings-card-temp-access');
+    if (!card) return;
+
+    // Populate mechanic dropdown from mockUserData
+    const mechSelect = document.getElementById('temp-access-mechanic');
+    if (mechSelect) {
+        const mechs = (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData))
+            ? mockUserData.filter(u => u.roleValue === 'mechanic' && u.statusValue !== 'inactive')
+            : [];
+        const currentVal = mechSelect.value;
+        mechSelect.innerHTML = mechs.map(m => `
+            <option value="${m.id}">${escapeAuditHtml(m.name)} (${escapeAuditHtml(m.username || 'Mechanic')})</option>
+        `).join('');
+        if (currentVal && mechs.some(m => m.id === currentVal)) {
+            mechSelect.value = currentVal;
+        }
+    }
+
+    // Render active grants list
+    const listEl = document.getElementById('temp-grants-list');
+    if (!listEl) return;
+
+    const grants = getTempGrants();
+    const now = Date.now();
+    const active = grants.filter(g => g.expiresAt > now);
+
+    if (active.length === 0) {
+        listEl.innerHTML = `
+            <div class="py-4 px-3 bg-slate-50 rounded-xl border border-slate-100 text-center text-xs text-slate-400 font-medium flex items-center justify-center gap-2">
+                <i class="ph-bold ph-info text-slate-300 text-base"></i> No active temporary access grants.
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = active.map(g => {
+        const timeLeft = formatTimeRemaining(g.expiresAt - now);
+        const permBadges = (g.permissions || []).map(p => {
+            if (p === 'inventory') {
+                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200"><i class="ph-bold ph-package"></i> Inventory</span>`;
+            }
+            if (p === 'payment') {
+                return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="ph-bold ph-receipt"></i> Payment</span>`;
+            }
+            return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">${escapeAuditHtml(p)}</span>`;
+        }).join(' ');
+
+        return `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 gap-3">
+                <div class="flex flex-col gap-1.5 min-w-0">
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold text-sm text-slate-800">${escapeAuditHtml(g.userName)}</span>
+                        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                            <i class="ph-bold ph-clock text-[10px]"></i> ${timeLeft}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        ${permBadges}
+                        <span class="text-[11px] text-slate-400">(${escapeAuditHtml(g.durationLabel || '')})</span>
+                    </div>
+                </div>
+                <button type="button" onclick="revokeTemporaryAccess('${g.id}')" class="px-3.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-1.5 self-start sm:self-center shrink-0">
+                    <i class="ph-bold ph-x-circle text-sm"></i> Revoke
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+window.renderTempAccessCard = renderTempAccessCard;
+
+window.handleGrantTempAccess = function(event) {
+    if (event) event.preventDefault();
+    if (!hasFeature('manageTempAccess')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
+
+    const mechSelect = document.getElementById('temp-access-mechanic');
+    const invCheck = document.getElementById('temp-perm-inventory');
+    const payCheck = document.getElementById('temp-perm-payment');
+    const durSelect = document.getElementById('temp-access-duration');
+    const permErr = document.getElementById('temp-access-perm-error');
+    const successMsg = document.getElementById('temp-access-msg');
+
+    if (permErr) permErr.classList.add('hidden');
+
+    const hasInv = invCheck && invCheck.checked;
+    const hasPay = payCheck && payCheck.checked;
+
+    if (!hasInv && !hasPay) {
+        if (permErr) permErr.classList.remove('hidden');
+        return;
+    }
+
+    const mechUserId = mechSelect ? mechSelect.value : '';
+    const mechUser = (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData))
+        ? mockUserData.find(u => u.id === mechUserId)
+        : null;
+    const mechName = mechUser ? mechUser.name : (mechSelect ? mechSelect.options[mechSelect.selectedIndex]?.text : 'Mechanic');
+
+    const perms = [];
+    if (hasInv) perms.push('inventory');
+    if (hasPay) perms.push('payment');
+
+    const durVal = durSelect ? durSelect.value : '1h';
+    let expiresAt = Date.now() + 60 * 60 * 1000;
+    let durationLabel = '1 hour';
+
+    if (durVal === '4h') {
+        expiresAt = Date.now() + 4 * 60 * 60 * 1000;
+        durationLabel = '4 hours';
+    } else if (durVal === 'today') {
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        expiresAt = end.getTime();
+        durationLabel = 'until end of today';
+    } else if (durVal === '24h') {
+        expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+        durationLabel = '24 hours';
+    }
+
+    const grants = getTempGrants();
+    const updated = grants.filter(g => g.userId !== mechUserId);
+
+    const newGrant = {
+        id: 'tg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        userId: mechUserId,
+        userName: mechName,
+        permissions: perms,
+        grantedAt: Date.now(),
+        expiresAt: expiresAt,
+        durationLabel: durationLabel
+    };
+
+    updated.push(newGrant);
+    saveTempGrants(updated);
+
+    if (typeof logActivity === 'function') {
+        const permText = perms.map(p => p === 'inventory' ? 'Inventory - restock and add parts' : 'Payment - record payments and walk-in sales').join('; ');
+        logActivity({
+            module: 'Settings',
+            action: 'Temporary Access Granted',
+            recordRef: `${mechName} (${perms.join(', ')})`,
+            before: '(none)',
+            after: `${permText} (${durationLabel})`,
+            severity: 'modification'
+        });
+    }
+
+    if (invCheck) invCheck.checked = false;
+    if (payCheck) payCheck.checked = false;
+
+    renderTempAccessCard();
+    checkTempGrantsExpiry();
+
+    if (successMsg) {
+        successMsg.classList.remove('hidden');
+        successMsg.classList.add('inline-flex');
+        clearTimeout(window._tempAccessMsgTimer);
+        window._tempAccessMsgTimer = setTimeout(() => {
+            successMsg.classList.add('hidden');
+            successMsg.classList.remove('inline-flex');
+        }, 2500);
+    }
+};
+
+window.revokeTemporaryAccess = function(grantId) {
+    if (!hasFeature('manageTempAccess')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return;
+    }
+
+    const grants = getTempGrants();
+    const grant = grants.find(g => g.id === grantId);
+    const updated = grants.filter(g => g.id !== grantId);
+    saveTempGrants(updated);
+
+    if (grant && typeof logActivity === 'function') {
+        const permText = (grant.permissions || []).map(p => p === 'inventory' ? 'Inventory' : 'Payment').join(', ');
+        logActivity({
+            module: 'Settings',
+            action: 'Temporary Access Revoked',
+            recordRef: `${grant.userName} (${permText})`,
+            before: `${permText} (${grant.durationLabel || ''})`,
+            after: '(revoked)',
+            severity: 'modification'
+        });
+    }
+
+    renderTempAccessCard();
+    checkTempGrantsExpiry();
+};
+
+function checkTempGrantsExpiry() {
+    const grants = getTempGrants();
+    const now = Date.now();
+    const validGrants = grants.filter(g => g.expiresAt > now);
+    if (validGrants.length !== grants.length) {
+        saveTempGrants(validGrants);
+    }
+
+    if (document.getElementById('temp-grants-list')) {
+        renderTempAccessCard();
+    }
+
+    const isMobileMode = (typeof document !== 'undefined' && document.body && document.body.classList.contains('mobile-app'));
+    const isMech = (typeof currentRole !== 'undefined' && currentRole === 'mechanic');
+    if (isMobileMode || isMech) {
+        if (document.getElementById('inventory-tbody') || document.getElementById('inventory-mobile-cards')) {
+            if (typeof renderInventory === 'function') renderInventory();
+        }
+        if (document.getElementById('active-repairs-main') || document.getElementById('repairs-grid')) {
+            if (typeof renderRepairs === 'function') renderRepairs();
+        }
+        if (document.getElementById('m-more-view')) {
+            if (typeof updateMobileMoreNav === 'function') updateMobileMoreNav();
+        }
+        const isTxnView = document.querySelector('#main-content-area #transactions-tbody, #main-content-area #transactions-mobile-cards');
+        if (isTxnView && isMech && !hasFeature('walkInSale') && !hasFeature('recordPayment')) {
+            if (typeof loadView === 'function') loadView('dashboard');
+        }
+    }
+}
+window.checkTempGrantsExpiry = checkTempGrantsExpiry;
+
+if (typeof window !== 'undefined' && !window._tempGrantsInterval) {
+    window._tempGrantsInterval = setInterval(() => {
+        checkTempGrantsExpiry();
+    }, 30000);
+}
 
 
 
@@ -11722,4 +16710,6 @@ document.addEventListener('keydown', function(e) {
     if (e.target.matches('button, a, input, select, textarea')) return;
     e.preventDefault();
     toggleMCard(head);
+
 });
+

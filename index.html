@@ -291,14 +291,39 @@
 <template id="view-backup">
 <div id="view-backup" class="view-section active max-w-6xl mx-auto space-y-6">
     
-    <!-- 1. Status Indicator (Top) -->
-    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">System Backup Status</span>
-            <p class="text-base font-bold text-slate-800" id="last-backup-date-text">Last Manual Backup: Oct 12, 2026 - 4:30 PM</p>
+    <!-- 1. Cloud Synchronization & Status Bar -->
+    <div id="backup-sync-card" class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div class="space-y-1">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="ph-bold ph-arrows-clockwise" id="sync-cloud-icon"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-slate-800">Cloud Data Synchronization</span>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 mt-0.5">
+                        <span id="sync-last-synced-text">Last synced: about 2 hours ago</span>
+                        <span class="text-slate-300">•</span>
+                        <span id="sync-pending-changes-text" class="font-semibold text-slate-700">0 pending changes to sync</span>
+                    </div>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-400 pl-[52px]">Simulated cloud sync (prototype)</p>
         </div>
-        <div id="backup-status-container">
-            <!-- Dynamic Status Badge Injected via JS -->
+        
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+            <span id="sync-inline-msg" class="text-xs font-semibold text-emerald-600 hidden"></span>
+            <button id="btn-sync-now-backup" onclick="triggerBackupSyncNow(event)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-indigo-500/20 flex items-center gap-2 transition-colors">
+                <i class="ph-bold ph-arrows-clockwise text-sm"></i> Sync Now
+            </button>
+            <div id="backup-status-container" class="shrink-0">
+                <!-- Dynamic Status Badge Injected via JS -->
+            </div>
+            <p class="text-xs text-slate-500 font-medium hidden" id="last-backup-date-text">Last Manual Backup: Oct 12, 2026 - 4:30 PM</p>
         </div>
     </div>
 
@@ -306,7 +331,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
         <!-- 2. Export / Create Backup Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+        <div id="backup-export-card" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
             <div>
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
@@ -323,8 +348,9 @@
             </div>
             
             <div class="space-y-4 pt-4 border-t border-slate-100">
-                <button onclick="createManualBackup(event)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-colors">
-                    <i class="ph-bold ph-database"></i> Download Database Backup
+                <div id="backup-download-success-msg" class="hidden p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold flex items-center gap-2"></div>
+                <button id="btn-download-backup" onclick="downloadBackupData(event)" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-sm font-bold shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-colors">
+                    <i class="ph-bold ph-database"></i> Download Backup
                 </button>
                 <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-start gap-2 text-[11px] text-slate-500 leading-relaxed">
                     <i class="ph-fill ph-info text-blue-500 mt-0.5 shrink-0 text-sm"></i>
@@ -334,7 +360,7 @@
         </div>
 
         <!-- 3. Import / Restore Section -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+        <div id="backup-restore-card" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
             <div>
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center text-xl shrink-0">
@@ -348,26 +374,52 @@
                 
                 <!-- File Upload Area -->
                 <div class="border-2 border-dashed border-slate-300 hover:border-slate-400 bg-slate-50 rounded-lg p-4 text-center cursor-pointer transition-colors mb-4">
-                    <input type="file" id="restore-file-input" class="hidden" accept=".sql,.json" onchange="updateRestoreFileName(this)">
+                    <input type="file" id="restore-file-input" class="hidden" accept=".json" onchange="handleRestoreFileSelect(this)">
                     <label for="restore-file-input" class="cursor-pointer flex flex-col items-center gap-1">
                         <i class="ph ph-file-arrow-up text-2xl text-slate-400"></i>
-                        <span class="text-xs font-semibold text-slate-700" id="restore-file-name">Choose database file (.sql or .json)</span>
-                        <span class="text-[10px] text-slate-400">Drag and drop your backup file here</span>
+                        <span class="text-xs font-semibold text-slate-700" id="restore-file-name">Choose database file (.json)</span>
+                        <span class="text-[10px] text-slate-400">Select a valid MotoCare JSON backup file</span>
                     </label>
                 </div>
+
+                <!-- Inline Error Box -->
+                <div id="restore-error-box" class="hidden mb-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg text-xs font-medium flex items-center gap-2">
+                    <i class="ph-bold ph-warning-circle text-red-500 text-base shrink-0"></i>
+                    <span id="restore-error-text">Invalid backup file.</span>
+                </div>
+
+                <!-- Inline Success Box -->
+                <div id="restore-success-box" class="hidden mb-4 p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-medium flex items-center gap-2">
+                </div>
+
+                <!-- Inline Preview Box -->
+                <div id="restore-preview-box" class="hidden space-y-3 mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+                        <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                            <i class="ph-bold ph-file-text text-blue-600"></i> Archive Preview
+                        </span>
+                        <span id="restore-preview-date" class="text-[11px] font-mono text-slate-500"></span>
+                    </div>
+                    <div id="restore-preview-counts" class="grid grid-cols-2 gap-2 text-[11px]">
+                    </div>
+                    <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium flex items-center gap-2">
+                        <i class="ph-bold ph-warning text-amber-600 text-sm shrink-0"></i>
+                        <span>This replaces the current data.</span>
+                    </div>
+                    <button id="btn-execute-restore" onclick="executeInlineRestore(event)" class="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-lg text-xs font-bold shadow-md shadow-red-500/20 flex items-center justify-center gap-2 transition-colors">
+                        <i class="ph-bold ph-arrow-counter-clockwise text-sm"></i> Restore
+                    </button>
+                </div>
             </div>
-            <div class="space-y-4 pt-4 border-t border-slate-100">
-                <button onclick="openRestorePasswordModal()" class="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg text-sm font-bold shadow-md shadow-red-500/20 flex items-center justify-center gap-2 transition-colors">
-                    <i class="ph-bold ph-warning"></i> Restore Database
-                </button>
+
+            <div id="restore-default-note" class="pt-4 border-t border-slate-100">
                 <div class="p-3 bg-red-50 rounded-lg border border-red-200 flex items-start gap-2 text-[11px] text-red-700 leading-relaxed font-medium">
                     <i class="ph-fill ph-warning-circle text-red-500 mt-0.5 shrink-0 text-sm"></i>
                     <span>WARNING: Restoring a backup will overwrite all current system data. Any transactions made after the backup date will be permanently lost.</span>
                 </div>
             </div>
-            </div>
-
         </div>
+
     </div>
 
     <!-- 4. Backup History Log Table -->
@@ -428,6 +480,16 @@
 
 <template id="view-customers">
 <div id="view-customers" class="view-section active max-w-6xl mx-auto">
+    <!-- Header with Title & Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Customers &amp; Motorcycles</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Manage customer profiles and registered motorcycles</p>
+        </div>
+    </div>
     
     <!-- Top Action Bar -->
     <div class="cust-toolbar bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-4 sm:mb-6 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
@@ -600,7 +662,10 @@
     <!-- 1. Top Welcome Bar & System Status -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
         <div>
-            <h2 class="text-xl font-bold text-slate-800">Welcome back,  👋</h2>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h2 class="text-xl font-bold text-slate-800">Welcome back,  👋</h2>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
             <p id="dashboard-subtext" class="text-sm text-slate-500 font-medium mt-0.5">Owner/Cashier (Admin) | Thursday, September 24, 2026</p>
         </div>
         <div class="flex items-center gap-3">
@@ -611,6 +676,67 @@
                 <i class="ph-bold ph-bell text-lg"></i>
                 <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
+        </div>
+    </div>
+
+    <!-- Super Admin System Health Card (Desktop Super Admin Only) -->
+    <div id="dashboard-system-health-card" class="hidden bg-white p-5 rounded-xl shadow-sm border border-slate-200 mb-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl shrink-0">
+                    <i class="ph-bold ph-heartbeat"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-base font-bold text-slate-800">System Health</h3>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400">Simulated server &amp; database telemetry</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="dashboard-sync-msg" class="text-xs font-semibold text-emerald-600 hidden"></span>
+                <button id="btn-sync-now-dashboard" onclick="triggerBackupSyncNow(event)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-indigo-500/20 flex items-center gap-2 transition-colors">
+                    <i class="ph-bold ph-arrows-clockwise text-sm"></i> Sync Now
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Server Status</div>
+                <div class="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span>Online</span>
+                    <span class="text-[10px] font-normal text-slate-400">(simulated)</span>
+                </div>
+            </div>
+
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Last Synced</div>
+                <div id="health-last-synced" class="text-sm font-bold text-slate-800">
+                    2 hours ago
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5">from syncState</div>
+            </div>
+
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Pending Changes</div>
+                <div id="health-pending-changes" class="text-sm font-bold text-slate-800">
+                    0
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5">getPendingChanges()</div>
+            </div>
+
+            <div class="p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">Stored Records</div>
+                <div id="health-stored-records" class="text-sm font-bold text-slate-800">
+                    0
+                </div>
+                <div id="health-stored-breakdown" class="text-[10px] text-slate-400 mt-0.5">parts, jobs, txns, users</div>
+            </div>
         </div>
     </div>
 
@@ -649,16 +775,16 @@
     </div>
 
     <!-- 3. Quick Action Shortcuts -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <button onclick="document.querySelector('[data-target=\'customers\']').click()" class="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-blue-700">
+    <div id="dashboard-quick-actions" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <button id="quick-action-new-ticket" onclick="document.querySelector('[data-target=\'customers\']').click()" class="bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-blue-700">
             <i class="ph-fill ph-file-plus text-3xl text-slate-400 group-hover:text-blue-500 transition-colors"></i>
             <span class="font-bold text-sm">New Repair Ticket</span>
         </button>
-        <button onclick="document.querySelector('[data-target=\'diagnostics\']').click()" class="bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-purple-700">
+        <button id="quick-action-run-scan" onclick="document.querySelector('[data-target=\'diagnostics\']').click()" class="bg-white hover:bg-purple-50 border border-slate-200 hover:border-purple-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-purple-700">
             <i class="ph-fill ph-cpu text-3xl text-slate-400 group-hover:text-purple-500 transition-colors"></i>
             <span class="font-bold text-sm">Run ECU/OBD Scan</span>
         </button>
-        <button onclick="document.querySelector('[data-target=\'transactions\']').click()" class="bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-emerald-700">
+        <button id="quick-action-walk-in" onclick="document.querySelector('[data-target=\'transactions\']').click()" class="bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 p-4 rounded-xl shadow-sm transition-all flex flex-col items-center justify-center gap-2 group text-slate-700 hover:text-emerald-700">
             <i class="ph-fill ph-shopping-bag text-3xl text-slate-400 group-hover:text-emerald-500 transition-colors"></i>
             <span class="font-bold text-sm">Quick Walk-In Sale</span>
         </button>
@@ -1677,8 +1803,368 @@
 
 </template>
 
+    <!-- Inspection Summary Modal (Read-Only) -->
+    <div id="modal-diag-summary" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-6">
+        <div id="diag-summary-backdrop" onclick="closeDiagnosticSummaryModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
+        <div id="diag-summary-content" class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-fill ph-clipboard-text"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h2 class="text-base sm:text-lg font-bold text-slate-800">Inspection Summary</h2>
+                            <span id="diag-summary-plate" class="text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded font-mono"></span>
+                            <span id="diag-summary-status"></span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-0.5">Read-only diagnostic inspection report</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeDiagnosticSummaryModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Close summary modal">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div id="diag-summary-body" class="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4 sm:gap-5 text-sm">
+                <!-- Dynamically populated by viewDiagnosticSummary -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50 shrink-0">
+                <button type="button" onclick="closeDiagnosticSummaryModal()" class="px-5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Close</button>
+            </div>
+        </div>
+    </div>
+
+<template id="view-diagnostic-records">
+<div id="view-diagnostic-records" class="view-section active max-w-6xl mx-auto space-y-4">
+    <!-- Header with Title & Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Diagnostic Records</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Completed inspections sent from the mobile app</p>
+        </div>
+    </div>
+
+    <!-- Toolbar: Search, Status filter, Date Range filter -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-3 items-center justify-between">
+        <div class="relative w-full lg:w-80 md:w-96 shrink-0">
+            <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="diag-rec-search" autocomplete="off" placeholder="Search plate, motorcycle, mechanic, DTC, findings..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm h-[40px]">
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2.5 w-full lg:w-auto items-center justify-end">
+            <select id="diag-rec-filter-status" class="py-2 px-3 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 h-[40px]">
+                <option value="all">Status: All</option>
+                <option value="Waiting for Parts">Waiting for Parts</option>
+                <option value="Pending Post-Scan">Pending Post-Scan</option>
+                <option value="Completed">Completed</option>
+            </select>
+            <select id="diag-rec-filter-date" class="py-2 px-3 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 h-[40px]">
+                <option value="all">Date Range: All</option>
+                <option value="today">Today</option>
+                <option value="7days">Last 7 Days</option>
+                <option value="30days">Last 30 Days</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Live Count -->
+    <div class="flex items-center justify-between px-1">
+        <span id="diag-rec-count" class="text-xs font-bold text-slate-500">8 records</span>
+    </div>
+
+    <!-- Records Table Container -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse min-w-[950px]">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                        <th class="p-4">Date &amp; Time</th>
+                        <th class="p-4">Plate No.</th>
+                        <th class="p-4">Motorcycle</th>
+                        <th class="p-4">Mechanic</th>
+                        <th class="p-4">Retrieved DTCs</th>
+                        <th class="p-4">Verified Findings</th>
+                        <th class="p-4">Status</th>
+                        <th class="p-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="diag-records-tbody" class="divide-y divide-slate-100 text-sm">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</template>
+
+<template id="view-diagnostics-admin">
+<div id="view-diagnostics-admin" class="view-section active max-w-6xl mx-auto space-y-4">
+    <!-- Header with Title, Audit view pill, and Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Diagnostics Monitoring</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">Audit view</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Read-only view for audit monitoring and system configuration</p>
+        </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <div class="border-b border-slate-200 flex gap-4 sm:gap-8 px-1" role="tablist" aria-label="Diagnostics Monitoring Tabs">
+        <button type="button" id="tab-diag-audit" role="tab" aria-selected="true" aria-controls="panel-diag-audit" onclick="setDiagTab('audit')" class="pb-3 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors inline-flex items-center gap-2">
+            <i class="ph-bold ph-clipboard-text"></i> Audit Logs
+        </button>
+        <button type="button" id="tab-diag-kb" role="tab" aria-selected="false" aria-controls="panel-diag-kb" onclick="setDiagTab('kb')" class="pb-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700 transition-colors inline-flex items-center gap-2">
+            <i class="ph-bold ph-book-open"></i> DTC Knowledge Base
+        </button>
+    </div>
+
+    <!-- Panel 1: Audit Logs -->
+    <div id="panel-diag-audit" role="tabpanel" aria-labelledby="tab-diag-audit" class="space-y-4">
+        <!-- Toolbar: Search, Status filter, Date Range filter, Export CSV -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-3 items-center justify-between">
+            <div class="relative w-full lg:w-80 md:w-96 shrink-0">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="diag-rec-search" autocomplete="off" placeholder="Search plate, motorcycle, mechanic, DTC, findings..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm h-[40px]">
+            </div>
+            <div class="flex flex-col sm:flex-row gap-2.5 w-full lg:w-auto items-center justify-end">
+                <select id="diag-rec-filter-status" class="py-2 px-3 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 h-[40px]">
+                    <option value="all">Status: All</option>
+                    <option value="Waiting for Parts">Waiting for Parts</option>
+                    <option value="Pending Post-Scan">Pending Post-Scan</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <select id="diag-rec-filter-date" class="py-2 px-3 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 h-[40px]">
+                    <option value="all">Date Range: All</option>
+                    <option value="today">Today</option>
+                    <option value="7days">Last 7 Days</option>
+                    <option value="30days">Last 30 Days</option>
+                </select>
+                <button type="button" onclick="exportDiagnosticAuditCSV()" class="w-full sm:w-auto px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors inline-flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap h-[40px]">
+                    <i class="ph-bold ph-download-simple"></i> Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Live Count -->
+        <div class="flex items-center justify-between px-1">
+            <span id="diag-rec-count" class="text-xs font-bold text-slate-500">8 records</span>
+        </div>
+
+        <!-- Records Table Container -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[1050px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                            <th class="p-4">Date &amp; Time</th>
+                            <th class="p-4">Record ID</th>
+                            <th class="p-4">Plate No.</th>
+                            <th class="p-4">Motorcycle</th>
+                            <th class="p-4">Mechanic</th>
+                            <th class="p-4">Retrieved DTCs</th>
+                            <th class="p-4">Verified Findings</th>
+                            <th class="p-4">Status</th>
+                            <th class="p-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="diag-records-tbody" class="divide-y divide-slate-100 text-sm">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel 2: DTC Knowledge Base -->
+    <div id="panel-diag-kb" role="tabpanel" aria-labelledby="tab-diag-kb" class="space-y-4 hidden">
+        <!-- Reference Line & Count -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+            <div id="dtc-kb-ref-container" class="text-xs sm:text-sm text-slate-500 font-medium flex items-center gap-2">
+                <span>Reference: <span class="font-bold text-slate-700">Yamaha Sniper 150 V2 (Appendix E)</span></span>
+            </div>
+            <span id="dtc-kb-count" class="text-xs font-bold text-slate-500">12 rules</span>
+        </div>
+
+        <!-- Toolbar: Search & Group Filter -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row gap-3 items-center justify-between">
+            <div class="relative w-full sm:w-80 md:w-96 shrink-0">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="dtc-kb-search" autocomplete="off" placeholder="Search code, error no., component, part..." class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-sm h-[40px]">
+            </div>
+            <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                <select id="dtc-kb-filter-group" class="py-2 px-3 rounded-lg border border-slate-300 bg-slate-50 text-xs sm:text-sm outline-none w-full sm:w-auto focus:ring-2 focus:ring-blue-500/20 h-[40px]">
+                    <option value="all">Group: All</option>
+                    <option value="common">Common</option>
+                    <option value="least">Less common</option>
+                </select>
+                <button type="button" id="btn-dtc-add-rule" onclick="openAddDtcModal()" class="hidden px-4 py-2 rounded-lg text-xs sm:text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors inline-flex items-center justify-center gap-1.5 shadow-sm whitespace-nowrap h-[40px]">
+                    <i class="ph-bold ph-plus"></i> Add Rule
+                </button>
+            </div>
+        </div>
+
+        <!-- Rules Table Container -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+            <div class="overflow-x-auto">
+                <table id="dtc-kb-table" class="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-bold">
+                            <th class="p-3.5 w-28">DTC Codes</th>
+                            <th class="p-3.5 w-24">Error No.</th>
+                            <th class="p-3.5 w-40">Component</th>
+                            <th class="p-3.5 min-w-[180px]">Description</th>
+                            <th class="p-3.5 min-w-[200px]">Verification Steps</th>
+                            <th class="p-3.5 min-w-[190px]">Related Parts</th>
+                            <th class="p-3.5 w-28 text-center">Group</th>
+                            <th class="dtc-manage-th hidden p-3.5 w-28 text-center">Validation</th>
+                            <th class="dtc-manage-th hidden p-3.5 w-24 text-center">Source</th>
+                            <th class="dtc-manage-th hidden p-3.5 w-48 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dtc-kb-tbody" class="divide-y divide-slate-100 text-sm">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- DTC Rule Add/Edit Modal (Super Admin DTC Configuration) -->
+    <div id="modal-dtc-rule" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-3 sm:p-6">
+        <div id="dtc-rule-backdrop" onclick="closeDtcRuleModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
+        <div id="dtc-rule-content" class="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col transform scale-95 opacity-0 transition-all duration-300 overflow-hidden">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-4 sm:p-5 border-b border-slate-200 bg-white shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-fill ph-book-open"></i>
+                    </div>
+                    <div>
+                        <h2 id="dtc-modal-title" class="text-base sm:text-lg font-bold text-slate-800">Add DTC Rule</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Configure diagnostic trouble code rules and verification steps</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeDtcRuleModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" aria-label="Close modal">
+                    <i class="ph ph-x text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <div class="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4 text-sm">
+                <!-- Row 1: Codes (tags) & Error Numbers -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- Codes (Tags) -->
+                    <div class="sm:col-span-1">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Codes <span class="text-rose-500">*</span></label>
+                        <div id="dtc-modal-codes-box" onclick="focusDtcCodesInput()" class="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 bg-slate-50 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all flex flex-wrap items-center gap-1.5 min-h-[42px] cursor-text">
+                            <div id="dtc-modal-codes-tags" class="flex flex-wrap items-center gap-1.5"></div>
+                            <input type="text" id="dtc-modal-codes-input" placeholder="e.g. P0120 (press Enter or comma)" class="flex-1 min-w-[120px] bg-transparent outline-none text-xs sm:text-sm text-slate-800 py-1" autocomplete="off">
+                        </div>
+                        <span id="dtc-modal-codes-error" class="text-xs text-rose-500 mt-1 hidden">At least one DTC code is required.</span>
+                    </div>
+
+                    <!-- Error Numbers -->
+                    <div class="sm:col-span-1">
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Error Numbers</label>
+                        <input type="text" id="dtc-modal-error-numbers" placeholder="e.g. Error 15, Error 16" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm h-[42px]">
+                    </div>
+                </div>
+
+                <!-- Row 2: Component -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Component <span class="text-rose-500">*</span></label>
+                    <input type="text" id="dtc-modal-component" placeholder="e.g. Throttle Position Sensor (TPS)" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm">
+                    <span id="dtc-modal-component-error" class="text-xs text-rose-500 mt-1 hidden">Component name is required.</span>
+                </div>
+
+                <!-- Row 3: Description -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Description</label>
+                    <textarea id="dtc-modal-description" rows="2" placeholder="Describe the fault symptoms, root cause, or condition..." class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm resize-none"></textarea>
+                </div>
+
+                <!-- Row 4: Verification Steps -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Verification Steps</label>
+                    <div id="dtc-modal-steps-list" class="space-y-2"></div>
+                    <button type="button" onclick="addDtcModalStep()" class="mt-2 text-xs font-bold text-blue-600 hover:text-blue-800 inline-flex items-center gap-1 transition-colors">
+                        <i class="ph-bold ph-plus"></i> Add step
+                    </button>
+                </div>
+
+                <!-- Row 5: Related Parts (Search inventory & pick parts, stored by part id) -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Related Parts</label>
+                    <div class="relative">
+                        <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="dtc-modal-part-search" placeholder="Search inventory parts..." autocomplete="off" oninput="handleDtcPartSearch(event)" onfocus="handleDtcPartSearch(event)" class="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm">
+                        <div id="dtc-modal-part-dropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-48 overflow-y-auto z-20 divide-y divide-slate-100"></div>
+                    </div>
+                    <div id="dtc-modal-selected-parts" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+
+                <!-- Row 6: Group & Validation -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Group</label>
+                        <select id="dtc-modal-group" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm">
+                            <option value="common">Common</option>
+                            <option value="least">Less common</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Validation</label>
+                        <select id="dtc-modal-validation" onchange="onDtcModalValidationChange()" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm">
+                            <option value="draft">Draft</option>
+                            <option value="validated">Validated</option>
+                        </select>
+                        <p class="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                            <i class="ph-bold ph-info text-slate-400"></i> Only Validated rules appear in the Mechanic's scan.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Row 7: Validated by -->
+                <div id="dtc-modal-validated-by-wrap" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 uppercase mb-1.5">Validated by (for example the Chief Mechanic) <span class="text-rose-500">*</span></label>
+                    <input type="text" id="dtc-modal-validated-by" placeholder="e.g. Chief Mechanic Alex / Yamaha Reference" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 outline-none text-xs sm:text-sm">
+                    <span id="dtc-modal-validated-by-error" class="text-xs text-rose-500 mt-1 hidden">Please specify who validated this rule.</span>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-slate-200 flex items-center justify-end gap-3 bg-slate-50 shrink-0">
+                <button type="button" onclick="closeDtcRuleModal()" class="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-600 border border-slate-300 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="button" onclick="saveDtcModalRule()" class="px-5 py-2 rounded-lg text-xs sm:text-sm font-bold bg-blue-600 hover:bg-blue-700 text-white transition-colors shadow-sm inline-flex items-center gap-1.5">
+                    <i class="ph-bold ph-check"></i> Save Rule
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+</template>
+
 <template id="view-history">
 <div id="view-history" class="view-section active max-w-6xl mx-auto">
+    <!-- Header with Title & Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Service History</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Archived repair records and customer service history</p>
+        </div>
+    </div>
+
     <!-- 1. Top Search & Retrieval Bar -->
     <div class="sh-toolbar bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
         <div class="sh-toolbar-inner flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
@@ -1963,6 +2449,17 @@
     #inv-chip-wrap::-webkit-scrollbar { display: none; }
 </style>
 <div id="view-inventory" class="view-section active max-w-6xl mx-auto">
+    <!-- Header with Title & Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Inventory Management</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Real-time spare parts stock, inventory alerts, and movements</p>
+        </div>
+    </div>
+
     <!-- Inventory Main View Tabs (Stock / Movements) -->
     <div id="inv-main-tabs" class="flex items-center gap-2 mb-4 border-b border-slate-200">
         <button type="button" id="tab-inv-stock" onclick="switchInventoryTab('stock')" class="px-4 py-2.5 text-sm font-bold border-b-2 border-blue-600 text-blue-600 transition-colors flex items-center gap-2">
@@ -2280,6 +2777,17 @@
 <template id="view-repairs">
 <div id="view-repairs" class="view-section active max-w-6xl mx-auto">
     <div id="active-repairs-main">
+    <!-- Header with Title & Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Active Repairs</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only (Monitoring Mode)</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Track and manage live repair tickets, parts, and technicians</p>
+        </div>
+    </div>
+
     <!-- Top Action Bar & Quick Filters -->
     <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
         <div class="relative w-full sm:max-w-md">
@@ -2511,6 +3019,17 @@
 
 <template id="view-reports">
 <div id="view-reports" class="view-section active max-w-6xl mx-auto space-y-6">
+    <!-- Header with Title & Subtitle -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Reports &amp; Monitoring</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Business performance analytics and service metrics</p>
+        </div>
+    </div>
+
     <!-- 1. Top Control Bar (Filter & Export) -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
         <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
@@ -2523,7 +3042,7 @@
                 <button class="report-date-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 whitespace-nowrap transition-colors" data-range="month">This Month</button>
             </div>
         </div>
-        <div class="flex gap-2 w-full md:w-auto">
+        <div id="reports-export-container" class="flex gap-2 w-full md:w-auto">
             <button id="btn-export-reports-csv" onclick="exportReportsCSV()" class="flex-1 md:flex-none bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-sm flex items-center justify-center gap-1.5">
                 <i class="ph-bold ph-file-csv text-emerald-600"></i> Export CSV
             </button>
@@ -2785,6 +3304,17 @@
 
 <template id="view-transactions">
 <div id="view-transactions" class="view-section active max-w-6xl mx-auto">
+    <!-- Header with Title & Subtitle -->
+    <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <div>
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Transactions &amp; Billing</h1>
+                <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">Billing records, walk-in sales, and invoice settlements</p>
+        </div>
+    </div>
+
     <!-- 1. Top Action Bar & Quick Filters -->
     <div class="txn-toolbar bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col gap-4">
         <div class="txn-toolbar-top flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -3190,6 +3720,7 @@
                             <td class="p-4 text-left font-bold text-slate-700 border-r border-slate-200">Active Repairs</td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
                             <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
+                            <td class="p-4 border-r border-slate-200"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i></td>
                             <td class="p-4"><i class="ph-fill ph-check-circle text-emerald-500 text-xl"></i><br><span class="text-[10px] font-semibold text-slate-500">Can Finalize</span></td>
                         </tr>
                         <tr class="hover:bg-slate-50" data-matrix-module="inventory">
@@ -3331,14 +3862,34 @@
 </template>
 
 <template id="view-settings">
-<div id="view-settings" class="view-section active max-w-2xl mx-auto py-4 px-2 sm:p-6">
+<div id="view-settings" class="view-section active max-w-5xl mx-auto py-4 px-2 sm:p-6">
     
     <div class="mb-6 px-2">
-        <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Settings</h1>
+        <div class="flex items-center gap-2.5 flex-wrap">
+            <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Settings</h1>
+            <span class="screen-view-only-pill hidden px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">View-only</span>
+        </div>
         <p class="text-sm text-slate-500 mt-1">Manage your profile, password, and preferences.</p>
     </div>
 
-    <div class="flex flex-col gap-6">
+    <!-- Tabs Bar (Visible for Super Admin on Desktop) -->
+    <div id="settings-tabs-bar" class="hidden flex overflow-x-auto gap-2 border-b border-slate-200 hide-scrollbar px-1 flex-nowrap mb-6" role="tablist">
+        <button id="settings-tab-account" onclick="setSettingsTab('account')" role="tab" aria-selected="true" class="settings-tab-btn active px-4 py-3 text-sm font-bold text-blue-600 border-b-2 border-blue-600 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="account">
+            <i class="ph-bold ph-user-circle mr-1.5 text-base"></i> My Account
+        </button>
+        <button id="settings-tab-audit" onclick="setSettingsTab('audit')" role="tab" aria-selected="false" class="settings-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="audit">
+            <i class="ph-bold ph-file-text mr-1.5 text-base"></i> Audit Logs
+        </button>
+        <button id="settings-tab-backup" onclick="setSettingsTab('backup')" role="tab" aria-selected="false" class="settings-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="backup">
+            <i class="ph-bold ph-database mr-1.5 text-base"></i> Sync &amp; Backup
+        </button>
+        <button id="settings-tab-users" onclick="setSettingsTab('users')" role="tab" aria-selected="false" class="settings-tab-btn px-4 py-3 text-sm font-semibold text-slate-500 hover:text-slate-800 border-b-2 border-transparent hover:border-slate-300 whitespace-nowrap transition-colors flex items-center shrink-0 min-h-[40px]" data-tab="users">
+            <i class="ph-bold ph-users-three mr-1.5 text-base"></i> Users &amp; Roles
+        </button>
+    </div>
+
+    <!-- TAB 1: My Account Panel (Existing Current Session, Change Password, Shop Details, Logout) -->
+    <div id="settings-tab-panel-account" class="settings-tab-panel flex flex-col gap-6 max-w-2xl">
         
         <!-- Current Session Card -->
         <div id="settings-card-session" class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -3420,6 +3971,66 @@
             </div>
         </div>
 
+        <!-- Temporary Access Card -->
+        <div id="settings-card-temp-access" class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
+            <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3 mb-4 flex items-center gap-2">
+                <i class="ph-bold ph-key text-amber-500 text-xl"></i> Temporary Access
+            </h2>
+            
+            <p class="text-xs text-slate-500 mb-4">Grant temporary inventory or payment permissions to trusted mechanics.</p>
+
+            <form id="temp-access-form" onsubmit="handleGrantTempAccess(event)" class="flex flex-col gap-4 max-w-lg">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5" for="temp-access-mechanic">Mechanic</label>
+                    <select id="temp-access-mechanic" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer" required>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Permissions</label>
+                    <div class="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <label class="flex items-center gap-2.5 text-xs font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="temp-perm-inventory" value="inventory" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+                            <span>Inventory - restock and add parts</span>
+                        </label>
+                        <label class="flex items-center gap-2.5 text-xs font-medium text-slate-700 cursor-pointer">
+                            <input type="checkbox" id="temp-perm-payment" value="payment" class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300">
+                            <span>Payment - record payments and walk-in sales</span>
+                        </label>
+                    </div>
+                    <p id="temp-access-perm-error" class="text-xs text-rose-500 mt-1 hidden font-medium">Please select at least one permission.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5" for="temp-access-duration">Duration</label>
+                    <select id="temp-access-duration" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors cursor-pointer">
+                        <option value="1h">1 hour</option>
+                        <option value="4h">4 hours</option>
+                        <option value="today">until end of today</option>
+                        <option value="24h">24 hours</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-3 pt-1">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-5 rounded-lg transition-colors shadow-sm flex items-center gap-2 text-sm">
+                        <i class="ph-bold ph-shield-check"></i> Grant Access
+                    </button>
+                    <span id="temp-access-msg" class="text-xs font-bold text-emerald-600 hidden items-center gap-1">
+                        <i class="ph-bold ph-check"></i> Access granted
+                    </span>
+                </div>
+            </form>
+
+            <!-- Active Grants List -->
+            <div class="mt-6 pt-5 border-t border-slate-100">
+                <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <i class="ph-bold ph-clock-countdown text-slate-400"></i> Active Grants
+                </h3>
+                <div id="temp-grants-list" class="flex flex-col gap-2.5">
+                </div>
+            </div>
+        </div>
+
         <!-- System Card -->
         <div id="settings-card-system" class="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200">
             <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider border-b border-slate-100 pb-3 mb-4 flex items-center gap-2"><i class="ph-bold ph-gear-six text-indigo-500 text-xl"></i> System &amp; Sync</h2>
@@ -3470,6 +4081,248 @@
             </div>
         </div>
         
+    </div>
+
+    <!-- TAB 2: Audit Logs Panel -->
+    <div id="settings-tab-panel-audit" class="settings-tab-panel hidden space-y-4">
+        <!-- Toolbar -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+            <div class="relative flex-1 min-w-[200px]">
+                <i class="ph-bold ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="settings-audit-search" oninput="renderSettingsAuditTable()" placeholder="Search activity logs..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors">
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-2">
+                <select id="settings-audit-filter-module" onchange="renderSettingsAuditTable()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+                    <option value="">All Modules</option>
+                    <option value="Inventory">Inventory</option>
+                    <option value="Repairs">Repairs</option>
+                    <option value="Users">Users</option>
+                    <option value="Backup">Backup</option>
+                    <option value="Sync">Sync</option>
+                    <option value="Settings">Settings</option>
+                </select>
+
+                <select id="settings-audit-filter-severity" onchange="renderSettingsAuditTable()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+                    <option value="">All Severities</option>
+                    <option value="standard">Standard</option>
+                    <option value="modification">Modification</option>
+                    <option value="critical">Critical</option>
+                </select>
+
+                <select id="settings-audit-filter-date" onchange="renderSettingsAuditTable()" class="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500">
+                    <option value="all">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="7days">Last 7 Days</option>
+                    <option value="30days">Last 30 Days</option>
+                </select>
+
+                <button type="button" onclick="exportSettingsAuditCSV()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-file-csv text-emerald-600 text-sm"></i> Export CSV
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[760px]">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
+                            <th class="p-3.5">Date &amp; Time</th>
+                            <th class="p-3.5">User</th>
+                            <th class="p-3.5">Module</th>
+                            <th class="p-3.5">Action</th>
+                            <th class="p-3.5">Record</th>
+                            <th class="p-3.5">Before &amp; After</th>
+                            <th class="p-3.5 text-center">Severity</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settings-audit-tbody" class="divide-y divide-slate-100 text-xs">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: Sync & Backup Panel -->
+    <div id="settings-tab-panel-backup" class="settings-tab-panel hidden space-y-6">
+        <!-- Top Link to full Backup & Restore screen -->
+        <div class="flex justify-between items-center bg-indigo-50/60 border border-indigo-100 p-4 rounded-xl">
+            <div class="flex items-center gap-2 text-xs font-medium text-indigo-900">
+                <i class="ph-bold ph-info text-indigo-600 text-base"></i>
+                <span>Quick backup &amp; sync utilities for Super Admin.</span>
+            </div>
+            <button onclick="document.querySelector('.nav-link[data-target=\'backup\']')?.click()" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1">
+                Open full Backup &amp; Restore screen <i class="ph-bold ph-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- 1. Cloud Sync Card -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div class="space-y-1">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-bold ph-arrows-clockwise"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-bold text-slate-800">Cloud Data Synchronization</span>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Online
+                            </span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-x-2 text-xs text-slate-500 mt-0.5">
+                            <span id="settings-sync-last-synced">Last synced: 2 hours ago</span>
+                            <span class="text-slate-300">•</span>
+                            <span id="settings-sync-pending" class="font-semibold text-slate-700">0 pending changes to sync</span>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-[11px] text-slate-400 pl-[52px]">Simulated cloud sync (prototype)</p>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="settings-sync-inline-msg" class="text-xs font-semibold text-emerald-600 hidden"></span>
+                <button id="btn-settings-sync-now" onclick="triggerBackupSyncNow(event)" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-sm shadow-indigo-500/20 flex items-center gap-2 transition-colors">
+                    <i class="ph-bold ph-arrows-clockwise text-sm"></i> Sync Now
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. Export & Import Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Create Backup Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="ph-fill ph-download-simple"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Create Manual Backup</h3>
+                            <p class="text-xs text-slate-500">Download system data as JSON archive</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-4">
+                        Generates a comprehensive snapshot of parts, repair orders, customers, transactions, audit logs, and diagnostic records.
+                    </p>
+                </div>
+                
+                <div>
+                    <div id="settings-backup-download-success" class="hidden mb-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-semibold text-emerald-700 flex items-center gap-2"></div>
+                    <button id="btn-settings-download-backup" onclick="downloadBackupData(event)" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg text-xs transition-colors shadow-sm shadow-blue-500/20 flex items-center justify-center gap-2">
+                        <i class="ph-bold ph-download-simple"></i> Download Backup (.json)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Restore Backup Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xl shrink-0">
+                            <i class="ph-fill ph-upload-simple"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base">Restore System Data</h3>
+                            <p class="text-xs text-slate-500">Apply a JSON backup archive</p>
+                        </div>
+                    </div>
+                    
+                    <div class="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center hover:bg-slate-50 transition-colors mb-3">
+                        <input type="file" id="settings-restore-file-input" accept=".json" class="hidden" onchange="handleRestoreFileSelect(this)">
+                        <label for="settings-restore-file-input" class="cursor-pointer flex flex-col items-center gap-1.5">
+                            <i class="ph-bold ph-file-arrow-up text-2xl text-slate-400"></i>
+                            <span id="settings-restore-file-name" class="text-xs font-semibold text-slate-700">Choose database file (.json)</span>
+                            <span class="text-[10px] text-slate-400">Select exported JSON archive</span>
+                        </label>
+                    </div>
+
+                    <!-- Inline Error -->
+                    <div id="settings-restore-error-box" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-semibold mb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-bold ph-warning-circle text-base shrink-0"></i>
+                            <span id="settings-restore-error-text">Invalid backup file.</span>
+                        </div>
+                    </div>
+
+                    <!-- Inline Preview & Confirmation -->
+                    <div id="settings-restore-preview-box" class="hidden p-3.5 bg-slate-50 border border-slate-200 rounded-xl mb-3 space-y-3">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-slate-700">Backup Archive Date:</span>
+                            <span id="settings-restore-preview-date" class="text-slate-600 font-mono text-[11px]"></span>
+                        </div>
+                        <div id="settings-restore-preview-counts" class="grid grid-cols-2 gap-1.5 text-[11px]"></div>
+                        <div class="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-bold flex items-center gap-1.5">
+                            <i class="ph-bold ph-warning text-base text-amber-600 shrink-0"></i>
+                            <span>This replaces the current data.</span>
+                        </div>
+                        <button id="btn-settings-execute-restore" onclick="executeInlineRestore(event)" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors shadow-sm flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-arrow-counter-clockwise"></i> Restore
+                        </button>
+                    </div>
+
+                    <!-- Inline Success -->
+                    <div id="settings-restore-success-box" class="hidden p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs font-semibold text-emerald-700"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: Users & Roles Panel -->
+    <div id="settings-tab-panel-users" class="settings-tab-panel hidden space-y-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl shrink-0">
+                        <i class="ph-bold ph-users-three"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-800">User Accounts by Role</h2>
+                        <p class="text-xs text-slate-500">Registered system users and role distribution</p>
+                    </div>
+                </div>
+                <button onclick="document.querySelector('.nav-link[data-target=\'users\']')?.click()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition-colors shadow-sm shadow-blue-500/20 flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="ph-bold ph-users"></i> Open User Management
+                </button>
+            </div>
+
+            <!-- Role Counts Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Super Admin</span>
+                    <span id="settings-count-super_admin" class="text-2xl font-extrabold text-indigo-600 mt-1 block">1</span>
+                    <span class="text-[10px] text-slate-400 mt-0.5 block">Full system access</span>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Owner (Admin)</span>
+                    <span id="settings-count-admin" class="text-2xl font-extrabold text-blue-600 mt-1 block">1</span>
+                    <span class="text-[10px] text-slate-400 mt-0.5 block">Shop operations</span>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Cashier</span>
+                    <span id="settings-count-cashier" class="text-2xl font-extrabold text-emerald-600 mt-1 block">1</span>
+                    <span class="text-[10px] text-slate-400 mt-0.5 block">POS &amp; payments</span>
+                </div>
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Mechanic</span>
+                    <span id="settings-count-mechanic" class="text-2xl font-extrabold text-amber-600 mt-1 block">2</span>
+                    <span class="text-[10px] text-slate-400 mt-0.5 block">Repairs &amp; inspection</span>
+                </div>
+            </div>
+
+            <!-- Quick Summary Line -->
+            <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2 text-slate-600">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>Total active system accounts: <strong id="settings-count-total" class="text-slate-800">5</strong></span>
+                </div>
+                <button onclick="document.querySelector('.nav-link[data-target=\'users\']')?.click()" class="font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1">
+                    Manage users, roles &amp; credentials <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 </template>
