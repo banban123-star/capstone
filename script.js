@@ -3135,7 +3135,192 @@ function tMatchJob(txn, job) {
 }
 window.tMatchJob = tMatchJob;
 
+window.settleTransaction = function(txnId, amount, method) {
+    if (typeof isViewOnly === 'function' && isViewOnly('transactions') && isViewOnly('repairs')) return false;
+    if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+        if (typeof showToast === 'function') showToast("Permission denied.");
+        return false;
+    }
+
+    if (typeof mockTxnData === 'undefined' || !Array.isArray(mockTxnData)) return false;
+
+    let txn = mockTxnData.find(t => t.id === txnId || (txnId === 'TXN-103' && t.id === 'TXN-831') || (txnId === 'TXN-831' && t.id === 'TXN-103'));
+    let job = null;
+    if (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) {
+        job = mockRepairsData.find(j => j.txnId === txnId || (txn && typeof tMatchJob === 'function' && tMatchJob(txn, j)));
+    }
+
+    if (!txn && job && typeof findOrLinkJobTransaction === 'function') {
+        txn = findOrLinkJobTransaction(job);
+    }
+    if (!txn) return false;
+
+    const payAmount = Number(amount) || 0;
+    const payMethod = method || 'Cash';
+    const oldStatus = txn.status || 'Unpaid';
+
+    let currentAdv = 0;
+    if (Array.isArray(txn.payments) && txn.payments.length > 0) {
+        currentAdv = txn.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    } else if (txn.status && txn.status.includes('Adv Paid')) {
+        const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+        if (match) currentAdv = parseFloat(match[2].replace(/,/g, ''));
+    } else if (job && job.advancePaid) {
+        currentAdv = Number(job.advancePaid) || 0;
+    }
+
+    const totalCost = Number(txn.amount) || (job ? (job.repairPlan?.estimatedTotal || 1500) : 1500);
+    const balanceDueBefore = Math.max(0, totalCost - currentAdv);
+
+    if (payAmount <= 0 || payAmount > balanceDueBefore + 0.001) {
+        return false;
+    }
+
+    if (!Array.isArray(txn.payments)) txn.payments = [];
+    const currentUser = (typeof systemUsers !== 'undefined' && typeof currentRole !== 'undefined' && systemUsers[currentRole]) 
+        ? systemUsers[currentRole].name 
+        : (typeof currentRole !== 'undefined' ? currentRole : 'Staff');
+    const nowIso = new Date().toISOString();
+
+    txn.payments.push({
+        id: 'PAY-' + Date.now(),
+        amount: payAmount,
+        method: payMethod,
+        timestamp: nowIso,
+        date: nowIso,
+        user: currentUser
+    });
+
+    const newAdv = currentAdv + payAmount;
+    const remainingBalance = Math.max(0, totalCost - newAdv);
+    const isFull = (remainingBalance <= 0.001);
+
+    if (isFull) {
+        txn.category = 'completed';
+        txn.status = 'Paid';
+        txn.statusClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        txn.statusDot = 'bg-emerald-500';
+        txn.btnText = 'View Receipt';
+        txn.btnClass = 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300';
+        txn.btnIcon = 'ph-receipt';
+        txn.btnAction = 'openReceiptModal()';
+        txn.date = nowIso;
+        txn.paymentMethod = payMethod;
+
+        if (job) {
+            job.statusId = 'paid';
+            job.statusName = 'Paid / Completed';
+            job.statusClass = 'bg-slate-100 text-slate-600 border-slate-200';
+            job.dotClass = 'bg-slate-400';
+            job.advancePaid = totalCost;
+
+            if (job.repairPlan && job.repairPlan.parts && (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory))) {
+                job.repairPlan.parts.forEach(p => {
+                    if (p.partStatus === 'Received' || !p.partStatus) {
+                        const invItem = mockInventory.find(inv => inv.name && inv.name.toLowerCase() === (p.part?.name || '').toLowerCase());
+                        if (invItem) {
+                            invItem.stock = Math.max(0, invItem.stock - p.qty);
+                        }
+                    }
+                });
+            }
+
+            if (typeof syncMobileJobStatus === 'function') syncMobileJobStatus(job.id, 'paid');
+        }
+
+        // Service History update
+        if (typeof mockHistoryData !== 'undefined' && Array.isArray(mockHistoryData)) {
+            const plate = job ? job.plate : ((txn.details && txn.details.match(/[A-Z]{3}-\d{4}/)) ? txn.details.match(/[A-Z]{3}-\d{4}/)[0] : '');
+            const histItem = mockHistoryData.find(h => (plate && h.plate === plate) || h.customer === txn.customer);
+            const now = new Date();
+            const dateFormatted = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeFormatted = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            if (histItem) {
+                histItem.cost = totalCost;
+                histItem.date = dateFormatted;
+                histItem.time = timeFormatted;
+            } else {
+                mockHistoryData.unshift({
+                    date: dateFormatted,
+                    time: timeFormatted,
+                    plate: plate || 'XYZ-9876',
+                    brandId: job ? (job.brandId || 'yamaha') : 'yamaha',
+                    brandText: '',
+                    model: job ? (job.model || 'Sniper 155') : 'Sniper 155',
+                    vehicle: txn.details || 'Motorcycle Service',
+                    customer: txn.customer,
+                    mechanic: job ? (job.mechanicOptions ? job.mechanicOptions[job.selectedMechIndex || 0] : 'Mechanic') : 'Mechanic',
+                    mechanicId: 'mech',
+                    issueTitle: 'Service Settlement',
+                    issueDesc: txn.details || 'Service completed and balance settled.',
+                    cost: totalCost
+                });
+            }
+        }
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Repairs',
+                action: 'Payment Settled',
+                recordRef: `${txn.id} (${job ? job.plate : txn.details})`,
+                before: oldStatus,
+                after: `Paid (\u20B1${payAmount.toFixed(2)} via ${payMethod})`,
+                severity: 'standard'
+            });
+        }
+    } else {
+        txn.category = 'settle';
+        txn.status = `Partial/Adv Paid (\u20B1${newAdv.toFixed(0)})`;
+        txn.statusClass = 'bg-yellow-50 text-yellow-700 border-yellow-200';
+        txn.statusDot = 'bg-yellow-500';
+        txn.btnText = 'Settle Balance';
+        txn.btnClass = 'bg-blue-600 hover:bg-blue-700 text-white shadow-md';
+        txn.btnIcon = 'ph-check-circle';
+        txn.btnAction = 'openRepairCheckout(true)';
+        txn.date = nowIso;
+        txn.paymentMethod = payMethod;
+
+        if (job) {
+            job.advancePaid = newAdv;
+        }
+
+        if (typeof logActivity === 'function') {
+            logActivity({
+                module: 'Repairs',
+                action: 'Advance Payment Received',
+                recordRef: `${txn.id} (${job ? job.plate : txn.details})`,
+                before: oldStatus,
+                after: `Partial/Adv Paid (\u20B1${newAdv.toFixed(0)} via ${payMethod})`,
+                severity: 'standard'
+            });
+        }
+    }
+
+    if (typeof settleSuccessMsg !== 'undefined') {
+        settleSuccessMsg = {
+            txnId: txn.id,
+            text: `Payment of \u20B1${payAmount.toFixed(2)} received`
+        };
+    }
+    if (typeof settleErrorMsg !== 'undefined') {
+        settleErrorMsg = null;
+    }
+
+    if (typeof updateRepairCounters === 'function') updateRepairCounters();
+    if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+    if (typeof renderCashierHome === 'function') renderCashierHome();
+    if (typeof renderRepairs === 'function') renderRepairs();
+    if (typeof renderHistory === 'function') renderHistory();
+    if (typeof renderTransactions === 'function') renderTransactions();
+    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+
+    return true;
+};
+
 window.recordTransactionPayment = function(txnId, amount, method, isAdvance) {
+    if (!isAdvance) {
+        return settleTransaction(txnId, amount, method);
+    }
     if (typeof isViewOnly === 'function' && isViewOnly('transactions') && isViewOnly('repairs')) return;
     if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
         if (typeof showToast === 'function') showToast("You don't have permission to receive payments.");
@@ -3144,7 +3329,7 @@ window.recordTransactionPayment = function(txnId, amount, method, isAdvance) {
 
     if (typeof mockTxnData === 'undefined' || !Array.isArray(mockTxnData)) return;
 
-    let txn = mockTxnData.find(t => t.id === txnId);
+    let txn = mockTxnData.find(t => t.id === txnId || (txnId === 'TXN-103' && t.id === 'TXN-831') || (txnId === 'TXN-831' && t.id === 'TXN-103'));
     let job = null;
     if (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) {
         job = mockRepairsData.find(j => j.txnId === txnId || (txn && tMatchJob(txn, j)));
@@ -3349,7 +3534,11 @@ window.confirmInlinePayment = function(jobId, type) {
     window.activeInlinePaymentJobId = null;
     window.activeInlinePaymentType = null;
 
-    recordTransactionPayment(txn.id, enteredAmount, payMethod, isAdv);
+    if (isAdv) {
+        recordTransactionPayment(txn.id, enteredAmount, payMethod, true);
+    } else {
+        settleTransaction(txn.id, enteredAmount, payMethod);
+    }
 
     setTimeout(() => {
         if (window.inlinePaymentSuccessMsg && window.inlinePaymentSuccessMsg.jobId === jobId) {
@@ -3365,18 +3554,21 @@ function openRepairCheckout(isFinalSettlement) {
         if (typeof showToast === 'function') showToast("Permission denied.");
         return;
     }
-    document.getElementById('repair-tendered').value = "";
-    document.getElementById('repair-change').textContent = "0.00";
+    const tenderedEl = document.getElementById('repair-tendered');
+    if (tenderedEl) tenderedEl.value = "";
+    const changeEl = document.getElementById('repair-change');
+    if (changeEl) changeEl.textContent = "0.00";
     
     const btnAdvance = document.getElementById('btn-advance-payment');
     const btnSettle = document.getElementById('btn-settle-balance');
 
-    if(isFinalSettlement) {
-        btnAdvance.classList.add('hidden');
-        btnSettle.classList.remove('hidden');
-    } else {
-        btnAdvance.classList.remove('hidden');
-        btnSettle.classList.add('hidden');
+    if (btnAdvance) {
+        if (isFinalSettlement) btnAdvance.classList.add('hidden');
+        else btnAdvance.classList.remove('hidden');
+    }
+    if (btnSettle) {
+        if (isFinalSettlement) btnSettle.classList.remove('hidden');
+        else btnSettle.classList.add('hidden');
     }
     toggleModal('modal-txn-repair', 'txn-repair-backdrop', 'txn-repair-content', true);
 }
@@ -3384,8 +3576,9 @@ function closeRepairCheckout() { toggleModal('modal-txn-repair', 'txn-repair-bac
 
 function calcRepairChange() {
     const remainingBalance = 2000.00;
-    const tendered = parseFloat(document.getElementById('repair-tendered').value) || 0;
+    const tendered = parseFloat(document.getElementById('repair-tendered')?.value) || 0;
     const changeLabel = document.getElementById('repair-change');
+    if (!changeLabel) return;
     if (tendered >= remainingBalance) {
         changeLabel.textContent = (tendered - remainingBalance).toFixed(2);
         changeLabel.classList.remove('text-red-400');
@@ -3412,7 +3605,7 @@ function processRepairPayment(event) {
         btn.disabled = false;
         closeRepairCheckout();
         const tendered = parseFloat(document.getElementById('repair-tendered')?.value) || 2000;
-        recordTransactionPayment('TXN-103', tendered, 'Cash', false);
+        settleTransaction('TXN-103', tendered, 'Cash');
         openReceiptModal();
     }, 1000);
 }
@@ -5421,7 +5614,7 @@ const mockTxnData = [
         date: _txnTodayMorning
     },
     {
-        id: 'TXN-103',
+        id: 'TXN-831',
         category: 'settle',
         type: 'Repair Service',
         typeClass: 'text-blue-600 bg-blue-50 border-blue-100',
@@ -5437,7 +5630,17 @@ const mockTxnData = [
         btnClass: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md',
         btnIcon: 'ph-check-circle',
         btnAction: 'openRepairCheckout(true)',
-        date: _txnYesterday
+        date: _txnYesterday,
+        payments: [
+            {
+                id: 'PAY-831-ADV',
+                amount: 500,
+                method: 'Cash',
+                timestamp: _txnYesterday,
+                date: _txnYesterday,
+                user: 'Cashier'
+            }
+        ]
     },
     {
         id: 'TXN-104',
@@ -5459,9 +5662,13 @@ const mockTxnData = [
         date: _txnTodayMorning
     }
 ];
+window.mockTxnData = mockTxnData;
 
 // Keep track of opened transaction card across re-renders
 let openedTxnCardId = null;
+let activeSettleTxnId = null;
+let settleSuccessMsg = null;
+let settleErrorMsg = null;
 
 // Synchronize transaction filter chip visual state
 function updateTxnFilterButtons() {
@@ -5517,8 +5724,8 @@ function renderTransactions() {
                               txn.id.toLowerCase().includes(query) || 
                               txn.details.toLowerCase().includes(query);
         const matchesCategory = currentTxnFilter === 'all' || txn.category === currentTxnFilter;
-        // Don't show completed in "All Active" view
-        const matchesActive = currentTxnFilter !== 'all' || txn.category !== 'completed';
+        // Don't show completed in "All Active" view, unless it's currently open in the settlement panel
+        const matchesActive = currentTxnFilter !== 'all' || txn.category !== 'completed' || txn.id === activeSettleTxnId;
         
         return matchesSearch && matchesCategory && matchesActive;
     });
@@ -5554,8 +5761,31 @@ function renderTransactions() {
 
             const isReceipt = isCompleted || (txn.btnText && txn.btnText.toLowerCase().includes('receipt'));
             const showActionBtn = !isTxnVO || isReceipt;
+
+            const isSettleBtn = (txn.category === 'settle' || txn.btnText === 'Settle Balance');
+            const isSettleOpen = (activeSettleTxnId === txn.id) && showActionBtn;
+
+            const totalCost = Number(txn.amount) || 0;
+            let paidSoFar = 0;
+            if (Array.isArray(txn.payments) && txn.payments.length > 0) {
+                paidSoFar = txn.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+            } else if (txn.status && txn.status.includes('Adv Paid')) {
+                const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+                if (match) paidSoFar = parseFloat(match[2].replace(/,/g, ''));
+            }
+            const balanceDue = Math.max(0, totalCost - paidSoFar);
+
+            const btnHtml = isSettleBtn ? `
+                <button type="button" data-action="settle" data-txn-id="${txn.id}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
+                    <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                </button>
+            ` : `
+                <button onclick="${txn.btnAction}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
+                    <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                </button>
+            `;
                 
-            return `
+            let rowHtml = `
                 <tr class="${rowClass}">
                     <td class="p-4">
                         <div class="font-bold text-slate-800">${txn.id}</div>
@@ -5574,14 +5804,76 @@ function renderTransactions() {
                         </span>
                     </td>
                     <td class="p-4 text-right">
-                        ${showActionBtn ? `
-                            <button onclick="${txn.btnAction}" class="border px-4 py-2 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ml-auto shadow-sm ${txn.btnClass}">
-                                <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
-                            </button>
-                        ` : `<span class="text-slate-400 font-mono text-xs select-none">—</span>`}
+                        ${showActionBtn ? btnHtml : `<span class="text-slate-400 font-mono text-xs select-none">—</span>`}
                     </td>
                 </tr>
             `;
+
+            if (isSettleOpen) {
+                rowHtml += `
+                    <tr id="settle-panel-desktop-${txn.id}" class="bg-blue-50/40 border-y-2 border-blue-200">
+                        <td colspan="5" class="p-4 sm:p-5">
+                            <div class="bg-white border border-blue-200 rounded-xl p-4 sm:p-5 shadow-sm flex flex-col gap-4 max-w-3xl">
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-slate-800 text-sm sm:text-base">${txn.id}</span>
+                                        <span class="text-slate-400 font-bold">•</span>
+                                        <span class="font-semibold text-slate-700 text-sm sm:text-base">${txn.customer}</span>
+                                    </div>
+                                    <span class="text-[11px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded">
+                                        Settle Balance
+                                    </span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</div>
+                                        <div class="text-sm sm:text-base font-bold text-slate-800 whitespace-nowrap mt-0.5">\u20B1${totalCost.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                    </div>
+                                    <div class="bg-slate-50 border border-slate-200 rounded-lg p-3">
+                                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Paid so far</div>
+                                        <div class="text-sm sm:text-base font-bold text-emerald-600 whitespace-nowrap mt-0.5">\u20B1${paidSoFar.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                    </div>
+                                    <div class="bg-blue-50/50 border border-blue-200 rounded-lg p-3">
+                                        <div class="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Balance due</div>
+                                        <div class="text-sm sm:text-base font-bold text-blue-600 whitespace-nowrap mt-0.5">\u20B1${balanceDue.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <div>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Amount (\u20B1)</label>
+                                        <input type="number" id="settle-amount-${txn.id}" min="1" max="${balanceDue}" step="any" value="${balanceDue > 0 ? balanceDue.toFixed(2) : '0.00'}" class="w-full text-sm font-bold text-slate-800 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors" ${balanceDue <= 0 ? 'disabled' : ''}>
+                                    </div>
+                                    <div>
+                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Method</label>
+                                        <select id="settle-method-${txn.id}" class="w-full text-sm font-semibold text-slate-700 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-colors cursor-pointer" ${balanceDue <= 0 ? 'disabled' : ''}>
+                                            <option value="Cash" selected>Cash</option>
+                                            <option value="GCash">GCash</option>
+                                            <option value="Card">Card</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="settle-error-${txn.id}" class="text-xs font-semibold text-rose-600 ${settleErrorMsg && settleErrorMsg.txnId === txn.id ? '' : 'hidden'}">
+                                    ${settleErrorMsg && settleErrorMsg.txnId === txn.id ? settleErrorMsg.text : ''}
+                                </div>
+                                <div id="settle-success-${txn.id}" class="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center justify-between gap-2 ${settleSuccessMsg && settleSuccessMsg.txnId === txn.id ? '' : 'hidden'}">
+                                    <span class="flex items-center gap-1.5"><i class="ph-bold ph-check-circle text-base text-emerald-600"></i> ${settleSuccessMsg && settleSuccessMsg.txnId === txn.id ? settleSuccessMsg.text : ''}</span>
+                                </div>
+                                <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                                    <button type="button" data-action="cancel-settle" data-txn-id="${txn.id}" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300 transition-colors">
+                                        ${balanceDue <= 0 ? 'Close' : 'Cancel'}
+                                    </button>
+                                    ${balanceDue > 0 ? `
+                                    <button type="button" data-action="confirm-settle" data-txn-id="${txn.id}" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors flex items-center gap-1.5">
+                                        <i class="ph-bold ph-check"></i> Confirm Payment
+                                    </button>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            return rowHtml;
         }).join('');
     }
 
@@ -5605,12 +5897,26 @@ function renderTransactions() {
                 : (txn.details.startsWith('Purchased:') ? txn.details.replace(/^Purchased:\s*/i, '') : txn.details);
 
             // Advance paid & Balance due
+            const isReceipt = isCompleted || (txn.btnText && txn.btnText.toLowerCase().includes('receipt'));
+            const showActionBtn = !isTxnVO || isReceipt;
+            const isSettleBtn = (txn.category === 'settle' || txn.btnText === 'Settle Balance');
+            const isSettleOpen = (activeSettleTxnId === txn.id) && showActionBtn;
+
+            const totalCost = Number(txn.amount) || 0;
             let advancePaid = null;
             let balanceDue = null;
-            if (txn.status && txn.status.includes('Adv Paid')) {
+            let paidSoFar = 0;
+            if (Array.isArray(txn.payments) && txn.payments.length > 0) {
+                paidSoFar = txn.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+                advancePaid = '\u20B1' + paidSoFar.toFixed(2);
+                if (totalCost > paidSoFar) {
+                    balanceDue = '\u20B1' + (totalCost - paidSoFar).toFixed(2);
+                }
+            } else if (txn.status && txn.status.includes('Adv Paid')) {
                 const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
                 if (match) {
                     const advVal = parseFloat(match[2].replace(/,/g, ''));
+                    paidSoFar = advVal;
                     advancePaid = '\u20B1' + advVal.toFixed(2);
                     if (txn.amount > advVal) {
                         balanceDue = '\u20B1' + (txn.amount - advVal).toFixed(2);
@@ -5621,6 +5927,7 @@ function renderTransactions() {
             } else if (txn.status === 'Unpaid') {
                 balanceDue = '\u20B1' + txn.amount.toFixed(2);
             }
+            const balanceDueNum = Math.max(0, totalCost - paidSoFar);
 
             // Date & Time formatting
             let dateTimeStr = 'N/A';
@@ -5643,7 +5950,7 @@ function renderTransactions() {
 
             // Action buttons calling the SAME functions as desktop
             let actionsHtml = '';
-            if (isCompleted) {
+            if (isCompleted || isReceipt) {
                 actionsHtml = `
                     <div class="m-actions grid-2">
                         <button type="button" onclick="openReceiptModal()" class="bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-bold text-xs py-2.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-colors min-h-[44px]">
@@ -5654,17 +5961,24 @@ function renderTransactions() {
                         </button>
                     </div>
                 `;
-            } else {
+            } else if (showActionBtn) {
+                const mobileBtn = isSettleBtn ? `
+                    <button type="button" data-action="settle" data-txn-id="${txn.id}" class="border px-4 py-2.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 w-full min-h-[44px] shadow-sm ${txn.btnClass}">
+                        <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                    </button>
+                ` : `
+                    <button type="button" onclick="${txn.btnAction}" class="border px-4 py-2.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 w-full min-h-[44px] shadow-sm ${txn.btnClass}">
+                        <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
+                    </button>
+                `;
                 actionsHtml = `
                     <div class="m-actions">
-                        <button type="button" onclick="${txn.btnAction}" class="border px-4 py-2.5 rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 w-full min-h-[44px] shadow-sm ${txn.btnClass}">
-                            <i class="ph-bold ${txn.btnIcon}"></i> ${txn.btnText}
-                        </button>
+                        ${mobileBtn}
                     </div>
                 `;
             }
 
-            return `
+            let cardHtml = `
                 <div class="m-card ${isOpen ? 'open' : ''}" data-txn-id="${txn.id}">
                     <div class="m-card-head" role="button" tabindex="0" aria-expanded="${isOpen ? 'true' : 'false'}">
                         <div class="flex-1 min-w-0 pr-2">
@@ -5717,7 +6031,73 @@ function renderTransactions() {
                     </div>
                 </div>
             `;
+
+            if (isSettleOpen) {
+                cardHtml += `
+                    <div id="settle-panel-mobile-${txn.id}" class="mt-2.5 mb-3 p-4 bg-white border border-blue-200 rounded-xl shadow-sm flex flex-col gap-3.5">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                            <div class="flex items-center gap-1.5 text-xs">
+                                <span class="font-bold text-slate-800">${txn.id}</span>
+                                <span class="text-slate-400 font-bold">•</span>
+                                <span class="font-semibold text-slate-700">${txn.customer}</span>
+                            </div>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                                Settle Balance
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2">
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Total</div>
+                                <div class="text-xs font-bold text-slate-800 whitespace-nowrap mt-0.5">\u20B1${totalCost.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            </div>
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2">
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Paid</div>
+                                <div class="text-xs font-bold text-emerald-600 whitespace-nowrap mt-0.5">\u20B1${paidSoFar.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            </div>
+                            <div class="bg-blue-50/50 border border-blue-200 rounded-lg p-2">
+                                <div class="text-[9px] font-bold text-blue-600 uppercase tracking-wider">Balance</div>
+                                <div class="text-xs font-bold text-blue-600 whitespace-nowrap mt-0.5">\u20B1${balanceDueNum.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2.5">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Amount (\u20B1)</label>
+                                <input type="number" id="settle-amount-m-${txn.id}" min="1" max="${balanceDueNum}" step="any" value="${balanceDueNum > 0 ? balanceDueNum.toFixed(2) : '0.00'}" class="w-full text-sm font-bold text-slate-800 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none min-h-[44px]" ${balanceDueNum <= 0 ? 'disabled' : ''}>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Method</label>
+                                <select id="settle-method-m-${txn.id}" class="w-full text-sm font-semibold text-slate-700 px-3 py-2 border border-slate-300 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none min-h-[44px] cursor-pointer" ${balanceDueNum <= 0 ? 'disabled' : ''}>
+                                    <option value="Cash" selected>Cash</option>
+                                    <option value="GCash">GCash</option>
+                                    <option value="Card">Card</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="settle-error-m-${txn.id}" class="text-xs font-semibold text-rose-600 ${settleErrorMsg && settleErrorMsg.txnId === txn.id ? '' : 'hidden'}">
+                            ${settleErrorMsg && settleErrorMsg.txnId === txn.id ? settleErrorMsg.text : ''}
+                        </div>
+                        <div id="settle-success-m-${txn.id}" class="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-center justify-between gap-2 ${settleSuccessMsg && settleSuccessMsg.txnId === txn.id ? '' : 'hidden'}">
+                            <span class="flex items-center gap-1.5"><i class="ph-bold ph-check-circle text-base text-emerald-600"></i> ${settleSuccessMsg && settleSuccessMsg.txnId === txn.id ? settleSuccessMsg.text : ''}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1 border-t border-slate-100">
+                            <button type="button" data-action="cancel-settle" data-txn-id="${txn.id}" class="w-full py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-300 min-h-[44px] flex items-center justify-center transition-colors">
+                                ${balanceDueNum <= 0 ? 'Close' : 'Cancel'}
+                            </button>
+                            ${balanceDueNum > 0 ? `
+                            <button type="button" data-action="confirm-settle" data-txn-id="${txn.id}" class="w-full py-2.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm min-h-[44px] flex items-center justify-center gap-1.5 transition-colors">
+                                <i class="ph-bold ph-check"></i> Confirm
+                            </button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            return cardHtml;
         }).join('');
+    }
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
     }
 }
 
@@ -5732,6 +6112,102 @@ document.addEventListener('click', function(e) {
         currentTxnFilter = filterBtn.getAttribute('data-filter');
         updateTxnFilterButtons();
         renderTransactions();
+        return;
+    }
+
+    const settleBtn = e.target.closest('[data-action="settle"]');
+    if (settleBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+            if (typeof showToast === 'function') showToast("Permission denied.");
+            return;
+        }
+        const txnId = settleBtn.getAttribute('data-txn-id');
+        if (!txnId) return;
+
+        if (activeSettleTxnId === txnId) {
+            activeSettleTxnId = null;
+            settleSuccessMsg = null;
+            settleErrorMsg = null;
+        } else {
+            activeSettleTxnId = txnId;
+            settleSuccessMsg = null;
+            settleErrorMsg = null;
+        }
+        renderTransactions();
+        return;
+    }
+
+    const cancelBtn = e.target.closest('[data-action="cancel-settle"]');
+    if (cancelBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        activeSettleTxnId = null;
+        settleSuccessMsg = null;
+        settleErrorMsg = null;
+        renderTransactions();
+        return;
+    }
+
+    const confirmBtn = e.target.closest('[data-action="confirm-settle"]');
+    if (confirmBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
+            if (typeof showToast === 'function') showToast("Permission denied.");
+            return;
+        }
+        const txnId = confirmBtn.getAttribute('data-txn-id');
+        if (!txnId) return;
+
+        const amtInput = document.getElementById('settle-amount-' + txnId) || document.getElementById('settle-amount-m-' + txnId);
+        const methodSelect = document.getElementById('settle-method-' + txnId) || document.getElementById('settle-method-m-' + txnId);
+        const errEl = document.getElementById('settle-error-' + txnId);
+        const errElM = document.getElementById('settle-error-m-' + txnId);
+
+        const amt = parseFloat(amtInput ? amtInput.value : 0);
+        const method = methodSelect ? methodSelect.value : 'Cash';
+
+        const txn = (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) ? mockTxnData.find(t => t.id === txnId) : null;
+        if (!txn) return;
+
+        const totalCost = Number(txn.amount) || 0;
+        let paidSoFar = 0;
+        if (Array.isArray(txn.payments) && txn.payments.length > 0) {
+            paidSoFar = txn.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+        } else if (txn.status && txn.status.includes('Adv Paid')) {
+            const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
+            if (match) paidSoFar = parseFloat(match[2].replace(/,/g, ''));
+        }
+        const balanceDue = Math.max(0, totalCost - paidSoFar);
+
+        if (isNaN(amt) || amt <= 0) {
+            const msg = "Amount must be greater than \u20B10.00";
+            settleErrorMsg = { txnId: txnId, text: msg };
+            if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+            if (errElM) { errElM.textContent = msg; errElM.classList.remove('hidden'); }
+            const succEl = document.getElementById('settle-success-' + txnId);
+            const succElM = document.getElementById('settle-success-m-' + txnId);
+            if (succEl) succEl.classList.add('hidden');
+            if (succElM) succElM.classList.add('hidden');
+            return;
+        }
+
+        if (amt > balanceDue + 0.001) {
+            const msg = `Amount cannot exceed balance of \u20B1${balanceDue.toFixed(2)}`;
+            settleErrorMsg = { txnId: txnId, text: msg };
+            if (errEl) { errEl.textContent = msg; errEl.classList.remove('hidden'); }
+            if (errElM) { errElM.textContent = msg; errElM.classList.remove('hidden'); }
+            const succEl = document.getElementById('settle-success-' + txnId);
+            const succElM = document.getElementById('settle-success-m-' + txnId);
+            if (succEl) succEl.classList.add('hidden');
+            if (succElM) succElM.classList.add('hidden');
+            return;
+        }
+
+        settleTransaction(txnId, amt, method);
+        return;
     }
 });
 
@@ -5783,7 +6259,7 @@ function renderCashierHome() {
     let todayCompletedCount = 0;
     mockTxnData.forEach(t => {
         if (isSameDay(t.date, now)) {
-            if (t.status === 'Fully Paid' || t.category === 'completed') {
+            if (t.status === 'Fully Paid' || t.status === 'Paid' || t.category === 'completed') {
                 todaySalesTotal += (Number(t.amount) || 0);
                 todayCompletedCount++;
             } else if (t.status && t.status.includes('Partial/Adv Paid')) {
@@ -5798,7 +6274,7 @@ function renderCashierHome() {
     }
 
     // 3. Stat 2: Pending Payments (count and total amount waiting)
-    const pendingTxns = mockTxnData.filter(t => t.category !== 'completed' && t.status !== 'Fully Paid');
+    const pendingTxns = mockTxnData.filter(t => t.category !== 'completed' && t.status !== 'Fully Paid' && t.status !== 'Paid');
     let pendingWaitingAmount = 0;
     pendingTxns.forEach(t => {
         if (t.status && t.status.includes('Partial/Adv Paid')) {
@@ -8799,6 +9275,8 @@ const mockRepairsData = [
     },
     {
         id: 'JOB #1041',
+        txnId: 'TXN-831',
+        advancePaid: 500,
         plate: 'XYZ-9876',
         brandId: 'yamaha',
         brandText: '',
@@ -8814,7 +9292,7 @@ const mockRepairsData = [
         repairPlan: {
             parts: [],
             laborCost: 800,
-            estimatedTotal: 800
+            estimatedTotal: 2500
         }
     },
     {
@@ -8918,6 +9396,7 @@ const mockRepairsData = [
         }
     }
 ];
+window.mockRepairsData = mockRepairsData;
 
 function updateRepairCounters() {
     if (typeof mockRepairsData === 'undefined' || !Array.isArray(mockRepairsData)) return;
