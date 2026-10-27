@@ -2669,23 +2669,48 @@
     <!-- Quick Walk-in Sale Modal (Inventory) -->
     <div id="modal-walk-in-inv" class="fixed inset-0 z-[70] hidden flex items-center justify-center p-4">
         <div id="walkin-inv-backdrop" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeWalkInModalInv()"></div>
-        <div id="walkin-inv-content" class="relative bg-slate-800 rounded-xl shadow-2xl max-w-sm w-full flex flex-col transform scale-95 opacity-0 transition-all duration-300 text-white overflow-hidden">
-            <i class="ph-fill ph-shopping-cart-simple absolute -right-6 -bottom-6 text-9xl text-slate-700 opacity-30"></i>
-            <div class="flex items-center justify-between p-4 border-b border-slate-700 relative z-10">
-                <h2 class="text-base font-bold flex items-center gap-2">
-                    <i class="ph-fill ph-storefront text-blue-400 text-xl"></i> Walk-in Sale
+        <div id="walkin-inv-content" class="relative bg-white rounded-xl shadow-2xl border border-slate-200 max-w-sm w-full flex flex-col transform scale-95 opacity-0 transition-all duration-300 text-slate-800 overflow-hidden">
+
+            <div class="flex items-center justify-between p-4 border-b border-slate-200">
+                <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <i class="ph-fill ph-storefront text-blue-600 text-xl"></i> Walk-in Sale
                 </h2>
-                <button onclick="closeWalkInModalInv()" class="p-1 text-slate-400 hover:text-white rounded-lg transition-colors"><i class="ph ph-x text-xl"></i></button>
+                <button type="button" onclick="closeWalkInModalInv()" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors" title="Close"><i class="ph ph-x text-xl"></i></button>
             </div>
-            <div class="p-5 flex flex-col gap-5 relative z-10">
+            <div class="p-5 flex flex-col gap-4">
                 <div>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Item to Sell</span>
-                    <div id="walkin-inv-item-name" class="font-bold text-lg text-white">Part Name</div>
-                    <div class="text-sm text-slate-400 mt-1">Price per unit: <span id="walkin-inv-item-price" class="font-bold text-white">₱0.00</span></div>
+                    <div id="walkin-inv-item-name" class="font-bold text-lg text-slate-800 leading-snug">Part Name</div>
+                    <div class="text-sm text-slate-500 mt-1 flex flex-col gap-0.5">
+                        <div>Price per unit: <span id="walkin-inv-item-price" class="font-bold text-slate-800">₱0.00</span></div>
+                        <div id="walkin-inv-item-avail">Available: <span id="walkin-inv-item-stock" class="font-bold text-slate-800">0</span></div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-4 flex flex-col gap-2">
+                    <label class="block text-xs font-bold text-slate-600 uppercase">Quantity</label>
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="walkin-qty-minus" onclick="changeWalkInQty(-1)" class="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 text-base font-bold transition-colors select-none" title="Decrease quantity">
+                            <i class="ph-bold ph-minus"></i>
+                        </button>
+                        <input type="number" id="walkin-qty-input" min="1" value="1" oninput="handleWalkInQtyInput(this)" onchange="handleWalkInQtyChange(this)" onblur="handleWalkInQtyBlur(this)" class="w-20 h-10 min-h-[40px] text-center border border-slate-300 rounded-lg text-sm font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none">
+                        <button type="button" id="walkin-qty-plus" onclick="changeWalkInQty(1)" class="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 text-base font-bold transition-colors select-none" title="Increase quantity">
+                            <i class="ph-bold ph-plus"></i>
+                        </button>
+                    </div>
+                    <div id="walkin-inv-warning" class="hidden text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-1 font-medium"></div>
+                </div>
+
+                <div class="border-t border-slate-200 pt-3">
+                    <div id="walkin-inv-total-line" class="text-sm font-bold text-slate-800 flex items-center justify-between">
+                        <span>Total:</span>
+                        <span id="walkin-inv-total" class="text-base text-blue-600 font-extrabold">₱0.00</span>
+                    </div>
                 </div>
             </div>
-            <div class="p-4 bg-slate-900 border-t border-slate-700 relative z-10">
-                <button onclick="confirmWalkInSaleInv(event)" class="w-full py-3 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-500 shadow-md shadow-blue-900/50 flex items-center justify-center gap-2 transition-all">
+            <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-3 rounded-b-xl">
+                <button type="button" onclick="closeWalkInModalInv()" class="px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-200 transition-colors">Cancel</button>
+                <button type="button" onclick="confirmWalkInSaleInv(event)" class="px-5 py-2.5 rounded-lg text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all">
                     <i class="ph-bold ph-check-circle text-lg"></i> Confirm Payment
                 </button>
             </div>
@@ -3340,22 +3365,22 @@
                 </div>
             </div>
             
-            <div class="bg-slate-800 p-5 text-white shadow-inner flex flex-col gap-4 relative overflow-hidden shrink-0">
-                <i class="ph-fill ph-calculator absolute -right-4 -bottom-4 text-7xl text-slate-700 opacity-30"></i>
+            <div class="bg-slate-50 border-t border-slate-200 p-5 text-slate-800 flex flex-col gap-4 relative overflow-hidden shrink-0">
+                <i class="ph-fill ph-calculator absolute -right-4 -bottom-4 text-7xl text-slate-200 opacity-50"></i>
                 
                 <div class="flex justify-between items-end relative z-10">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Due</span>
-                    <span id="walkin-total-due" class="text-3xl font-bold text-emerald-400">₱0.00</span>
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Due</span>
+                    <span id="walkin-total-due" class="text-3xl font-bold text-emerald-600">₱0.00</span>
                 </div>
                 
-                <div class="border-t border-slate-600 pt-4 grid grid-cols-2 gap-4 relative z-10">
+                <div class="border-t border-slate-200 pt-4 grid grid-cols-2 gap-4 relative z-10">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Amount Tendered (₱)</label>
-                        <input type="number" id="walkin-tendered" placeholder="0.00" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-base font-bold text-white transition-colors" oninput="calcWalkinChange()">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Amount Tendered (₱)</label>
+                        <input type="number" id="walkin-tendered" placeholder="0.00" class="w-full px-3 py-2 rounded-lg bg-white border border-slate-300 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none text-base font-bold text-slate-800 transition-colors" oninput="calcWalkinChange()">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Change to Customer</label>
-                        <div class="w-full px-3 py-2 rounded-lg bg-slate-700/50 border border-transparent text-base font-bold text-white flex items-center">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Change to Customer</label>
+                        <div class="w-full px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-base font-bold text-slate-800 flex items-center transition-colors">
                             <span id="walkin-change">₱0.00</span>
                         </div>
                     </div>

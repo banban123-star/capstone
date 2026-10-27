@@ -2876,105 +2876,275 @@ function savePartForm() {
 }
 
 let currentWalkInPartName = '';
+let currentWalkInUnitPrice = 0;
+let currentWalkInAvailStock = 0;
+
+function updateWalkInTotal(overrideQty) {
+    const input = document.getElementById('walkin-qty-input');
+    const totalEl = document.getElementById('walkin-inv-total');
+    let qty = overrideQty;
+    if (qty === undefined || qty === null) {
+        const raw = input ? input.value.trim() : '1';
+        const parsed = parseInt(raw, 10);
+        qty = (isNaN(parsed) || parsed < 1) ? 1 : parsed;
+    }
+    const unitPrice = (typeof currentWalkInUnitPrice === 'number' && !isNaN(currentWalkInUnitPrice)) ? currentWalkInUnitPrice : 0;
+    const total = unitPrice * qty;
+    if (totalEl) {
+        totalEl.textContent = "\u20B1" + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+}
+window.updateWalkInTotal = updateWalkInTotal;
+
+function checkWalkInStockWarning(qty) {
+    const warningEl = document.getElementById('walkin-inv-warning');
+    if (!warningEl) return;
+    const avail = (typeof currentWalkInAvailStock === 'number') ? currentWalkInAvailStock : 0;
+    const currentQty = (typeof qty === 'number' && !isNaN(qty)) ? qty : 1;
+    if (avail <= 0) {
+        warningEl.textContent = "Out of stock.";
+        warningEl.classList.remove('hidden');
+    } else if (currentQty > avail) {
+        warningEl.textContent = `Only ${avail} in stock.`;
+        warningEl.classList.remove('hidden');
+    } else {
+        warningEl.textContent = '';
+        warningEl.classList.add('hidden');
+    }
+}
+window.checkWalkInStockWarning = checkWalkInStockWarning;
+
+function changeWalkInQty(delta) {
+    const input = document.getElementById('walkin-qty-input');
+    if (!input) return;
+    let val = parseInt(input.value, 10);
+    if (isNaN(val) || val < 1) {
+        val = 1;
+    }
+    val += delta;
+    if (val < 1) {
+        val = 1;
+    }
+    input.value = val;
+    updateWalkInTotal(val);
+    checkWalkInStockWarning(val);
+}
+window.changeWalkInQty = changeWalkInQty;
+
+function handleWalkInQtyInput(el) {
+    if (!el) return;
+    const raw = el.value.trim();
+    if (raw === '') {
+        updateWalkInTotal(1);
+        checkWalkInStockWarning(1);
+        return;
+    }
+    let val = parseInt(raw, 10);
+    if (isNaN(val) || val < 1) {
+        el.value = 1;
+        val = 1;
+    }
+    updateWalkInTotal(val);
+    checkWalkInStockWarning(val);
+}
+window.handleWalkInQtyInput = handleWalkInQtyInput;
+
+function handleWalkInQtyChange(el) {
+    if (!el) return;
+    let val = parseInt(el.value, 10);
+    if (isNaN(val) || val < 1) {
+        el.value = 1;
+    }
+    updateWalkInTotal();
+    checkWalkInStockWarning(val);
+}
+window.handleWalkInQtyChange = handleWalkInQtyChange;
+
+function handleWalkInQtyBlur(el) {
+    if (!el) return;
+    let val = parseInt(el.value, 10);
+    if (isNaN(val) || val < 1) {
+        el.value = 1;
+    }
+    updateWalkInTotal();
+    checkWalkInStockWarning(val);
+}
+window.handleWalkInQtyBlur = handleWalkInQtyBlur;
 
 function openWalkInModalInv(itemName, itemPrice) {
     if (typeof isViewOnly === 'function' && (isViewOnly('inventory') || isViewOnly('transactions'))) return;
     if (!hasFeature('walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
     currentWalkInPartName = itemName || '';
-    document.getElementById('walkin-inv-item-name').textContent = itemName;
-    document.getElementById('walkin-inv-item-price').textContent = "\u20B1" + itemPrice;
+
+    const part = (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData))
+        ? fullInventoryData.find(p => p && p.name === currentWalkInPartName)
+        : ((typeof mockInventory !== 'undefined' && Array.isArray(mockInventory))
+            ? mockInventory.find(p => p && p.name === currentWalkInPartName)
+            : null);
+
+    currentWalkInAvailStock = (part && typeof part.stock === 'number') ? part.stock : 0;
+
+    let parsedPrice = parseFloat(itemPrice);
+    if (isNaN(parsedPrice)) {
+        parsedPrice = (part && typeof part.price === 'number') ? part.price : 0;
+    }
+    currentWalkInUnitPrice = parsedPrice;
+
+    const nameEl = document.getElementById('walkin-inv-item-name');
+    if (nameEl) nameEl.textContent = itemName || '';
+
+    const priceEl = document.getElementById('walkin-inv-item-price');
+    if (priceEl) {
+        priceEl.textContent = "\u20B1" + currentWalkInUnitPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    const stockEl = document.getElementById('walkin-inv-item-stock');
+    if (stockEl) stockEl.textContent = currentWalkInAvailStock;
+
+    const qtyInput = document.getElementById('walkin-qty-input');
+    if (qtyInput) qtyInput.value = 1;
+
+    updateWalkInTotal(1);
+    checkWalkInStockWarning(1);
+
     toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', true);
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
 }
-function closeWalkInModalInv() { toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', false); }
+function closeWalkInModalInv() {
+    const warningEl = document.getElementById('walkin-inv-warning');
+    if (warningEl) {
+        warningEl.textContent = '';
+        warningEl.classList.add('hidden');
+    }
+    const qtyInput = document.getElementById('walkin-qty-input');
+    if (qtyInput) qtyInput.value = 1;
+    toggleModal('modal-walk-in-inv', 'walkin-inv-backdrop', 'walkin-inv-content', false);
+}
 function confirmWalkInSaleInv(event) {
     if (typeof isViewOnly === 'function' && (isViewOnly('inventory') || isViewOnly('transactions'))) return;
     if (!hasFeature('walkInSale')) { closeWalkInModalInv(); showToast("You don't have permission to do this."); return; }
-    const btn = event.currentTarget;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = `<i class="ph-bold ph-spinner animate-spin text-lg"></i> Processing...`;
-    btn.disabled = true;
-    setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        btn.disabled = false;
-        closeWalkInModalInv();
-        const part = fullInventoryData.find(p => p.name === currentWalkInPartName);
-        if (part && part.stock > 0) {
-            const stockBefore = part.stock;
-            part.stock -= 1;
-            const stockAfter = part.stock;
-            const txnId = 'TXN-' + Math.floor(100 + Math.random() * 900);
-            if (typeof recordMovement === 'function') {
-                recordMovement({
-                    part,
-                    type: 'out',
-                    quantity: 1,
-                    stockBefore,
-                    stockAfter,
-                    reference: `Walk-in sale ${txnId}`
-                });
-            }
-            if (typeof logActivity === 'function') {
-                logActivity({
-                    module: 'Inventory',
-                    action: 'Walk-in Sale',
-                    recordRef: part.name,
-                    before: `${stockBefore} pcs`,
-                    after: `${stockAfter} pcs`,
-                    severity: 'standard'
-                });
-            }
-            if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
-                mockTxnData.unshift({
-                    id: txnId,
-                    category: 'completed',
-                    type: 'Walk-in Sale',
-                    typeClass: 'text-slate-500 bg-slate-100 border-slate-200',
-                    typeIcon: 'ph-shopping-bag',
-                    customer: 'Walk-in Customer',
-                    details: `Purchased: ${part.name} (x1)`,
-                    amount: part.price,
-                    amountSuffix: '',
-                    status: 'Fully Paid',
-                    statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-                    statusDot: 'bg-emerald-500',
-                    btnText: 'View Receipt',
-                    btnClass: 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300',
-                    btnIcon: 'ph-receipt',
-                    btnAction: 'openReceiptModal()',
-                    date: new Date().toISOString()
-                });
-            }
-            renderInventory();
-            if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
-            if (typeof renderCashierHome === 'function') renderCashierHome();
-            if (typeof renderTransactions === 'function') renderTransactions();
+
+    const part = (typeof fullInventoryData !== 'undefined' && Array.isArray(fullInventoryData))
+        ? fullInventoryData.find(p => p && p.name === currentWalkInPartName)
+        : ((typeof mockInventory !== 'undefined' && Array.isArray(mockInventory))
+            ? mockInventory.find(p => p && p.name === currentWalkInPartName)
+            : null);
+
+    const stock = (part && typeof part.stock === 'number') ? part.stock : 0;
+    if (!part || stock <= 0) {
+        const warningEl = document.getElementById('walkin-inv-warning');
+        if (warningEl) {
+            warningEl.textContent = "Out of stock.";
+            warningEl.classList.remove('hidden');
         }
-        showToast("Payment Confirmed! Stock has been deducted automatically.");
-    }, 800);
+        return;
+    }
+
+    const qtyInput = document.getElementById('walkin-qty-input');
+    let qty = qtyInput ? parseInt(qtyInput.value, 10) : 1;
+    if (isNaN(qty) || qty < 1) qty = 1;
+
+    if (qty > stock) {
+        qty = stock;
+        if (qtyInput) qtyInput.value = qty;
+        updateWalkInTotal(qty);
+        checkWalkInStockWarning(qty);
+    }
+
+    closeWalkInModalInv();
+
+    const stockBefore = part.stock;
+    part.stock -= qty;
+    const stockAfter = part.stock;
+    currentWalkInAvailStock = part.stock;
+    const txnId = 'TXN-' + Math.floor(100 + Math.random() * 900);
+
+    if (typeof recordMovement === 'function') {
+        recordMovement({
+            part,
+            type: 'out',
+            quantity: qty,
+            stockBefore,
+            stockAfter,
+            reference: `Walk-in sale ${txnId}`
+        });
+    }
+
+    if (typeof logActivity === 'function') {
+        logActivity({
+            module: 'Inventory',
+            action: 'Walk-in Sale',
+            recordRef: part.name,
+            before: `${stockBefore} pcs`,
+            after: `${stockAfter} pcs`,
+            severity: 'standard'
+        });
+    }
+
+    const lineAmount = (Number(part.price) || 0) * qty;
+    if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
+        mockTxnData.unshift({
+            id: txnId,
+            category: 'completed',
+            type: 'Walk-in Sale',
+            typeClass: 'text-slate-500 bg-slate-100 border-slate-200',
+            typeIcon: 'ph-shopping-bag',
+            customer: 'Walk-in Customer',
+            details: `Purchased: ${part.name} (x${qty})`,
+            amount: lineAmount,
+            amountSuffix: '',
+            status: 'Fully Paid',
+            statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+            statusDot: 'bg-emerald-500',
+            btnText: 'View Receipt',
+            btnClass: 'bg-white hover:bg-slate-50 text-slate-600 border-slate-300',
+            btnIcon: 'ph-receipt',
+            btnAction: 'openReceiptModal()',
+            date: new Date().toISOString()
+        });
+    }
+
+    renderInventory();
+    if (typeof renderSummaryStrip === 'function') renderSummaryStrip();
+    if (typeof updateDashboardWidgets === 'function') updateDashboardWidgets();
+    if (typeof renderCashierHome === 'function') renderCashierHome();
+    if (typeof renderTransactions === 'function') renderTransactions();
+
+    showToast("Payment Confirmed! Stock has been deducted automatically.");
 }
 
 // --- Transactions & Billing Logic ---
 function openWalkInCheckout() { 
     if (typeof isViewOnly === 'function' && isViewOnly('transactions')) return;
     if (!window.can('inventory.walkInSale')) { closeWalkInCheckout(); showToast("You don't have permission to do this."); return; }
-    document.getElementById('walkin-tendered').value = "";
-    document.getElementById('walkin-change').textContent = "0.00";
+    const tenderedInput = document.getElementById('walkin-tendered');
+    if (tenderedInput) tenderedInput.value = "";
+    const changeLabel = document.getElementById('walkin-change');
+    if (changeLabel) changeLabel.textContent = "0.00";
     toggleModal('modal-txn-walkin', 'txn-walkin-backdrop', 'txn-walkin-content', true); 
 }
 function closeWalkInCheckout() { toggleModal('modal-txn-walkin', 'txn-walkin-backdrop', 'txn-walkin-content', false); }
 
 function calcWalkinChange() {
     const totalDue = 850.00;
-    const tendered = parseFloat(document.getElementById('walkin-tendered').value) || 0;
+    const tendered = parseFloat(document.getElementById('walkin-tendered')?.value) || 0;
     const changeLabel = document.getElementById('walkin-change');
+    if (!changeLabel) return;
     if (tendered >= totalDue) {
         changeLabel.textContent = (tendered - totalDue).toFixed(2);
-        changeLabel.parentElement.classList.remove('text-red-400');
-        changeLabel.parentElement.classList.add('text-emerald-400');
+        if (changeLabel.parentElement) {
+            changeLabel.parentElement.classList.remove('text-red-400', 'text-red-600', 'text-slate-800');
+            changeLabel.parentElement.classList.add('text-emerald-600');
+        }
     } else {
         changeLabel.textContent = "0.00";
-        changeLabel.parentElement.classList.remove('text-emerald-400');
-        changeLabel.parentElement.classList.add('text-red-400');
+        if (changeLabel.parentElement) {
+            changeLabel.parentElement.classList.remove('text-emerald-400', 'text-emerald-600', 'text-slate-800');
+            changeLabel.parentElement.classList.add('text-red-600');
+        }
     }
 }
 
@@ -5488,12 +5658,16 @@ window.calcWalkinChange = function() {
 
     if (tendered >= walkinTotalDue && walkinTotalDue > 0) {
         changeLabel.textContent = `\u20B1${(tendered - walkinTotalDue).toFixed(2)}`;
-        changeLabel.parentElement.classList.remove('text-red-400');
-        changeLabel.parentElement.classList.add('text-emerald-400');
+        if (changeLabel.parentElement) {
+            changeLabel.parentElement.classList.remove('text-red-400', 'text-red-600', 'text-slate-800');
+            changeLabel.parentElement.classList.add('text-emerald-600');
+        }
     } else {
         changeLabel.textContent = "\u20B10.00";
-        changeLabel.parentElement.classList.remove('text-emerald-400');
-        changeLabel.parentElement.classList.add('text-red-400');
+        if (changeLabel.parentElement) {
+            changeLabel.parentElement.classList.remove('text-emerald-400', 'text-emerald-600', 'text-slate-800');
+            changeLabel.parentElement.classList.add('text-red-600');
+        }
     }
 };
 
