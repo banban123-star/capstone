@@ -305,7 +305,7 @@ document.addEventListener('input', function(e) {
     }
     
     // Update plan totals when typing in Final Findings or Labor Cost
-    if (e.target.id === 'final-findings' || e.target.id === 'labor-cost-input') {
+    if (e.target.id === 'final-findings' || e.target.id === 'step2-final-findings' || e.target.id === 'labor-cost-input') {
         if (typeof updatePlanTotals === 'function') {
             updatePlanTotals();
         }
@@ -440,10 +440,16 @@ window.switchDiagStep = function(step, fromStepper = false) {
 
     const previousStep = currentDiagStep;
     currentDiagStep = step;
+    if (typeof syncFinalFindingsDom === 'function') {
+        syncFinalFindingsDom();
+    }
 
-    if (step === 2 && previousStep === 1) {
-        if (!planReviewed) {
+    if (step === 2) {
+        if (previousStep === 1 && !planReviewed) {
             syncPlanFromDiagnosis(true);
+        }
+        if (typeof renderInspectionSummary === "function") {
+            renderInspectionSummary(document.getElementById("step2-inspection-summary"));
         }
     }
 
@@ -645,7 +651,7 @@ async function loadView(viewName) {
                     el.style.display = canUsers ? '' : 'none';
                 });
                 if (typeof updateDashboardQuickActions === 'function') updateDashboardQuickActions();
-                if (typeof updateSystemHealthCard === 'function') updateSystemHealthCard();
+
             }
         }
 
@@ -1694,7 +1700,7 @@ function switchRole(roleId, isLogin) {
         if (typeof initSettingsView === 'function') initSettingsView();
     }
     if (typeof updateDashboardQuickActions === 'function') updateDashboardQuickActions();
-    if (typeof updateSystemHealthCard === 'function') updateSystemHealthCard();
+
     if (typeof renderPermissionsMatrix === 'function') renderPermissionsMatrix();
     if (typeof syncTempGrantsTimer === 'function') syncTempGrantsTimer(roleId);
 }
@@ -2383,7 +2389,7 @@ function resetDiagnosticsWorkflow() {
     planReviewed = false;
     const laborInput = document.getElementById('labor-cost-input');
     if (laborInput) laborInput.value = '';
-    document.querySelectorAll('#final-findings').forEach(el => { el.value = ''; });
+    if (typeof setFinalFindingsText === 'function') setFinalFindingsText(''); else document.querySelectorAll('#final-findings, #step2-final-findings').forEach(el => { el.value = ''; });
     
     // Clear DTC scan results & state
     if (typeof clearDtcScanResults === 'function') clearDtcScanResults();
@@ -7964,44 +7970,6 @@ function formatSyncTime(isoStr) {
     return new Date(isoStr).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function updateSystemHealthCard() {
-    const isDesktopSuperAdmin = (typeof isViewOnly === 'function' ? isViewOnly('dashboard') : (currentRole === 'super_admin')) && !document.body.classList.contains('mobile-app');
-    const healthCard = document.getElementById('dashboard-system-health-card');
-    if (!healthCard) return;
-
-    if (!isDesktopSuperAdmin) {
-        healthCard.classList.add('hidden');
-        return;
-    }
-    healthCard.classList.remove('hidden');
-
-    const lastSyncEl = document.getElementById('health-last-synced');
-    if (lastSyncEl) {
-        const lastSyncIso = (typeof syncState !== 'undefined' && syncState && syncState.lastSyncedAt) ? syncState.lastSyncedAt : null;
-        lastSyncEl.textContent = lastSyncIso ? formatSyncTime(lastSyncIso) : 'Never';
-    }
-
-    const pendingEl = document.getElementById('health-pending-changes');
-    if (pendingEl) {
-        const pending = (typeof getPendingChanges === 'function') ? getPendingChanges() : 0;
-        pendingEl.textContent = String(pending);
-    }
-
-    const recordsEl = document.getElementById('health-stored-records');
-    const breakdownEl = document.getElementById('health-stored-breakdown');
-    if (recordsEl) {
-        const partsCount = (typeof mockInventory !== 'undefined' && Array.isArray(mockInventory)) ? mockInventory.length : 0;
-        const jobsCount = (typeof mockRepairsData !== 'undefined' && Array.isArray(mockRepairsData)) ? mockRepairsData.length : 0;
-        const txnsCount = (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) ? mockTxnData.length : 0;
-        const usersCount = (typeof mockUserData !== 'undefined' && Array.isArray(mockUserData)) ? mockUserData.length : 0;
-        const total = partsCount + jobsCount + txnsCount + usersCount;
-        recordsEl.textContent = String(total);
-        if (breakdownEl) {
-            breakdownEl.textContent = `${partsCount} parts, ${jobsCount} jobs, ${txnsCount} txns, ${usersCount} users`;
-        }
-    }
-}
-window.updateSystemHealthCard = updateSystemHealthCard;
 
 function updateBackupSyncUI() {
     const isFullAccess = (typeof getScreenAccess === 'function') ? (getScreenAccess('backup') === 'full') : (currentRole === 'super_admin');
@@ -8043,10 +8011,6 @@ function updateBackupSyncUI() {
     if (settingsLastSync && syncState && syncState.lastSyncedAt) {
         settingsLastSync.textContent = `Last synced: ${formatSyncTime(syncState.lastSyncedAt)}`;
     }
-
-    if (typeof updateSystemHealthCard === 'function') {
-        updateSystemHealthCard();
-    }
 }
 window.updateBackupSyncUI = updateBackupSyncUI;
 
@@ -8054,20 +8018,16 @@ window.triggerBackupSyncNow = function(e) {
     if (typeof getScreenAccess === 'function' && getScreenAccess('backup') !== 'full') return;
     
     const btn = document.getElementById('btn-sync-now-backup');
-    const dashBtn = document.getElementById('btn-sync-now-dashboard');
     const settingsBtn = document.getElementById('btn-settings-sync-now');
     const msgEl = document.getElementById('sync-inline-msg');
-    const dashMsg = document.getElementById('dashboard-sync-msg');
     const settingsMsg = document.getElementById('settings-sync-inline-msg');
     const lastSyncTextEl = document.getElementById('sync-last-synced-text');
     const pendingTextEl = document.getElementById('sync-pending-changes-text');
     const settingsLastSyncEl = document.getElementById('settings-sync-last-synced');
     const settingsPendingEl = document.getElementById('settings-sync-pending');
     const icon = document.getElementById('sync-cloud-icon');
-    const healthLastSync = document.getElementById('health-last-synced');
-    const healthPending = document.getElementById('health-pending-changes');
     
-    [btn, dashBtn, settingsBtn].forEach(b => {
+    [btn, settingsBtn].forEach(b => {
         if (b) {
             b.disabled = true;
             b.innerHTML = `<i class="ph-bold ph-arrows-clockwise animate-spin text-sm"></i> Syncing...`;
@@ -8076,7 +8036,7 @@ window.triggerBackupSyncNow = function(e) {
     if (icon) {
         icon.classList.add('animate-spin');
     }
-    [msgEl, dashMsg, settingsMsg].forEach(m => {
+    [msgEl, settingsMsg].forEach(m => {
         if (m) {
             m.textContent = 'Syncing...';
             m.classList.remove('hidden', 'text-emerald-600');
@@ -8103,7 +8063,7 @@ window.triggerBackupSyncNow = function(e) {
             });
         }
 
-        [btn, dashBtn, settingsBtn].forEach(b => {
+        [btn, settingsBtn].forEach(b => {
             if (b) {
                 b.disabled = false;
                 b.innerHTML = `<i class="ph-bold ph-arrows-clockwise text-sm"></i> Sync Now`;
@@ -8113,7 +8073,7 @@ window.triggerBackupSyncNow = function(e) {
             icon.classList.remove('animate-spin');
         }
 
-        [msgEl, dashMsg, settingsMsg].forEach(m => {
+        [msgEl, settingsMsg].forEach(m => {
             if (m) {
                 m.textContent = 'Last synced just now';
                 m.classList.remove('hidden', 'text-slate-500');
@@ -8133,15 +8093,8 @@ window.triggerBackupSyncNow = function(e) {
         if (settingsPendingEl) {
             settingsPendingEl.textContent = '0 pending changes to sync';
         }
-        if (healthLastSync) {
-            healthLastSync.textContent = 'just now';
-        }
-        if (healthPending) {
-            healthPending.textContent = '0';
-        }
 
         updateBackupSyncUI();
-        updateSystemHealthCard();
         if (typeof updateSettingsBackupTabUI === 'function') {
             updateSettingsBackupTabUI();
         }
@@ -10985,7 +10938,8 @@ function emptyInspectionState() {
         intake: { odo: '', fuel: '', complaints: [] }, 
         vehicle: { mode: 'identified', brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: '' },
         customer: { mode: 'walk-in', name: '', phone: '', email: '', selectedCustomerId: null },
-        items: {} 
+        items: {},
+        finalFindingsText: ''
     };
 }
 
@@ -11005,7 +10959,8 @@ function loadInspectionState() {
                 intake: { ...emptyInspectionState().intake, ...(saved.intake || {}) },
                 vehicle: loadedVehicle,
                 customer: { ...emptyInspectionState().customer, ...(saved.customer || {}) },
-                items: saved.items || {}
+                items: saved.items || {},
+                finalFindingsText: (typeof saved.finalFindingsText === 'string') ? saved.finalFindingsText : ''
             };
         }
     } catch (err) { /* storage unavailable or corrupt: start fresh */ }
@@ -11051,6 +11006,41 @@ function saveInspectionState() {
 }
 
 let inspectionState = loadInspectionState();
+
+function getFinalFindingsText() {
+    if (typeof inspectionState !== 'undefined' && inspectionState && typeof inspectionState.finalFindingsText === 'string') {
+        return inspectionState.finalFindingsText;
+    }
+    const ta = document.getElementById('final-findings') || document.getElementById('step2-final-findings');
+    return (ta && typeof ta.value === 'string') ? ta.value : '';
+}
+
+function syncFinalFindingsDom(val) {
+    const text = (val !== undefined && val !== null) ? String(val) : getFinalFindingsText();
+    const ta1 = document.getElementById('final-findings');
+    const ta2 = document.getElementById('step2-final-findings');
+    [ta1, ta2].forEach(ta => {
+        if (ta && ta.value !== text) {
+            ta.value = text;
+        }
+    });
+}
+
+function setFinalFindingsText(val, skipDom = false) {
+    const text = (val !== undefined && val !== null) ? String(val) : '';
+    if (typeof inspectionState !== 'undefined' && inspectionState) {
+        inspectionState.finalFindingsText = text;
+        if (typeof saveInspectionState === 'function') {
+            saveInspectionState();
+        }
+    }
+    if (!skipDom) {
+        syncFinalFindingsDom(text);
+    }
+}
+window.getFinalFindingsText = getFinalFindingsText;
+window.setFinalFindingsText = setFinalFindingsText;
+window.syncFinalFindingsDom = syncFinalFindingsDom;
 let inspectionPhotos = {};           // item id -> [dataURL] (memory only, photos are too large for localStorage)
 const inspectionCollapsed = {};      // section id -> true when collapsed (sections start collapsed until opened)
 const isInspectionCollapsed = id => inspectionCollapsed[id] !== false;
@@ -11139,6 +11129,7 @@ function renderInspection() {
 }
 
 function restoreInspectionIntake() {
+    if (typeof syncFinalFindingsDom === 'function') syncFinalFindingsDom();
     const { complaints } = inspectionState.intake;
     document.querySelectorAll('[data-insp="complaint"]').forEach(btn => btn.classList.toggle('is-active', complaints.includes(btn.dataset.complaint)));
     restoreMotorcycleCard();
@@ -11657,12 +11648,16 @@ document.addEventListener('click', function(e) {
     } else if (action === 'to-findings') {
         const block = buildInspectionFindings();
         const existing = /— PHYSICAL INSPECTION —[\s\S]*?— END INSPECTION —/;
-        document.querySelectorAll('#final-findings').forEach(textarea => {
-            textarea.value = existing.test(textarea.value)
-                ? textarea.value.replace(existing, block)                      // refresh the earlier block instead of duplicating it
-                : (textarea.value.trim() ? `${textarea.value.trim()}\n\n${block}` : block);
-            textarea.style.height = 'auto';
-            textarea.style.height = `${Math.max(96, textarea.scrollHeight)}px`;
+        const current = getFinalFindingsText();
+        const newVal = existing.test(current)
+            ? current.replace(existing, block)
+            : (current.trim() ? (current.trim() + "\n\n" + block) : block);
+        setFinalFindingsText(newVal);
+        [document.getElementById("final-findings"), document.getElementById("step2-final-findings")].forEach(ta => {
+            if (ta) {
+                ta.style.height = "auto";
+                ta.style.height = String(Math.max(96, ta.scrollHeight)) + "px";
+            }
         });
         applyDtcFindings();
         flashInspectionButton(el, '<i class="ph-bold ph-check text-lg"></i> Added to findings');
@@ -11678,12 +11673,8 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('input', function(e) {
     const target = e.target;
-    if (target && target.id === 'final-findings') {
-        document.querySelectorAll('#final-findings').forEach(ta => {
-            if (ta !== target && ta.value !== target.value) {
-                ta.value = target.value;
-            }
-        });
+    if (target && (target.id === 'final-findings' || target.id === 'step2-final-findings')) {
+        setFinalFindingsText(target.value, false);
     }
     if (target.dataset && target.dataset.inspInput === 'note') {
         getInspItem(target.dataset.item).note = target.value;
@@ -12761,15 +12752,20 @@ window.buildDtcFindings = buildDtcFindings;
 function applyDtcFindings(textarea) {
     const block = buildDtcFindings();
     const existing = /— ECU\/OBD SCAN —[\s\S]*?— END ECU\/OBD —/;
-    const all = textarea ? [textarea] : document.querySelectorAll('#final-findings');
+    const current = getFinalFindingsText();
+    let newVal = "";
+    if (existing.test(current)) {
+        newVal = block ? current.replace(existing, block).replace(/\n{3,}/g, "\n\n").trim() : current.replace(existing, "").replace(/\n{3,}/g, "\n\n").trim();
+    } else if (block) {
+        newVal = current.trim() ? (current.trim() + "\n\n" + block) : block;
+    } else {
+        newVal = current;
+    }
+    setFinalFindingsText(newVal);
+    const all = textarea ? [textarea] : [document.getElementById("final-findings"), document.getElementById("step2-final-findings")].filter(Boolean);
     all.forEach(ta => {
-        if (existing.test(ta.value)) {
-            ta.value = block ? ta.value.replace(existing, block).replace(/\n{3,}/g, '\n\n').trim() : ta.value.replace(existing, '').replace(/\n{3,}/g, '\n\n').trim();
-        } else if (block) {
-            ta.value = ta.value.trim() ? `${ta.value.trim()}\n\n${block}` : block;
-        }
-        ta.style.height = 'auto';
-        ta.style.height = `${Math.max(96, ta.scrollHeight)}px`;
+        ta.style.height = "auto";
+        ta.style.height = String(Math.max(96, ta.scrollHeight)) + "px";
     });
 }
 window.applyDtcFindings = applyDtcFindings;
@@ -12989,6 +12985,116 @@ function renderInspectionOverview() {
 }
 window.renderInspectionOverview = renderInspectionOverview;
 
+function renderInspectionSummary(targetEl) {
+    const el = (typeof targetEl === "string") ? document.getElementById(targetEl) : targetEl;
+    if (!el) return;
+
+    // 1. Customer Complaints
+    const complaints = (typeof inspectionState !== "undefined" && inspectionState && inspectionState.intake && Array.isArray(inspectionState.intake.complaints))
+        ? inspectionState.intake.complaints
+        : [];
+    let complaintsHtml = "<span class=\"text-xs text-slate-400 italic\">None recorded</span>";
+    if (complaints.length > 0) {
+        complaintsHtml = `<div class="flex flex-wrap gap-1.5">${complaints.map(c => 
+            `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200 max-w-full"><i class="ph-fill ph-warning-circle text-amber-500 shrink-0"></i> <span class="break-words">${escHTML(c)}</span></span>`
+        ).join("")}</div>`;
+    }
+
+    // 2. ECU / OBD Diagnostic
+    const scanned = (typeof dtcScanState !== "undefined" && dtcScanState && Array.isArray(dtcScanState.scanned))
+        ? dtcScanState.scanned
+        : [];
+    let ecuHtml = "<span class=\"text-xs text-slate-400 italic\">No scan run yet</span>";
+    if (scanned.length > 0) {
+        const lines = scanned.map(s => {
+            const entry = (typeof getDtcEntryById === "function") ? getDtcEntryById(s.id) : null;
+            const codes = (entry && Array.isArray(entry.codes) && entry.codes.length > 0)
+                ? entry.codes
+                : (s.code ? [s.code] : []);
+            const codeBadges = codes.map(c => 
+                `<span class="px-1.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700 border border-red-200 font-mono">${escHTML(c)}</span>`
+            ).join(" ");
+            const component = (entry && entry.component) ? escHTML(entry.component) : (s.code ? escHTML(s.code) : "Unknown component");
+            return `<div class="flex flex-wrap items-center gap-1.5 text-xs text-slate-700 max-w-full">
+                ${codeBadges}
+                <span class="font-semibold text-slate-800 break-words">${component}</span>
+            </div>`;
+        }).filter(Boolean);
+        if (lines.length > 0) {
+            ecuHtml = `<div class="flex flex-col gap-1.5">${lines.join("")}</div>`;
+        }
+    }
+
+    // 3. Physical Inspection
+    let okCount = 0;
+    let watchCount = 0;
+    let fixCount = 0;
+    const fixItems = [];
+    const watchItems = [];
+
+    if (typeof inspectionItems !== "undefined" && typeof getInspItem === "function") {
+        inspectionItems.forEach(item => {
+            const st = getInspItem(item.id);
+            const s = st ? st.status : null;
+            if (s === "ok") {
+                okCount++;
+            } else if (s === "watch") {
+                watchCount++;
+                watchItems.push(item);
+            } else if (s === "fix") {
+                fixCount++;
+                fixItems.push(item);
+            }
+        });
+    }
+
+    const physBadgesHtml = `<div class="flex flex-wrap items-center gap-2 text-xs font-bold">
+        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 whitespace-nowrap">OK: ${okCount}</span>
+        <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200 whitespace-nowrap">Watch: ${watchCount}</span>
+        <span class="px-2 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 whitespace-nowrap">Fix: ${fixCount}</span>
+    </div>`;
+
+    let physChipsHtml = "";
+    if (fixItems.length === 0 && watchItems.length === 0) {
+        physChipsHtml = "<div class=\"text-xs text-slate-400 italic\">No issues flagged</div>";
+    } else {
+        const fixChips = fixItems.map(item => 
+            `<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2.5 py-0.5 rounded-full text-xs font-semibold border border-red-200 max-w-full">
+                <i class="ph-bold ph-wrench text-red-600"></i> <span class="break-words">${escHTML(item.label || item.id)}</span>
+            </span>`
+        ).join("");
+        const watchChips = watchItems.map(item => 
+            `<span class="inline-flex items-center gap-1 bg-amber-100 text-amber-700 px-2.5 py-0.5 rounded-full text-xs font-semibold border border-amber-200 max-w-full">
+                <i class="ph-bold ph-warning text-amber-600"></i> <span class="break-words">${escHTML(item.label || item.id)}</span>
+            </span>`
+        ).join("");
+        physChipsHtml = `<div class="flex flex-wrap gap-1.5">${fixChips}${watchChips}</div>`;
+    }
+
+    el.innerHTML = `
+        <div class="flex flex-col divide-y divide-slate-200/70 text-xs">
+            <div class="py-2 flex flex-col gap-1.5 first:pt-0">
+                <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Customer Complaints</span>
+                <div>${complaintsHtml}</div>
+            </div>
+            <div class="py-2 flex flex-col gap-1.5">
+                <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px]">ECU / OBD Diagnostic</span>
+                <div>${ecuHtml}</div>
+            </div>
+            <div class="py-2 flex flex-col gap-1.5 last:pb-0">
+                <span class="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Physical Inspection</span>
+                <div>${physBadgesHtml}</div>
+                <div class="mt-1">${physChipsHtml}</div>
+            </div>
+        </div>
+    `;
+
+    if (typeof lucide !== "undefined" && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+window.renderInspectionSummary = renderInspectionSummary;
+
 function partsForDtc(code) {
     const c = String(code || '').toUpperCase().trim();
     const out = [];
@@ -13079,16 +13185,8 @@ window.syncPlanFromDiagnosis = function(firstTime = false, restoreRemoved = fals
         window.removedAutoSuggestions.clear();
     }
     
-    const complaintsContainer = document.getElementById('step2-complaints-container');
-    if (complaintsContainer) {
-        if (inspectionState.intake.complaints && inspectionState.intake.complaints.length > 0) {
-            complaintsContainer.innerHTML = inspectionState.intake.complaints.map(c => 
-                `<span class="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-200"><i class="ph-fill ph-warning-circle text-amber-500"></i> ${escHTML(c)}</span>`
-            ).join('');
-            complaintsContainer.parentElement?.classList.remove('hidden');
-        } else {
-            complaintsContainer.parentElement?.classList.add('hidden');
-        }
+    if (typeof renderInspectionSummary === "function") {
+        renderInspectionSummary(document.getElementById("step2-inspection-summary"));
     }
 
     const suggestions = window.getSuggestedParts();
@@ -13375,7 +13473,7 @@ function renderStep3Summary() {
     }
 
     // Final Findings
-    const findings = (document.getElementById('final-findings')?.value || '').trim();
+    const findings = (getFinalFindingsText() || '').trim();
     setText('step3-final-findings', findings ? escHTML(findings) : '<span class="italic text-slate-400">No notes provided.</span>');
 
     // Total
@@ -13678,8 +13776,7 @@ function saveDiagnosticRecord() {
         }
 
         // 9. Findings
-        const findingsEl = document.getElementById('final-findings');
-        const rawFindings = findingsEl ? findingsEl.value : '';
+        const rawFindings = getFinalFindingsText();
         const findings = (rawFindings && rawFindings.trim()) ? rawFindings.trim() : 'Not provided';
 
         // 10. Parts ({ name, qty, price, stockStatus })

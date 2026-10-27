@@ -348,6 +348,428 @@ button.m-sheet-row:active { background: #f1f5f9; }
 .diag-step.is-done .diag-step-dot { background: #10b981; border-color: #10b981; color: #fff; }
 @media (max-width: 480px) { .diag-step > span:last-child { display: none; } .diag-step.is-active > span:last-child { display: inline; } }
 
+/* ==========================================================================
+   DIAGNOSTICS STEP 2 (PARTS & PLAN) MOBILE UI OVERRIDES
+   Ensures mobile frame matches real phone layout when viewed on wide displays.
+   ========================================================================== */
+
+/* 1. Single column inside "Repair Plan & Handoff" */
+body.mobile-app #step-2-plan .grid.lg\:grid-cols-12,
+body.mobile-app #step-2-plan .bg-white > .grid {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+}
+
+body.mobile-app #step-2-plan .grid.lg\:grid-cols-12 > div,
+body.mobile-app #step-2-plan .bg-white > .grid > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    box-sizing: border-box !important;
+}
+
+/* Enforce DOM order: Customer Complaint chips -> Cost summary box -> Required Parts & Materials */
+body.mobile-app #step-2-plan .grid.lg\:grid-cols-12 > div:nth-child(1),
+body.mobile-app #step-2-plan .bg-white > .grid > div:nth-child(1) {
+    order: 1 !important;
+    width: 100% !important;
+}
+
+body.mobile-app #step-2-plan .grid > div:nth-child(1) > .mb-4,
+body.mobile-app #step2-inspection-summary-card,
+body.mobile-app #step2-card-final-findings {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #step2-inspection-summary,
+body.mobile-app #step2-final-findings {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+body.mobile-app #step-2-plan .grid.lg\:grid-cols-12 > div:nth-child(2),
+body.mobile-app #step-2-plan .bg-white > .grid > div:nth-child(2) {
+    order: 2 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+body.mobile-app #step-2-plan .grid.lg\:grid-cols-12 > div:nth-child(3),
+body.mobile-app #step-2-plan .bg-white > .grid > div:nth-child(3) {
+    order: 3 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+}
+
+/* 2. Cost summary box layout & styling */
+body.mobile-app #step-2-plan .grid > div:nth-child(2) > .rounded-xl {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.625rem !important;
+}
+
+body.mobile-app #step-2-plan .grid > div:nth-child(2) > .rounded-xl > div {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #labor-cost-input {
+    width: 120px !important;
+    min-width: 0 !important;
+    max-width: 120px !important;
+    text-align: right !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #step-2-plan .grid > div:nth-child(2) > .rounded-xl > div.border-t,
+body.mobile-app #step-2-plan .grid > div:nth-child(2) > .rounded-xl > div:nth-child(3) {
+    border-top: 1px solid #e2e8f0 !important;
+    padding-top: 0.625rem !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+}
+
+body.mobile-app #plan-grand-total {
+    font-size: 1.125rem !important;
+    font-weight: 800 !important;
+    color: #1d4ed8 !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+}
+
+body.mobile-app #plan-parts-total,
+body.mobile-app #plan-grand-total,
+body.mobile-app #step-2-plan .whitespace-nowrap,
+body.mobile-app #selected-parts-container .line-total {
+    white-space: nowrap !important;
+}
+
+body.mobile-app #step-2-plan {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #part-search-input {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* 3. Final Findings textarea and parts list cards full width without horizontal scrolling */
+body.mobile-app #card-final-findings {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #final-findings {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+body.mobile-app #selected-parts-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #selected-parts-container > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #selected-parts-container [id^="selected-part-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+body.mobile-app #selected-parts-container [id^="selected-part-"] > div {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   DIAGNOSTICS STEPPER & BOTTOM BUTTON ROWS (Mobile Frame Overrides)
+   ========================================================================== */
+
+/* 1. Stepper: show only the ACTIVE step's label; completed steps show check, future show grey number */
+body.mobile-app #diag-stepper {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 0.75rem 1rem !important;
+}
+
+body.mobile-app .diag-step {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+}
+
+body.mobile-app .diag-step > span:last-child {
+    display: none !important;
+}
+
+body.mobile-app .diag-step.is-active > span:last-child {
+    display: inline !important;
+    white-space: nowrap !important;
+}
+
+body.mobile-app #diag-stepper .flex-1 {
+    flex: 1 1 0% !important;
+    min-width: 8px !important;
+}
+
+/* 2. Scrolling area bottom padding (about height of bottom nav ~60px + 16px = ~76px) */
+body.mobile-app #view-diagnostics {
+    padding-bottom: 76px !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #step-1-diagnose,
+body.mobile-app #step-2-plan,
+body.mobile-app #step-3-register {
+    padding-bottom: 0.5rem !important;
+    box-sizing: border-box !important;
+}
+
+/* 3. Step 1: Next button fits full width, >= 44px tall */
+body.mobile-app #step-1-diagnose > div:last-child {
+    width: 100% !important;
+}
+
+body.mobile-app #btn-next-step1 {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 0.75rem 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    box-sizing: border-box !important;
+}
+
+/* 4. Step 2 & Step 3: Bottom button row as flex row with gap, min-width: 0, >= 44px tall, no right overflow */
+body.mobile-app #step-2-plan > div:last-child,
+body.mobile-app #step3-actions {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #step-2-plan > div:last-child button,
+body.mobile-app #step3-actions button {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    height: auto !important;
+    padding: 0.75rem 0.5rem !important;
+    white-space: nowrap !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.375rem !important;
+    font-size: 12px !important;
+    box-sizing: border-box !important;
+}
+
+/* Shorten Next and Confirm button labels under Mobile UI selector only */
+body.mobile-app #btn-next-step2 span {
+    font-size: 0 !important;
+}
+
+body.mobile-app #btn-next-step2 span::before {
+    content: "Next" !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+body.mobile-app #btn-confirm-push span {
+    font-size: 0 !important;
+}
+
+body.mobile-app #btn-confirm-push span::before {
+    content: "Confirm" !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   DIAGNOSTICS STEP 1 (DIAGNOSE) MOBILE FRAME OVERRIDES
+   ========================================================================== */
+
+/* Prevent horizontal page scrolling on Step 1 & Step 3 containers */
+body.mobile-app #step-1-diagnose,
+body.mobile-app #step-3-register {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+body.mobile-app #step-1-diagnose .bg-white,
+body.mobile-app #step-3-register .bg-white {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Step 1 Motorcycle Card & Customer Card Header wrap */
+body.mobile-app #step-1-diagnose .border-b.pb-2,
+body.mobile-app #step-3-register .border-b.pb-2 {
+    flex-wrap: wrap !important;
+    gap: 0.5rem !important;
+}
+
+/* Step 1 Inspection Setup: stack master toggles cleanly */
+body.mobile-app #title-inspection-setup + div {
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+}
+
+/* Step 1 Physical Inspection: stack label above status buttons full width */
+body.mobile-app .insp-item-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+}
+
+body.mobile-app .insp-btn-group {
+    width: 100% !important;
+}
+
+body.mobile-app .insp-btn {
+    min-height: 40px !important;
+}
+
+/* Step 1 ECU / OBD Card: stack header and Bluetooth controls */
+body.mobile-app #ecu-scan-card .flex.flex-col.sm\:flex-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+}
+
+body.mobile-app #ecu-scan-card .flex.flex-col.sm\:flex-row > div:last-child {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    justify-content: space-between !important;
+}
+
+/* Step 1 ECU / OBD Scanned DTC Results: single column Description & Verification, stacked parts row */
+body.mobile-app #dtc-results-list .grid.md\:grid-cols-2 {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.75rem !important;
+}
+
+body.mobile-app #dtc-results-list .flex.sm\:flex-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+}
+
+body.mobile-app #dtc-results-list .flex.sm\:flex-row > div:last-child,
+body.mobile-app #dtc-results-list .flex.sm\:flex-row button {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* Step 1 Inspection Overview card: stack labels and items */
+body.mobile-app #inspection-overview .flex.sm\:flex-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+}
+
+body.mobile-app #inspection-overview .sm\:text-right {
+    text-align: left !important;
+}
+
+/* ==========================================================================
+   DIAGNOSTICS STEP 3 (REGISTER & CONFIRM) MOBILE FRAME OVERRIDES
+   ========================================================================== */
+
+/* Step 3 Review Cards: override 2-column grid to stacked single column */
+body.mobile-app #step-3-register .grid.lg\:grid-cols-2,
+body.mobile-app #step-3-register > .grid {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: 1fr !important;
+    gap: 1.25rem !important;
+    width: 100% !important;
+}
+
+body.mobile-app #step-3-register .grid.lg\:grid-cols-2 > div,
+body.mobile-app #step-3-register > .grid > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-column: auto !important;
+    box-sizing: border-box !important;
+}
+
+/* Step 3 ECU / OBD Results item: stack badges & parts text */
+body.mobile-app #step3-ecu-results li {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.375rem !important;
+}
+
+body.mobile-app #step3-ecu-results li > div:last-child {
+    text-align: left !important;
+}
+
+/* Step 3 Parts list and total: ensure peso amounts never wrap */
+body.mobile-app #step3-parts-list li span:last-child,
+body.mobile-app #step3-grand-total {
+    white-space: nowrap !important;
+}
+
+/* Step 3 Success State: responsive padding, stacked action buttons */
+body.mobile-app #step3-success-state {
+    padding: 1.5rem 1rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+body.mobile-app #step3-success-state .flex.gap-3 {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+}
+
+body.mobile-app #step3-success-state button {
+    width: 100% !important;
+    min-height: 44px !important;
+    box-sizing: border-box !important;
+}
+
 
 /* Shared Mobile Modal Sheet Styles for all Popups */
 body.mobile-app div[id*="modal"].fixed.inset-0,
