@@ -1096,8 +1096,8 @@ const roleFeatures = {
         viewMovements: true,
         assignMechanic: false,
         checkStock: false,
-        markOrdered: false,
-        markReceived: false,
+        markOrdered: true,
+        markReceived: true,
         moveToBilling: false,
         markRepairDone: true,
         completePostScan: true,
@@ -2417,41 +2417,6 @@ function completeJob(event) {
 }
 
 let currentEditingPartId = null;
-let currentPartDtcTags = [];
-
-function renderDtcChips() {
-    const container = document.getElementById('dtc-chips-container');
-    if (!container) return;
-    container.innerHTML = '';
-    currentPartDtcTags.forEach((tag, idx) => {
-        const chip = document.createElement('div');
-        chip.className = 'inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-xs font-bold border border-blue-200';
-        chip.innerHTML = `<i class="ph-bold ph-cpu text-blue-500"></i> ${tag} <i class="ph-bold ph-x cursor-pointer hover:text-red-500 ml-1" onclick="removeDtcChip(${idx})"></i>`;
-        container.appendChild(chip);
-    });
-}
-
-function removeDtcChip(idx) {
-    currentPartDtcTags.splice(idx, 1);
-    renderDtcChips();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const dtcInput = document.getElementById('add-part-dtc');
-    if (dtcInput) {
-        dtcInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault();
-                const val = this.value.trim().replace(/,/g, '').toUpperCase();
-                if (val && !currentPartDtcTags.includes(val)) {
-                    currentPartDtcTags.push(val);
-                    renderDtcChips();
-                }
-                this.value = '';
-            }
-        });
-    }
-});
 
 function clearAddPartForm() {
     const form = document.querySelector('#main-content-area #modal-add-part') || document.getElementById('modal-add-part');
@@ -2473,15 +2438,10 @@ function clearAddPartForm() {
     if (stockEl) stockEl.value = '';
     const minStockEl = form.querySelector('#add-part-minstock') || document.getElementById('add-part-minstock');
     if (minStockEl) minStockEl.value = '';
-    const dtcEl = form.querySelector('#add-part-dtc') || document.getElementById('add-part-dtc');
-    if (dtcEl) dtcEl.value = '';
     const nameErr = form.querySelector('#add-part-name-error') || document.getElementById('add-part-name-error');
     if (nameErr) nameErr.classList.add('hidden');
     const stockErr = form.querySelector('#add-part-stock-error') || document.getElementById('add-part-stock-error');
     if (stockErr) stockErr.classList.add('hidden');
-    
-    currentPartDtcTags = [];
-    renderDtcChips();
     
     // Reset title and button
     const title = form.querySelector('h2');
@@ -2761,18 +2721,6 @@ function openEditPartModal(partId) {
     if (stockEl) stockEl.value = part.stock || '';
     const minStockEl = form.querySelector('#add-part-minstock') || document.getElementById('add-part-minstock');
     if (minStockEl) minStockEl.value = part.minStock || '';
-    const dtcEl = form.querySelector('#add-part-dtc') || document.getElementById('add-part-dtc');
-    if (dtcEl) dtcEl.value = ''; // Chips input is empty
-    
-    // Set up chips
-    if (part.linkedDTCs && part.linkedDTCs.length > 0) {
-        currentPartDtcTags = [...part.linkedDTCs];
-    } else if (part.dtc) {
-        currentPartDtcTags = part.dtc.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
-    } else {
-        currentPartDtcTags = [];
-    }
-    renderDtcChips();
 
     toggleModal('modal-add-part', 'add-part-backdrop', 'add-part-content', true);
 }
@@ -2815,27 +2763,28 @@ function savePartForm() {
         return;
     }
 
-    // Capture any pending tag in the input
-    const pendingTag = document.getElementById('add-part-dtc').value.trim().replace(/,/g, '').toUpperCase();
-    if (pendingTag && !currentPartDtcTags.includes(pendingTag)) {
-        currentPartDtcTags.push(pendingTag);
-    }
-    
-    const dtcString = currentPartDtcTags.length > 0 ? currentPartDtcTags.join(', ') : null;
+    const existingLinkedDTCs = (part && Array.isArray(part.linkedDTCs)) ? [...part.linkedDTCs] : [];
+    const existingDtc = part ? (part.dtc !== undefined ? part.dtc : null) : null;
+
+    const skuEl = document.getElementById('add-part-sku');
+    const catEl = document.getElementById('add-part-category');
+    const compEl = document.getElementById('add-part-comp');
+    const priceEl = document.getElementById('add-part-price');
+    const minStockEl = document.getElementById('add-part-minstock');
 
     const newData = {
         name: name,
-        sku: document.getElementById('add-part-sku').value.trim(),
-        category: document.getElementById('add-part-category').value,
-        comp: document.getElementById('add-part-comp').value.trim(),
-        price: parseFloat(document.getElementById('add-part-price').value || '0'),
+        sku: skuEl ? skuEl.value.trim() : '',
+        category: catEl ? catEl.value : '',
+        comp: compEl ? compEl.value.trim() : '',
+        price: parseFloat((priceEl && priceEl.value) || '0'),
         stock: stock,
-        minStock: parseInt(document.getElementById('add-part-minstock').value || '0', 10),
-        dtc: dtcString,
-        linkedDTCs: [...currentPartDtcTags],
+        minStock: parseInt((minStockEl && minStockEl.value) || '0', 10),
+        dtc: existingDtc,
+        linkedDTCs: existingLinkedDTCs,
         image: part ? part.image : ''
     };
-    const conf = categoryConfig[document.getElementById('add-part-category').value];
+    const conf = catEl ? categoryConfig[catEl.value] : null;
     if (conf && conf.hasExpiry) {
         const form = document.getElementById('modal-add-part');
         const expiryInput = form ? form.querySelector('.part-expiry-input') : null;
@@ -9370,9 +9319,21 @@ const mockRepairsData = [
         statusClass: 'bg-orange-50 text-orange-600 border-orange-200',
         dotClass: 'bg-orange-500',
         repairPlan: {
-            parts: [],
+            parts: [
+                {
+                    id: 'part-1',
+                    part: { name: 'Drive belt', price: 650 },
+                    target: 'Drive belt replacement.',
+                    reason: 'Drive belt replacement.',
+                    qty: 1,
+                    handling: 'order',
+                    expectedArrival: '2026-10-08',
+                    status: 'waiting',
+                    partStatus: 'Waiting'
+                }
+            ],
             laborCost: 650,
-            estimatedTotal: 650
+            estimatedTotal: 1300
         }
     },
     {
@@ -9504,9 +9465,10 @@ function checkJobPartsStatus(jobId) {
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job || !job.repairPlan || !job.repairPlan.parts) return;
     
+    const isMobileMech = document.body.classList.contains('mobile-app') || (typeof currentRole !== 'undefined' && currentRole === 'mechanic');
     const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order' && p.partStatus !== 'Received');
     
-    if (pendingParts.length === 0 && job.statusId === 'waiting') {
+    if (!isMobileMech && pendingParts.length === 0 && job.statusId === 'waiting') {
         const oldStatus = job.statusName || 'Waiting for Parts';
         job.statusId = 'progress';
         job.statusName = 'In Progress';
@@ -9671,6 +9633,16 @@ window.startRepairAnyway = function(jobId) {
     }
     const job = mockRepairsData.find(j => j.id === jobId);
     if (!job) return;
+
+    if (job.statusId === 'waiting') {
+        const partsList = (job.repairPlan && Array.isArray(job.repairPlan.parts)) ? job.repairPlan.parts : [];
+        const hasParts = partsList.length > 0;
+        const allPartsReceived = hasParts && partsList.every(p => (p.partStatus || '').toLowerCase() === 'received');
+        if (!allPartsReceived) {
+            showToast("Waiting for all parts to be received.");
+            return;
+        }
+    }
     
     const oldStatus = job.statusName || 'Waiting for Parts';
     job.statusId = 'progress';
@@ -9692,6 +9664,7 @@ window.startRepairAnyway = function(jobId) {
     }
     renderRepairs();
 };
+window.startRepair = window.startRepairAnyway;
 
 window.markRepairDone = function(jobId) {
     if (typeof isViewOnly === 'function' && isViewOnly('repairs')) return;
@@ -9703,25 +9676,11 @@ window.markRepairDone = function(jobId) {
     if (!job) return;
     
     const oldStatus = job.statusName || 'In Progress';
-    // Check if ecu was used (for mock demo, if it has 'sensor' in diagnosis or randomly)
-    const ecuUsed = job.diagnosis.toLowerCase().includes('sensor') || job.diagnosis.toLowerCase().includes('ecu');
-    
-    if (ecuUsed) {
-        job.statusId = 'pending';
-        job.statusName = 'Pending Post-Scan / Calibration';
-        job.statusClass = 'bg-purple-50 text-purple-600 border-purple-200';
-        job.dotClass = 'bg-purple-500';
-        syncMobileJobStatus(job.id, 'pending');
-    } else {
-        job.statusId = 'ready';
-        job.statusName = 'Ready for Billing';
-        job.statusClass = 'bg-emerald-50 text-emerald-600 border-emerald-200';
-        job.dotClass = 'bg-emerald-500';
-        syncMobileJobStatus(job.id, 'ready');
-        if (typeof hasFeature === 'function' && hasFeature('moveToBilling')) {
-            findOrLinkJobTransaction(job);
-        }
-    }
+    job.statusId = 'pending';
+    job.statusName = 'Pending Post-Scan / Calibration';
+    job.statusClass = 'bg-purple-50 text-purple-600 border-purple-200';
+    job.dotClass = 'bg-purple-500';
+    syncMobileJobStatus(job.id, 'pending');
     job.startedAnyway = false;
     updateRepairCounters();
     if (typeof logActivity === 'function') {
@@ -9801,7 +9760,7 @@ window.moveToBilling = function(jobId) {
             severity: 'standard'
         });
     }
-    showToast(`${job.id} marked Ready for Billing. Transaction ${txn.id} linked.`);
+    showToast("Sent to Cashier.");
     if (typeof hasFeature === 'function' && !hasFeature('receivePayment')) {
         proceedToPayment(jobId);
     }
@@ -10095,24 +10054,30 @@ function renderRepairs() {
                               (job.model && job.model.toLowerCase().includes(query)) ||
                               (brand && brand.toLowerCase().includes(query));
                               
-        const matchesStatus = currentRepairFilter === 'all' ? job.statusId !== 'paid' : job.statusId === currentRepairFilter;
+        const activeRepairStatuses = ['waiting', 'progress', 'pending'];
+        const matchesStatus = currentRepairFilter === 'all' ? activeRepairStatuses.includes(job.statusId) : job.statusId === currentRepairFilter;
 
         return matchesSearch && matchesStatus;
     });
 
     // Update Filter Chips Counts
-    const statusCounts = { all: mockRepairsData.filter(j => j.statusId !== 'paid').length };
+    const activeFilterStatuses = ['waiting', 'progress', 'pending'];
+    const statusCounts = { all: mockRepairsData.filter(j => activeFilterStatuses.includes(j.statusId)).length };
     mockRepairsData.forEach(j => {
-        statusCounts[j.statusId] = (statusCounts[j.statusId] || 0) + 1;
+        if (activeFilterStatuses.includes(j.statusId)) {
+            statusCounts[j.statusId] = (statusCounts[j.statusId] || 0) + 1;
+        }
     });
     
     document.querySelectorAll('.repair-filter-btn').forEach(btn => {
+        if (!btn) return;
         const f = btn.getAttribute('data-filter');
+        if (!f) return;
         const count = statusCounts[f] || 0;
         if (!btn.hasAttribute('data-original-text')) {
             btn.setAttribute('data-original-text', btn.textContent.trim());
         }
-        const origText = btn.getAttribute('data-original-text');
+        const origText = btn.getAttribute('data-original-text') || '';
         
         if (isMobile) {
             btn.innerHTML = `${origText} <span class="ml-1 px-1.5 py-0.5 bg-black/10 rounded text-[10px]">${count}</span>`;
@@ -10249,7 +10214,35 @@ function renderRepairs() {
                         ${anywayBtn}
                     </div>
                 `;
+            } else if (job.statusId === 'waiting') {
+                let anywayBtn = '';
+                if (canMarkDone) {
+                    anywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="text-[10px] font-semibold text-amber-600 hover:text-amber-700 hover:underline mt-2 inline-flex items-center gap-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
+                }
+                partsHTML = `
+                    <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-2.5 relative">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Parts Needed</span>
+                        </div>
+                        <p class="text-xs text-slate-500 italic py-1">No parts listed for this job yet.</p>
+                        ${anywayBtn}
+                    </div>
+                `;
             }
+        } else if (job.statusId === 'waiting') {
+            let anywayBtn = '';
+            if (canMarkDone) {
+                anywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="text-[10px] font-semibold text-amber-600 hover:text-amber-700 hover:underline mt-2 inline-flex items-center gap-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
+            }
+            partsHTML = `
+                <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-2.5 relative">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[10px] font-bold text-slate-500 uppercase">Parts Needed</span>
+                    </div>
+                    <p class="text-xs text-slate-500 italic py-1">No parts listed for this job yet.</p>
+                    ${anywayBtn}
+                </div>
+            `;
         }
 
         // Determine primary button based on rules
@@ -10260,15 +10253,25 @@ function renderRepairs() {
         let hintHTML = '';
         
         if (job.statusId === 'waiting') {
-            btnText = '<i class="ph-bold ph-arrows-clockwise"></i> Check stock';
-            btnAction = `checkStockForJob('${job.id}')`;
+            if (canCheckStock) {
+                btnText = '<i class="ph-bold ph-arrows-clockwise"></i> Check stock';
+                btnAction = `checkStockForJob('${job.id}')`;
+            } else {
+                btnText = '';
+                btnAction = '';
+            }
         } else if (job.statusId === 'progress') {
-            btnText = '<i class="ph-bold ph-check-circle"></i> Mark Repair Done';
-            btnAction = `markRepairDone('${job.id}')`;
-            if (hasPending) {
-                btnDisabled = true;
-                btnClass = 'bg-slate-300 text-slate-500 cursor-not-allowed';
-                hintHTML = `<div class="text-[10px] text-amber-600 font-medium text-right mt-1 w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>`;
+            if (canMarkDone) {
+                btnText = '<i class="ph-bold ph-check-circle"></i> Mark Repair Done';
+                btnAction = `markRepairDone('${job.id}')`;
+                if (hasPending) {
+                    btnDisabled = true;
+                    btnClass = 'bg-slate-300 text-slate-500 cursor-not-allowed';
+                    hintHTML = `<div class="text-[10px] text-amber-600 font-medium text-right mt-1 w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>`;
+                }
+            } else {
+                btnText = '';
+                btnAction = '';
             }
         } else if (job.statusId === 'pending') {
             btnText = '<i class="ph-bold ph-check-square"></i> Complete Post-Scan';
@@ -10299,6 +10302,27 @@ function renderRepairs() {
             let mobilePartsHTML = '';
             let mobileAnywayBtn = '';
             let mobileHintHTML = hintHTML ? `<div class="text-[10px] text-amber-600 font-medium text-center w-full"><i class="ph-bold ph-info"></i> Cannot complete: waiting for parts</div>` : '';
+
+            if (job.statusId === 'waiting') {
+                const partsList = (job.repairPlan && Array.isArray(job.repairPlan.parts)) ? job.repairPlan.parts : [];
+                const hasParts = partsList.length > 0;
+                const allPartsReceived = hasParts && partsList.every(p => (p.partStatus || '').toLowerCase() === 'received');
+
+                if (allPartsReceived) {
+                    mobileAnywayBtn = `
+                        <button type="button" onclick="startRepairAnyway('${job.id}')" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-bold shadow-sm flex items-center justify-center gap-2 active:scale-[0.99] transition-colors cursor-pointer">
+                            <i class="ph-bold ph-play"></i> Start Repair
+                        </button>
+                    `;
+                } else {
+                    mobileAnywayBtn = `
+                        <button type="button" disabled class="w-full py-3 bg-slate-100 text-slate-400 border border-slate-200 rounded-lg text-sm font-bold cursor-not-allowed flex items-center justify-center gap-2">
+                            <i class="ph-bold ph-play"></i> Start Repair
+                        </button>
+                        <div class="text-[11px] text-amber-600 font-medium text-center w-full mt-0.5">Waiting for all parts to be received.</div>
+                    `;
+                }
+            }
 
             if (job.repairPlan && job.repairPlan.parts && showPartsList) {
                 const pendingParts = job.repairPlan.parts.filter(p => p.handling === 'order');
@@ -10333,10 +10357,6 @@ function renderRepairs() {
                         `;
                     }).join('');
 
-                    if (job.statusId === 'waiting') {
-                        mobileAnywayBtn = `<button onclick="startRepairAnyway('${job.id}')" class="w-full py-2 bg-transparent text-amber-700 border border-amber-200 rounded-lg text-xs font-bold active:bg-amber-50 mt-1"><i class="ph-bold ph-play"></i> Start repair anyway</button>`;
-                    }
-
                     mobilePartsHTML = `
                         <div class="mt-4 pt-4 border-t border-slate-100">
                             <span class="text-xs font-bold text-slate-500 uppercase block mb-3">Parts Needed</span>
@@ -10345,7 +10365,25 @@ function renderRepairs() {
                             </div>
                         </div>
                     `;
+                } else if (job.statusId === 'waiting') {
+                    mobilePartsHTML = `
+                        <div class="mt-4 pt-4 border-t border-slate-100">
+                            <span class="text-xs font-bold text-slate-500 uppercase block mb-3">Parts Needed</span>
+                            <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500 italic">
+                                No parts listed for this job yet.
+                            </div>
+                        </div>
+                    `;
                 }
+            } else if (job.statusId === 'waiting') {
+                mobilePartsHTML = `
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <span class="text-xs font-bold text-slate-500 uppercase block mb-3">Parts Needed</span>
+                        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-500 italic">
+                            No parts listed for this job yet.
+                        </div>
+                    </div>
+                `;
             }
             
             return `
@@ -10394,7 +10432,7 @@ function renderRepairs() {
                         ${mobilePartsHTML}
                         
                         <div class="mt-2 pt-4 border-t border-slate-100 flex flex-col gap-1.5">
-                            ${btnText ? `<button onclick="${btnAction}" class="w-full py-3 rounded-lg text-sm font-bold shadow-sm flex items-center justify-center gap-2 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
+                            ${btnText ? `<button onclick="${btnAction}" class="w-full py-3 min-h-[44px] rounded-lg text-sm font-bold shadow-sm flex items-center justify-center gap-2 ${btnClass}" ${btnDisabled ? 'disabled' : ''}>
                                 ${btnText}
                             </button>` : ''}
                             ${mobileHintHTML}
@@ -10405,187 +10443,12 @@ function renderRepairs() {
             </div>
             `;
         } else {
-            // Find linked transaction if any
-            let txn = null;
-            if (typeof mockTxnData !== 'undefined' && Array.isArray(mockTxnData)) {
-                if (job.txnId) {
-                    txn = mockTxnData.find(t => t.id === job.txnId);
-                }
-                if (!txn) {
-                    txn = mockTxnData.find(t => t.type === 'Repair Service' && ((job.plate && t.details && t.details.includes(job.plate)) || (job.id && t.details && t.details.includes(job.id))));
-                    if (txn) {
-                        job.txnId = txn.id;
-                    }
-                }
-            }
-
-            let billingHTML = '';
-            if (canReceivePayment) {
-                if (txn) {
-                    let advancePaid = 0;
-                    if (txn.status && txn.status.includes('Adv Paid')) {
-                        const match = txn.status.match(/(\u20B1|PHP|P)?\s*([0-9,]+(\.[0-9]{2})?)/i);
-                        if (match) advancePaid = parseFloat(match[2].replace(/,/g, ''));
-                    } else if (job.advancePaid) {
-                        advancePaid = Number(job.advancePaid) || 0;
-                    }
-
-                    const totalAmount = Number(txn.amount) || (job.repairPlan?.estimatedTotal || 1500);
-                    const isPaid = (txn.status === 'Fully Paid' || txn.category === 'completed' || job.statusId === 'paid');
-                    const balanceDue = isPaid ? 0 : Math.max(0, totalAmount - advancePaid);
-
-                    let statusBadge = '';
-                    if (isPaid) {
-                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"><i class="ph-bold ph-check"></i> Fully Paid</span>`;
-                    } else if (advancePaid > 0) {
-                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-yellow-50 text-yellow-700 border border-yellow-200"><span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> ${txn.status || 'Partial / Advance Paid'}</span>`;
-                    } else if (txn.status === 'Pending Settlement') {
-                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span> Pending Settlement</span>`;
-                    } else {
-                        statusBadge = `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> Unpaid</span>`;
-                    }
-
-                    const isInlineOpen = (typeof window !== 'undefined' && window.activeInlinePaymentJobId === job.id);
-                    const safeId = job.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-
-                    let inlineSuccessBanner = '';
-                    if (typeof window !== 'undefined' && window.inlinePaymentSuccessMsg && window.inlinePaymentSuccessMsg.jobId === job.id) {
-                        inlineSuccessBanner = `<div class="p-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold rounded flex items-center gap-1.5"><i class="ph-bold ph-check-circle"></i> ${window.inlinePaymentSuccessMsg.text}</div>`;
-                    }
-
-                    let billingActionArea = '';
-                    if (isInlineOpen) {
-                        const payType = window.activeInlinePaymentType || 'settle';
-                        const defaultAmt = balanceDue > 0 ? balanceDue : totalAmount;
-                        billingActionArea = `
-                            <div class="mt-2.5 p-3 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col gap-2.5">
-                                <div class="flex justify-between items-center text-xs font-bold text-slate-700">
-                                    <span>${payType === 'advance' ? 'Receive Advance Payment' : (advancePaid > 0 ? 'Settle Balance' : 'Receive Payment')}</span>
-                                    <span class="text-[10px] font-mono text-slate-500">Balance: \u20B1${balanceDue.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                </div>
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    <div>
-                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Amount (\u20B1)</label>
-                                        <input type="number" id="inline-pay-amount-${safeId}" value="${defaultAmt}" min="1" max="${balanceDue}" step="any" class="w-full text-xs font-semibold px-2.5 py-1.5 border border-slate-300 rounded bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none">
-                                    </div>
-                                    <div>
-                                        <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Method</label>
-                                        <select id="inline-pay-method-${safeId}" class="w-full text-xs font-semibold px-2.5 py-1.5 border border-slate-300 rounded bg-slate-50 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none cursor-pointer">
-                                            <option value="Cash" selected>Cash</option>
-                                            <option value="GCash">GCash</option>
-                                            <option value="Card">Card</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div id="inline-pay-error-${safeId}" class="text-[11px] font-semibold text-rose-600 hidden"></div>
-                                <div id="inline-pay-success-${safeId}" class="text-[11px] font-semibold text-emerald-600 hidden"></div>
-                                <div class="flex justify-end items-center gap-2 pt-1">
-                                    <button type="button" onclick="closeInlinePaymentForm('${job.id}')" class="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded border border-slate-200 transition-colors">Cancel</button>
-                                    <button type="button" onclick="confirmInlinePayment('${job.id}', '${payType}')" class="px-3 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-sm flex items-center gap-1 transition-colors">
-                                        <i class="ph-bold ph-check"></i> Confirm
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        if (isPaid) {
-                            billingActionArea = `
-                                <div class="mt-2.5 flex justify-end">
-                                    <button type="button" onclick="openReceiptModal()" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700">
-                                        <i class="ph-bold ph-receipt"></i> View Receipt
-                                    </button>
-                                </div>
-                            `;
-                        } else if (balanceDue > 0) {
-                            let btns = '';
-                            if (advancePaid === 0) {
-                                btns += `
-                                    <button type="button" onclick="openInlinePaymentForm('${job.id}', 'advance')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200">
-                                        <i class="ph-bold ph-hand-coins"></i> Receive Advance
-                                    </button>
-                                `;
-                                if (job.statusId === 'ready' || txn.category === 'settle') {
-                                    btns += `
-                                        <button type="button" onclick="openInlinePaymentForm('${job.id}', 'settle')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-                                            <i class="ph-bold ph-wallet"></i> Receive Payment
-                                        </button>
-                                    `;
-                                }
-                            } else {
-                                btns += `
-                                    <button type="button" onclick="openInlinePaymentForm('${job.id}', 'settle')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white">
-                                        <i class="ph-bold ph-check-circle"></i> Settle Balance
-                                    </button>
-                                `;
-                            }
-                            billingActionArea = `<div class="mt-2.5 flex flex-wrap justify-end gap-2">${btns}</div>`;
-                        }
-                    }
-
-                    billingHTML = `
-                        <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-3 flex flex-col gap-2">
-                            <div class="flex items-center justify-between border-b border-slate-200/80 pb-2">
-                                <div class="flex items-center gap-1.5">
-                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing</span>
-                                    <span class="text-[10px] font-mono font-bold text-slate-600 bg-white border border-slate-200 px-1.5 py-0.5 rounded">${txn.id}</span>
-                                </div>
-                                ${statusBadge}
-                            </div>
-                            ${inlineSuccessBanner}
-                            <div class="grid grid-cols-3 gap-2 text-center pt-0.5">
-                                <div class="flex flex-col bg-white p-1.5 rounded border border-slate-100">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Total</span>
-                                    <span class="text-xs font-bold text-slate-800 font-mono">\u20B1${totalAmount.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                </div>
-                                <div class="flex flex-col bg-white p-1.5 rounded border border-slate-100">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Advance</span>
-                                    <span class="text-xs font-bold text-amber-700 font-mono">\u20B1${advancePaid.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                </div>
-                                <div class="flex flex-col bg-white p-1.5 rounded border border-slate-100">
-                                    <span class="text-[9px] font-bold text-slate-400 uppercase">Balance Due</span>
-                                    <span class="text-xs font-bold ${balanceDue > 0 ? 'text-blue-700' : 'text-emerald-700'} font-mono">\u20B1${balanceDue.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                </div>
-                            </div>
-                            ${billingActionArea}
-                        </div>
-                    `;
-                } else {
-                    if (job.statusId === 'ready') {
-                        billingHTML = `
-                            <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-3 flex flex-col gap-2">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing</span>
-                                    <span class="text-[10px] font-semibold text-slate-400">Ready for billing</span>
-                                </div>
-                                <div class="flex items-center justify-between pt-1">
-                                    <span class="text-xs text-slate-500">Repair complete</span>
-                                    <button type="button" onclick="moveToBilling('${job.id}')" class="text-xs font-bold px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center gap-1.5 transition-colors">
-                                        <i class="ph-bold ph-receipt"></i> Move to billing
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        billingHTML = `
-                            <div class="mt-3 bg-slate-50 border border-slate-200 rounded p-2.5">
-                                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">Billing</span>
-                                <p class="text-xs text-slate-400 italic">Payment can be received once the repair is moved to billing</p>
-                            </div>
-                        `;
-                    }
-                }
-            }
-
             // Build Desktop Action Buttons
             let desktopActionsHTML = '';
             let desktopHintHTML = '';
 
             if (isVO) {
-                if (job.statusId === 'paid') {
-                    desktopActionsHTML = `<button class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700"><i class="ph-bold ph-receipt"></i> View Receipt</button>`;
-                } else {
-                    desktopActionsHTML = `<span class="text-xs font-medium px-2.5 py-1 rounded bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed select-none">Monitoring mode</span>`;
-                }
+                desktopActionsHTML = `<span class="text-xs font-medium px-2.5 py-1 rounded bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed select-none">Monitoring mode</span>`;
             } else {
                 if (job.statusId === 'waiting') {
                     if (canCheckStock) {
@@ -10602,17 +10465,9 @@ function renderRepairs() {
                     }
                 } else if (job.statusId === 'pending') {
                     const completeBtn = canPostScan ? `<button onclick="completePostScan('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white"><i class="ph-bold ph-check-square"></i> Complete Post-Scan</button>` : '';
-                    const billingBtn = (canMoveBilling && (!job.txnId || !canReceivePayment)) ? `<button onclick="moveToBilling('${job.id}')" class="text-xs font-semibold px-3 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"><i class="ph-bold ph-receipt"></i> Move to billing</button>` : '';
-                    const actionBtns = [completeBtn, billingBtn].filter(Boolean).join('');
+                    const sendBtn = canMoveBilling ? `<button onclick="moveToBilling('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"><i class="ph-bold ph-paper-plane-tilt"></i> Send to Cashier</button>` : '';
+                    const actionBtns = [completeBtn, sendBtn].filter(Boolean).join('');
                     desktopActionsHTML = actionBtns ? `<div class="flex items-center gap-2">${actionBtns}</div>` : '';
-                } else if (job.statusId === 'ready') {
-                    if (canMoveBilling && (!job.txnId || !canReceivePayment)) {
-                        desktopActionsHTML = `<button onclick="moveToBilling('${job.id}')" class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white"><i class="ph-bold ph-receipt"></i> Move to billing <i class="ph-bold ph-arrow-right"></i></button>`;
-                    }
-                } else if (job.statusId === 'paid') {
-                    if (!canReceivePayment) {
-                        desktopActionsHTML = `<button class="text-xs font-semibold px-3.5 py-1.5 rounded transition-colors shadow-sm flex items-center gap-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700"><i class="ph-bold ph-receipt"></i> View Receipt</button>`;
-                    }
                 }
             }
 
@@ -10647,7 +10502,6 @@ function renderRepairs() {
                         </p>
                         ${partsHTML}
                     </div>
-                    ${billingHTML}
                 </div>
                 <div class="p-3.5 border-t border-slate-100 bg-slate-50/50 flex flex-col items-end">
                     <div class="flex items-center justify-between w-full">
@@ -10674,13 +10528,15 @@ document.addEventListener('click', function(e) {
     if (filterBtn) {
         // Reset all buttons to default classes
         document.querySelectorAll('.repair-filter-btn').forEach(btn => {
-            btn.className = `repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors ${btn.getAttribute('data-default')}`;
+            if (btn && btn.getAttribute('data-default')) {
+                btn.className = `repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors ${btn.getAttribute('data-default')}`;
+            }
         });
         
         // Set Active State
         filterBtn.className = 'repair-filter-btn px-4 py-1.5 rounded-full text-xs font-semibold shadow-sm whitespace-nowrap transition-colors bg-slate-800 text-white border border-transparent';
         
-        currentRepairFilter = filterBtn.getAttribute('data-filter');
+        currentRepairFilter = filterBtn.getAttribute('data-filter') || 'all';
         renderRepairs();
     }
 });
@@ -11418,6 +11274,7 @@ function emptyInspectionState() {
         vehicle: { mode: 'identified', brandId: 'yamaha', brandText: '', brand: 'Yamaha', model: 'Sniper', plate: '' },
         customer: { mode: 'walk-in', name: '', phone: '', email: '', selectedCustomerId: null },
         items: {},
+        restOkSnapshots: {},
         finalFindingsText: ''
     };
 }
@@ -11439,6 +11296,7 @@ function loadInspectionState() {
                 vehicle: loadedVehicle,
                 customer: { ...emptyInspectionState().customer, ...(saved.customer || {}) },
                 items: saved.items || {},
+                restOkSnapshots: (saved && typeof saved.restOkSnapshots === 'object' && saved.restOkSnapshots !== null) ? saved.restOkSnapshots : {},
                 finalFindingsText: (typeof saved.finalFindingsText === 'string') ? saved.finalFindingsText : ''
             };
         }
@@ -11485,6 +11343,7 @@ function saveInspectionState() {
 }
 
 let inspectionState = loadInspectionState();
+if (!inspectionState.restOkSnapshots) inspectionState.restOkSnapshots = {};
 
 function getFinalFindingsText() {
     if (typeof inspectionState !== 'undefined' && inspectionState && typeof inspectionState.finalFindingsText === 'string') {
@@ -11576,6 +11435,21 @@ function renderInspectionItem(item) {
         </div>`;
 }
 
+function getSectionActionBtnHtml(secId) {
+    const hasSnap = Boolean(inspectionState && inspectionState.restOkSnapshots && inspectionState.restOkSnapshots[secId] && Object.keys(inspectionState.restOkSnapshots[secId]).length > 0);
+    return hasSnap
+        ? `<button type="button" data-insp="section-undo" data-section="${secId}" class="text-[11px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1.5 rounded-lg active:scale-95 transition-all whitespace-nowrap shrink-0 inline-flex items-center justify-center gap-1"><i class="ph-bold ph-arrow-u-up-left"></i> Undo</button>`
+        : `<button type="button" data-insp="section-ok" data-section="${secId}" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg active:scale-95 transition-all whitespace-nowrap shrink-0 inline-flex items-center justify-center gap-1">Rest OK</button>`;
+}
+
+function updateSectionActionBtn(secId) {
+    const secEl = document.getElementById(`insp-sec-${secId}`);
+    if (!secEl) return;
+    const existingBtn = secEl.querySelector('[data-insp="section-ok"], [data-insp="section-undo"]');
+    if (!existingBtn) return;
+    existingBtn.outerHTML = getSectionActionBtnHtml(secId);
+}
+
 function renderInspectionSection(sec) {
     const done = sec.items.filter(i => getInspItem(i.id).status).length;
     const countText = done === sec.items.length ? `All ${done} checked ✓` : `${done}/${sec.items.length} checked`;
@@ -11590,7 +11464,7 @@ function renderInspectionSection(sec) {
                     </span>
                     <i class="ph-bold ph-caret-down insp-caret text-slate-400 ml-auto mr-1"></i>
                 </button>
-                <button type="button" data-insp="section-ok" data-section="${sec.id}" class="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1.5 rounded-lg active:scale-95 transition-all whitespace-nowrap shrink-0">Rest OK</button>
+                ${getSectionActionBtnHtml(sec.id)}
             </div>
             <div class="insp-section-body p-2 sm:p-2.5 flex flex-col gap-1.5 sm:gap-2">
                 ${sec.items.map(renderInspectionItem).join('')}
@@ -12003,6 +11877,17 @@ function validateStep1() {
     // Validation removed for prototype. Button always enabled.
 }
 
+function clearCategoryRestOkSnapshot(itemId) {
+    if (!inspectionState || !inspectionState.restOkSnapshots) return;
+    const itemObj = (typeof inspectionItemMap !== 'undefined' && inspectionItemMap[itemId]) || 
+                    (typeof inspectionItems !== 'undefined' && inspectionItems.find(i => i.id === itemId));
+    const secId = itemObj ? itemObj.section : null;
+    if (secId && inspectionState.restOkSnapshots[secId]) {
+        delete inspectionState.restOkSnapshots[secId];
+        updateSectionActionBtn(secId);
+    }
+}
+
 // --- Actions ---
 function setInspectionStatus(id, status) {
     const st = getInspItem(id);
@@ -12013,6 +11898,7 @@ function setInspectionStatus(id, status) {
         st.status = status;
         st.manual = true;
     }
+    clearCategoryRestOkSnapshot(id);
     saveInspectionState();
     refreshInspectionRow(id);
 
@@ -12075,16 +11961,55 @@ document.addEventListener('click', function(e) {
         const st = getInspItem(el.dataset.item);
         const tag = el.dataset.tag;
         st.tags = st.tags.includes(tag) ? st.tags.filter(t => t !== tag) : [...st.tags, tag];
+        clearCategoryRestOkSnapshot(el.dataset.item);
         saveInspectionState();
         refreshInspectionRow(el.dataset.item);
 
     } else if (action === 'section-ok') {
         const sec = inspectionSections.find(s => s.id === el.dataset.section);
-        sec.items.forEach(item => {
-            const st = getInspItem(item.id);
-            if (!st.status) { st.status = 'ok'; st.manual = true; refreshInspectionRow(item.id); }
-        });
-        saveInspectionState();
+        if (sec) {
+            const snap = {};
+            sec.items.forEach(item => {
+                const st = getInspItem(item.id);
+                if (!st.status) {
+                    snap[item.id] = {
+                        status: st.status,
+                        manual: st.manual,
+                        tags: Array.isArray(st.tags) ? [...st.tags] : [],
+                        note: st.note || ''
+                    };
+                    st.status = 'ok';
+                    st.manual = true;
+                    refreshInspectionRow(item.id);
+                }
+            });
+            if (Object.keys(snap).length > 0) {
+                if (!inspectionState.restOkSnapshots) inspectionState.restOkSnapshots = {};
+                inspectionState.restOkSnapshots[sec.id] = snap;
+                saveInspectionState();
+                updateSectionActionBtn(sec.id);
+            } else {
+                saveInspectionState();
+            }
+        }
+
+    } else if (action === 'section-undo') {
+        const secId = el.dataset.section;
+        const snap = inspectionState.restOkSnapshots && inspectionState.restOkSnapshots[secId];
+        if (snap) {
+            Object.keys(snap).forEach(itemId => {
+                const prev = snap[itemId];
+                const st = getInspItem(itemId);
+                st.status = prev.status;
+                st.manual = prev.manual;
+                st.tags = Array.isArray(prev.tags) ? [...prev.tags] : [];
+                st.note = prev.note || '';
+                refreshInspectionRow(itemId);
+            });
+            delete inspectionState.restOkSnapshots[secId];
+            saveInspectionState();
+            updateSectionActionBtn(secId);
+        }
     
 
     } else if (action === 'toggle-section') {
@@ -12157,6 +12082,7 @@ document.addEventListener('input', function(e) {
     }
     if (target.dataset && target.dataset.inspInput === 'note') {
         getInspItem(target.dataset.item).note = target.value;
+        clearCategoryRestOkSnapshot(target.dataset.item);
         saveInspectionState();
     }
 });

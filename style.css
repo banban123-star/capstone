@@ -1038,7 +1038,8 @@ body.mobile-app #users-mobile-cards { display: flex !important; }
 body.mobile-app .insp-sec-header {
     min-height: 56px !important;
 }
-body.mobile-app button[data-insp="section-ok"] {
+body.mobile-app button[data-insp="section-ok"],
+body.mobile-app button[data-insp="section-undo"] {
     min-height: 32px !important;
     height: 32px !important;
     padding-top: 4px !important;
